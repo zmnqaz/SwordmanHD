@@ -6,7 +6,6 @@
 /ci-logs/
 __pycache__/
 /game/.godot/
-game/assets/font/*.import
 # 工具下载的东西 (Godot、Android 构建环境、便携 7z), 大二进制不入库
 /tools/godot/
 /tools/android/

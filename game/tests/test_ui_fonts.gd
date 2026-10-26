@@ -14,6 +14,10 @@ func test_manifest_valid():
 			check(e.has(k), "%s 有 %s" % [id, k])
 		check(FileAccess.file_exists(e["file"]), "字体文件存在 " + e["file"])
 		check(FileAccess.file_exists(e["license_file"]), "许可文件存在 " + e["license_file"])
+		# 字体按路径用 load_dynamic_font 读原文件, 必须带 importer="keep" 的 .import (原样进 pck);
+		# 缺了它 Godot 会按默认字体导入, 导出包里没有原文件, 界面文字全部消失 (开发机直接读文件, 看不出来)
+		var imp := FileAccess.get_file_as_string(String(e["file"]) + ".import")
+		check(imp.contains('importer="keep"'), "字体带 keep 的 .import (入库, 不能被 .gitignore 挡) " + e["file"])
 		var b := float(e["baseline_in_cell"])
 		check(b >= 9.5 and b <= 12.0, "%s 基线在字格合理范围 %s" % [id, b])
 		check(String(e["desc"]).length() <= 24, "%s 说明够短 (设定面板两行)" % id)
