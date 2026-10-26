@@ -375,6 +375,13 @@ func _notification(what: int) -> void:
 ## (用户 2026-10-20 反馈「点击关闭要很多秒才关掉」); 收起来后进程在后台收尾, 录像存档等退出通知照常走。
 ## 主窗口不能 visible = false (引擎报 "Can't change visibility of main window", 窗口也不会藏), 用最小化代替; 只在桌面系统做
 func _fast_quit() -> void:
+	if Platform.is_ios():
+		# iOS 上 SceneTree.quit() 只停渲染、进程不退 (苹果也不让 App 自己退出), 标题「回返太虚」点了没反应。
+		# 自签 App 没有这个限制: 先把录像存盘 (正常退出路径靠退出通知存, 这里走不到), 再直接结束本进程
+		if PlayLog.current != null:
+			PlayLog.current.save()
+		OS.kill(OS.get_process_id())
+		return
 	if DisplayServer.get_name() != "headless" and OS.has_feature("pc"):
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
 	get_tree().quit()
