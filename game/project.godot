@@ -1,0 +1,37 @@
+; 天地劫：神魔至尊傳 复刻 (Godot 4)
+; 逻辑坐标为原版 320x200, 渲染 1280x800 (x4)。游戏内容从内容包 content/ 读取 (autoload Content), 贴图音频从 ../original 与 ../hd4x 读取。
+config_version=5
+
+[application]
+config/name="SwordmanHD"
+config/description="天地劫：神魔至尊傳 復刻"
+config/icon="res://assets/app_icon.png"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="SwordmanHD"
+config/quit_on_go_back=false
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7")
+
+[autoload]
+ResPacks="*res://engine/core/res_packs.gd"
+UserDirMigrate="*res://scripts/user_dir_migrate.gd"
+Content="*res://engine/content/content_db.gd"
+Assets="*res://engine/render/assets.gd"
+ScreenLayout="*res://engine/ui/screen_layout.gd"
+InputRouter="*res://engine/input/input_router.gd"
+Game="*res://scripts/game.gd"
+Autotest="*res://scripts/autotest.gd"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+window/handheld/orientation=4
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+textures/canvas_textures/default_texture_filter=1
+environment/defaults/default_clear_color=Color(0, 0, 0, 1)

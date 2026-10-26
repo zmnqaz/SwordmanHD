@@ -1,0 +1,59 @@
+[
+ {
+  "id": 0,
+  "name": "木剑",
+  "desc": "新手用的木剑。",
+  "type": 1,
+  "equip_units": [
+   0
+  ],
+  "attack_range": {
+   "type": 0,
+   "area": 0,
+   "min": -1,
+   "max": 1
+  },
+  "hit": 90,
+  "miss": 0,
+  "critical": 3,
+  "double": 3,
+  "attack_add": {
+   "type": -1,
+   "ratio": 0,
+   "time": 0,
+   "turns": 0,
+   "cost": 0
+  },
+  "attack_attribute": -1,
+  "unknown30": -1,
+  "attack": 12,
+  "defence": 0,
+  "unknown33": -1,
+  "attribute_defence": {
+   "雷": 0,
+   "火": 0,
+   "冰": 0,
+   "幻": 0,
+   "光": 0,
+   "暗": 0
+  },
+  "use": {
+   "mp_cost": 0,
+   "target_raw": -1,
+   "target": -1,
+   "range_type": 0,
+   "range_area": 0,
+   "range_min": 0,
+   "range_max": 0,
+   "unknown46": 0,
+   "base_power": 0,
+   "time_cost": 0,
+   "consumable": false,
+   "use_type": -1,
+   "effect": -1,
+   "skill_id": null
+  },
+  "price": 10,
+  "synthesis": null
+ }
+]

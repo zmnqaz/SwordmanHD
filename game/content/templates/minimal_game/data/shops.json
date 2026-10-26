@@ -1,0 +1,57 @@
+[
+ {
+  "id": "town00.0",
+  "type": 0,
+  "keeper": 6,
+  "items": [
+   0
+  ],
+  "keeper_anim": "Shop/Shop06",
+  "show": {
+   "anim": "Shop/Shop06",
+   "base": 0,
+   "intro": [
+    1,
+    40
+   ],
+   "loop": [
+    42,
+    40
+   ],
+   "fade_in": [
+    2,
+    4,
+    6,
+    8,
+    10,
+    12,
+    14
+   ],
+   "fade_out": [
+    14,
+    12,
+    10,
+    8,
+    6,
+    4,
+    2
+   ],
+   "fade_tick": 2,
+   "via_black": true,
+   "black_hold": [
+    4,
+    6
+   ],
+   "ui_fade_out": [
+    14,
+    12,
+    10,
+    8,
+    6,
+    4,
+    2
+   ],
+   "ui_fade_tick": 1
+  }
+ }
+]

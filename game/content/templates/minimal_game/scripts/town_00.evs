@@ -1,0 +1,15 @@
+# 最小骨架的城镇剧情
+script town
+events 65
+
+event 0
+    return
+
+# 踩格: 出城进入下一关 (state.next_stage, 缺省第 0 关)
+event 1
+    leave_town
+    return
+
+event 2
+    say msg=0
+    return

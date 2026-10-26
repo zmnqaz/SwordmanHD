@@ -1,0 +1,170 @@
+# 出安装包: Windows (7z) / Linux (tar.xz) / macOS (zip) / Android (APK) / iOS (未签名 IPA)。只含引擎与手写内容, 不含任何资源,
+# 资源包 (.pck) 由使用者自备, 放进 resource/ 才能运行, 见 docs/打包/资源包.md。
+# 触发: 仓库 Actions → build → Run workflow (产物在该次运行的 Artifacts 里);
+#       或推送 v 开头的标签 (git tag v0.1.0 && git push origin v0.1.0): 另外自动建 GitHub Release 并附上各平台安装包。
+# Android 签名: 仓库 Secrets 配了 ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD (可选 ANDROID_KEY_ALIAS, 缺省 swordmanhd)
+#   时用这把密钥签 release 版 (每次同一签名, 新版可覆盖安装); 没配时用临时调试签名 (换版本要先卸载)。见 docs/打包/Android.md「签名」。
+name: build
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GODOT_CACHE_DIR: ${{ github.workspace }}/.cache/godot
+      GODOT_TEMPLATES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/godot
+          key: godot-templates-4.7.2-${{ hashFiles('tools/ci_install_godot.sh') }}
+      - run: python3 -m pip install -r tools/requirements-build.txt
+      - run: tools/ci_install_godot.sh
+      - run: python3 tools/build_windows.py --engine-only --zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SwordmanHD-win64
+          path: dist/windows/SwordmanHD-win64.*
+          if-no-files-found: error
+          retention-days: 30
+
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GODOT_CACHE_DIR: ${{ github.workspace }}/.cache/godot
+      GODOT_TEMPLATES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/godot
+          key: godot-templates-4.7.2-${{ hashFiles('tools/ci_install_godot.sh') }}
+      - run: python3 -m pip install -r tools/requirements-build.txt
+      - run: tools/ci_install_godot.sh
+      - run: python3 tools/build_windows.py --linux --engine-only --zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SwordmanHD-linux
+          path: dist/linux/SwordmanHD-linux-x86_64.tar.xz
+          if-no-files-found: error
+          retention-days: 30
+
+  macos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GODOT_CACHE_DIR: ${{ github.workspace }}/.cache/godot
+      GODOT_TEMPLATES: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/godot
+          key: godot-templates-4.7.2-${{ hashFiles('tools/ci_install_godot.sh') }}
+      - run: python3 -m pip install -r tools/requirements-build.txt
+      - run: tools/ci_install_godot.sh
+      - run: python3 tools/build_windows.py --mac --engine-only --zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SwordmanHD-macos
+          path: dist/macos/SwordmanHD-macos.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GODOT_CACHE_DIR: ${{ github.workspace }}/.cache/godot
+      GODOT_TEMPLATES: "1"
+      TDJ_ANDROID_HOME: ${{ github.workspace }}/.cache/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/godot
+          key: godot-templates-4.7.2-${{ hashFiles('tools/ci_install_godot.sh') }}
+      - uses: actions/cache@v4
+        with:
+          path: .cache/android
+          key: android-sdk-${{ hashFiles('tools/platform/setup_android.py') }}
+      - run: python3 -m pip install -r tools/requirements-build.txt
+      - run: tools/ci_install_godot.sh
+      - run: python3 tools/platform/setup_android.py      # JDK 17 + Android SDK + 调试签名; 已缓存的部分跳过
+      - name: 签名密钥 (配了 Secret 用自己的密钥签 release 版, 否则调试签名)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            {
+              echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/release.keystore"
+              echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=${KS_ALIAS:-swordmanhd}"
+              echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$KS_PASS"
+              echo "APK_FLAGS=--release"
+            } >> "$GITHUB_ENV"
+            echo "用仓库 Secret 里的密钥签名"
+          else
+            echo "::warning::没有配置 ANDROID_KEYSTORE_BASE64, 用临时调试签名 (新版不能覆盖安装旧版)"
+          fi
+      - run: python3 tools/platform/build_android.py --no-packs $APK_FLAGS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SwordmanHD-android
+          path: dist/android/SwordmanHD.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  ios:
+    uses: ./.github/workflows/ios.yml
+
+  release:
+    # 只有推送 v* 标签时: 建 Release 并附上各平台安装包
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux, macos, android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: 建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          这些安装包**只有程序, 不含任何资源**, 单独装上无法游玩; 资源包由使用者自备, 见 [资源包](https://github.com/${{ github.repository }}/blob/main/docs/打包/资源包.md)。
+          各平台的安装步骤 (含 macOS 放行、iPhone/iPad 签名安装) 见 [安装与运行](https://github.com/${{ github.repository }}/blob/main/docs/安装与运行.md)。
+
+          | 文件 | 用途 |
+          |---|---|
+          | `SwordmanHD-win64.7z` | Windows 程序, 解压后把资源包放进 `resource` 文件夹 |
+          | `SwordmanHD-linux-x86_64.tar.xz` | Linux 程序 (x86_64) |
+          | `SwordmanHD-macos.zip` | macOS 程序 (Intel + Apple 芯片), 未签名, 首次打开要按说明放行 |
+          | `SwordmanHD.apk` | Android 程序 (arm64, Android 7.0+) |
+          | `SwordmanHD-unsigned.ipa` | iPhone/iPad 程序, 未签名, 用自己的 Apple ID 签名安装 |
+          EOF
+          gh release create "$GITHUB_REF_NAME" artifacts/* --title "SwordmanHD $GITHUB_REF_NAME" --notes-file notes.md

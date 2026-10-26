@@ -1,0 +1,4 @@
+# tools/ci.sh fast 用到的 Python 依赖 (pip install -r tools/requirements-ci.txt)
+fonttools
+opencc-python-reimplemented
+# 注: 不含 Pillow/numpy (只有 hd 放大流水线用, CI 不跑)

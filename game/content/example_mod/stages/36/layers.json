@@ -1,0 +1,9 @@
+{
+ "backgrounds": [
+  {"layer": 1, "z": 10000000, "view": [10, 8], "draw_layer": -1, "file": "Map00.mpl", "image": "Stage/Stage00/map00.png"},
+  {"layer": 2, "z": 10000001, "view": [10, 8], "draw_layer": 1, "file": "map00-1.mpl", "image": "Stage/Stage00/map00-1.png"},
+  {"layer": 3, "z": 10000100, "view": [10, 8], "draw_layer": 2, "file": "map00-2.mpl", "image": "Stage/Stage00/map00-2.png"},
+  {"layer": 4, "z": 10000099, "view": [2, 2], "draw_layer": 2, "file": "map00-3.mpl", "image": "Stage/Stage00/map00-3.png"}
+ ],
+ "objects": []
+}

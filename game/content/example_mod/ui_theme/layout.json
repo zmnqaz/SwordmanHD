@@ -1,0 +1,12 @@
+{
+ "format": "ui-layout/1",
+ "theme": "example_mod",
+ "_comment": "布局叠加示例: 只写要改的元素与字段, 其余沿用基础包; null = 删除该字段。",
+ "colors": {
+  "closeup.name": {"rgb555": null, "rgb": [255, 255, 255]}
+ },
+ "elements": {
+  "dialog.text": {"pos": [10, 4]},
+  "closeup.hpbar.flash": {"blend": {"add16": [16, 8]}}
+ }
+}

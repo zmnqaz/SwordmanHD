@@ -1,0 +1,13 @@
+{
+ "format": "tdj-fx-cutscene/1",
+ "_comment": "全屏过场演出表 (engine/fx/cutscene.gd, 任何界面按 id 调用 Cutscene.play): backdrop = 布局表元素 id (垫在视频下面的画面, 位置在布局表里), movie = 资源清单逻辑名 (ui_theme/assets.json), skip = 允许跳过的键 (confirm 确认 / cancel 取消), 播放期间输入被锁住; notice = 演出后的浮动提示 (text 用 %s 套参数, ticks 为停留 tick 数, 1 tick = 40 ms, 期间输入被锁住)。",
+ "cutscenes": {
+  "forge": {
+   "_note": "诸物炼化炼成: 原版 CForgeItemProcessor 载入 MOVIE\\FORGEITE.MOV (启动参数 可跳过=1, 回车也跳过=0), 先把 FI_PRO 第 18 帧 (丹炉) 画在 (0,0); 取消键 (Esc/Delete) 跳过, 回车不跳过。放完在 释放视频, 弹浮动框 CFloatMsgBox 「炼化成%s」(停留 0x32 = 50 tick), 之后才真正改行囊。",
+   "backdrop": "camp.forge.backdrop",
+   "movie": "movie.forge",
+   "skip": ["cancel"],
+   "notice": {"text": "炼化成%s", "ticks": 50}
+  }
+ }
+}

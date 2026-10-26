@@ -1,0 +1,16 @@
+{
+ "backgrounds": [
+  {
+   "layer": 1,
+   "z": 10000000,
+   "view": [
+    10,
+    8
+   ],
+   "draw_layer": -1,
+   "file": "map.mpl",
+   "image": "Stage/min/map.png"
+  }
+ ],
+ "objects": []
+}

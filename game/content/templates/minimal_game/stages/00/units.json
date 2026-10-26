@@ -1,0 +1,84 @@
+[
+ {
+  "index": 0,
+  "unit_id": 0,
+  "x": 2,
+  "y": 4,
+  "_name": "旅人",
+  "lv": 0,
+  "hp_add": 0,
+  "hp_sub": 0,
+  "mp_add": 0,
+  "mp_sub": 0,
+  "str": 0,
+  "int": 0,
+  "avg": 0,
+  "vit": 0,
+  "luk": 0,
+  "spirit": {
+   "迅": 0,
+   "烈": 0,
+   "神": 0,
+   "魔": 0,
+   "魂": 0
+  },
+  "weapon": null,
+  "armor": null,
+  "accessory": null,
+  "items": [],
+  "skills": [],
+  "event_parm": [
+   5,
+   0
+  ],
+  "kill_get_type": -1,
+  "kill_get_parm": 1,
+  "kill_event": -1,
+  "ai": -1,
+  "ai_target": [
+   0,
+   0
+  ]
+ },
+ {
+  "index": 1,
+  "unit_id": 1,
+  "x": 9,
+  "y": 4,
+  "_name": "野狼",
+  "lv": 1,
+  "hp_add": 0,
+  "hp_sub": 0,
+  "mp_add": 0,
+  "mp_sub": 0,
+  "str": 0,
+  "int": 0,
+  "avg": 0,
+  "vit": 0,
+  "luk": 0,
+  "spirit": {
+   "迅": 0,
+   "烈": 0,
+   "神": 0,
+   "魔": 0,
+   "魂": 0
+  },
+  "weapon": null,
+  "armor": null,
+  "accessory": null,
+  "items": [],
+  "skills": [],
+  "event_parm": [
+   0,
+   0
+  ],
+  "kill_get_type": -1,
+  "kill_get_parm": 1,
+  "kill_event": -1,
+  "ai": 0,
+  "ai_target": [
+   0,
+   0
+  ]
+ }
+]

@@ -1,0 +1,49 @@
+{
+ "id": 0,
+ "name": "第一幕  旅途",
+ "music": 0,
+ "briefing": {
+  "title": "第一幕  旅途",
+  "win": "敌全灭",
+  "lose": "旅人死亡"
+ },
+ "assets": {
+  "dir": "Stage/min",
+  "title_card": "Stage/Stage00/Tanm_00",
+  "battle_floor": "Stage/Stage00/FLOOR_00",
+  "event_anims": {}
+ },
+ "turn_events": [
+  {
+   "turn": 1,
+   "timing": 0,
+   "event": 1
+  }
+ ],
+ "map_events": [
+  {
+   "index": 0,
+   "type": -1,
+   "trigger": 0,
+   "event": 0,
+   "item_type": 0,
+   "item": 0,
+   "prompt": 0,
+   "show": 0
+  }
+ ],
+ "judge": {
+  "win": [
+   {
+    "type": 1,
+    "unit": -1,
+    "event": 2
+   }
+  ],
+  "lose": []
+ },
+ "script": {
+  "source": "scripts/stage_00.evs"
+ },
+ "text": "stages/00/text.json"
+}

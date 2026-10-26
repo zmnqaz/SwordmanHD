@@ -1,0 +1,131 @@
+[
+ {
+  "index": 0,
+  "unit_id": 0,
+  "x": 6,
+  "y": 6,
+  "_name": "殷剑平",
+  "lv": 0,
+  "hp_add": 0,
+  "hp_sub": 0,
+  "mp_add": 0,
+  "mp_sub": 0,
+  "str": 0,
+  "int": 0,
+  "avg": 0,
+  "vit": 0,
+  "luk": 0,
+  "spirit": {
+   "迅": 0,
+   "烈": 0,
+   "神": 0,
+   "魔": 0,
+   "魂": 0
+  },
+  "weapon": null,
+  "armor": null,
+  "accessory": null,
+  "items": [],
+  "skills": [],
+  "event_parm": [
+   5,
+   0
+  ],
+  "kill_get_type": -1,
+  "kill_get_parm": 1,
+  "kill_event": 0,
+  "ai": -1,
+  "ai_target": [
+   0,
+   0
+  ]
+ },
+ {
+  "index": 1,
+  "unit_id": 18,
+  "x": 11,
+  "y": 6,
+  "_name": "夜魑",
+  "lv": 1,
+  "hp_add": 0,
+  "hp_sub": 0,
+  "mp_add": 0,
+  "mp_sub": 0,
+  "str": 0,
+  "int": 0,
+  "avg": 0,
+  "vit": 0,
+  "luk": 0,
+  "spirit": {
+   "迅": 0,
+   "烈": 0,
+   "神": 0,
+   "魔": 0,
+   "魂": 0
+  },
+  "weapon": 256,
+  "armor": 302,
+  "accessory": null,
+  "items": [
+   256,
+   302
+  ],
+  "skills": [],
+  "event_parm": [
+   1,
+   0
+  ],
+  "kill_get_type": 1,
+  "kill_get_parm": 178,
+  "kill_event": -1,
+  "ai": 1,
+  "ai_target": [
+   0,
+   0
+  ]
+ },
+ {
+  "index": 2,
+  "unit_id": 18,
+  "x": 12,
+  "y": 7,
+  "_name": "夜魑",
+  "lv": 1,
+  "hp_add": 0,
+  "hp_sub": 0,
+  "mp_add": 0,
+  "mp_sub": 0,
+  "str": 0,
+  "int": 0,
+  "avg": 0,
+  "vit": 0,
+  "luk": 0,
+  "spirit": {
+   "迅": 0,
+   "烈": 0,
+   "神": 0,
+   "魔": 0,
+   "魂": 0
+  },
+  "weapon": 256,
+  "armor": 302,
+  "accessory": null,
+  "items": [
+   256,
+   302
+  ],
+  "skills": [],
+  "event_parm": [
+   2,
+   0
+  ],
+  "kill_get_type": 1,
+  "kill_get_parm": 178,
+  "kill_event": -1,
+  "ai": 1,
+  "ai_target": [
+   0,
+   0
+  ]
+ }
+]

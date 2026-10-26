@@ -1,0 +1,58 @@
+# 在 GitHub 的 macOS 机器上编译 iOS 版 (没有 Mac 时用): 产出一个未签名的 IPA, 下载后用 Sideloader / Sideloadly / AltStore 以自己的 Apple ID 签名装到 iPhone/iPad。
+# 说明见 docs/打包/iOS.md。只含代码和手写内容, 不含任何原版资源 (资源包由玩家自己生成, 装机后拷进应用的文件夹)。
+# 手动触发: GitHub 仓库 → Actions → "iOS (unsigned IPA)" → Run workflow。
+name: iOS (unsigned IPA)
+
+on:
+  workflow_dispatch:
+  workflow_call:          # 被 build.yml (三平台出包) 调用
+  push:
+    tags: ["ios-*"]
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: 切到 Xcode 26 (Godot 4.7 的引擎库要 iOS 26 SDK; 默认的 Xcode 16.4 链接会缺 CADynamicRange*/MTLTensorDomain)
+        run: |
+          set -euo pipefail
+          X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "用 $X"
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: 安装 Godot ${{ env.GODOT_VERSION }} 与导出模板
+        run: |
+          set -euo pipefail
+          BASE="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$BASE/Godot_v${GODOT_VERSION}-stable_macos.universal.zip"
+          curl -fsSL -o templates.tpz "$BASE/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q godot.zip -d godot_app
+          mkdir -p tools/godot
+          cp -R godot_app/Godot.app tools/godot/Godot.app
+          ln -sf Godot.app/Contents/MacOS/Godot tools/godot/godot
+          TD="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$TD"
+          unzip -q templates.tpz -d tpz
+          cp -R tpz/templates/* "$TD/"
+          tools/godot/godot --version
+
+      - name: 生成 Xcode 工程并编译 (不签名)
+        run: python3 tools/platform/build_ios.py --ipa
+
+      - name: 上传未签名 IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwordmanHD-unsigned-ipa
+          path: dist/ios/SwordmanHD-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

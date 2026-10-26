@@ -1,0 +1,5286 @@
+{
+ "format": "ui-layout/1",
+ "_comment": "界面布局表: 运行时由 engine/ui/ui_layout.gd (UiLayout) 读取, 按内容包顺序逐字段深合并 (mod 只写要改的字段, null = 删除)。规则与字段说明。坐标一律原版像素 (320x200 安全区), 整数; pos 相对 parent 元素。code 字段行号对应盘点提交 673dd15e, 迁移后的元素 code 写实现函数名。sprite/digits 的 anim 可写资源清单 ui_theme/assets.json 的逻辑名 (UiLayout.asset 解析)。改完跑 python tools/checks/layout_stats.py 重算 stats。",
+ "theme": "tdj",
+ "extends": null,
+ "base_size": [
+  320,
+  200
+ ],
+ "scale": 4,
+ "stats": {
+  "elements": 261,
+  "verified": 199,
+  "screenshot": 12,
+  "unknown": 50,
+  "migrated": 245
+ },
+ "fonts": {
+  "body": {
+   "cell": [
+    12,
+    12
+   ],
+   "size": 12,
+   "line_height": 13,
+   "ink_box": [
+    0,
+    1,
+    12,
+    11
+   ],
+   "half_width": 6,
+   "status": "verified"
+  },
+  "label11b": {
+   "cell": [
+    12,
+    12
+   ],
+   "size": 11,
+   "bold": true,
+   "status": "unknown"
+  },
+  "label12": {
+   "cell": [
+    12,
+    12
+   ],
+   "size": 12,
+   "status": "unknown"
+  },
+  "label10b": {
+   "cell": [
+    10,
+    10
+   ],
+   "size": 10,
+   "bold": true,
+   "status": "unknown"
+  },
+  "label9b": {
+   "cell": [
+    9,
+    9
+   ],
+   "size": 9,
+   "bold": true,
+   "status": "unknown"
+  },
+  "label8": {
+   "cell": [
+    8,
+    8
+   ],
+   "size": 8,
+   "status": "unknown"
+  },
+  "small10": {
+   "cell": [
+    10,
+    10
+   ],
+   "size": 10,
+   "status": "unknown"
+  }
+ },
+ "font_faces": {
+  "sans": {
+   "file": "res://assets/font/NotoSansSC-Medium.otf",
+   "hhea": [
+    1160,
+    -288
+   ],
+   "ink_cjk": [
+    -84,
+    801
+   ],
+   "baseline_in_cell": 10.75,
+   "cell_offset_y": 0.0
+  }
+ },
+ "colors": {
+  "text.main": {
+   "rgb555": "0x59a5",
+   "rgb": [
+    181,
+    107,
+    41
+   ],
+   "status": "verified"
+  },
+  "text.halo": {
+   "rgb555": "0x7730",
+   "rgb": [
+    239,
+    206,
+    132
+   ],
+   "status": "verified"
+  },
+  "text.red": {
+   "rgb555": "0x6080",
+   "rgb": [
+    198,
+    33,
+    0
+   ],
+   "status": "verified"
+  },
+  "text.disabled": {
+   "rgb555": "0x6acd",
+   "rgb": [
+    214,
+    181,
+    107
+   ],
+   "status": "verified"
+  },
+  "box.select": {
+   "rgb555": "0x64a5",
+   "rgb": [
+    206,
+    41,
+    41
+   ],
+   "status": "verified"
+  },
+  "closeup.name": {
+   "rgb555": "0x7772",
+   "rgb": [
+    239,
+    222,
+    148
+   ],
+   "status": "verified"
+  },
+  "closeup.name_edge": {
+   "rgb555": "0x0842",
+   "rgb": [
+    16,
+    16,
+    16
+   ],
+   "status": "verified"
+  },
+  "closeup.hpbar": {
+   "rgb555": "",
+   "rgb": [
+    [
+     165,
+     16,
+     0
+    ],
+    [
+     255,
+     99,
+     0
+    ],
+    [
+     255,
+     156,
+     8
+    ],
+    [
+     255,
+     206,
+     41
+    ],
+    [
+     255,
+     255,
+     90
+    ]
+   ],
+   "status": "verified"
+  },
+  "closeup.hpbar_trail": {
+   "rgb555": "0x7c00",
+   "rgb": [
+    255,
+    0,
+    0
+   ],
+   "status": "verified"
+  },
+  "text.outline": {
+   "rgb": [
+    0,
+    0,
+    0
+   ],
+   "status": "unknown"
+  },
+  "popup.damage": {
+   "rgb": [
+    255,
+    102,
+    89
+   ],
+   "status": "unknown"
+  },
+  "popup.heal": {
+   "rgb": [
+    128,
+    255,
+    153
+   ],
+   "status": "unknown"
+  },
+  "popup.poison": {
+   "rgb": [
+    153,
+    255,
+    128
+   ],
+   "status": "unknown"
+  },
+  "popup.toast": {
+   "rgb": [
+    255,
+    224,
+    116
+   ],
+   "status": "unknown"
+  }
+ },
+ "text_styles": {
+  "0": {
+   "desc": "单色",
+   "draws": [
+    [
+     0,
+     0,
+     "color"
+    ]
+   ]
+  },
+  "5": {
+   "desc": "单色 (复刻调整 2026-10-06: 原版为左右 1 像素光边, 但矢量字笔画瘦, 光边分离成残影感, 用户拍板全改单色; 覆盖营地/问句/法术名横幅/对白等 23 处)",
+   "draws": [
+    [
+     0,
+     0,
+     "color"
+    ]
+   ]
+  },
+  "edge5": {
+   "desc": "近景名字: 同 5 但边色 0x0842",
+   "draws": [
+    [
+     -1,
+     0,
+     "closeup.name_edge"
+    ],
+    [
+     1,
+     0,
+     "closeup.name_edge"
+    ],
+    [
+     0,
+     0,
+     "color"
+    ]
+   ]
+  },
+  "outline": {
+   "desc": "复刻新增: 8 方向 1 像素黑描边 (地图飘字、中央提示; 原版无此元素)",
+   "draws": [
+    [
+     -1,
+     -1,
+     "text.outline"
+    ],
+    [
+     0,
+     -1,
+     "text.outline"
+    ],
+    [
+     1,
+     -1,
+     "text.outline"
+    ],
+    [
+     -1,
+     0,
+     "text.outline"
+    ],
+    [
+     1,
+     0,
+     "text.outline"
+    ],
+    [
+     -1,
+     1,
+     "text.outline"
+    ],
+    [
+     0,
+     1,
+     "text.outline"
+    ],
+    [
+     1,
+     1,
+     "text.outline"
+    ],
+    [
+     0,
+     0,
+     "color"
+    ]
+   ]
+  }
+ },
+ "text_align": {
+  "left": "x 为第一个字格左上角",
+  "center_bytes": "原版按字节宽居中: x = center_x - bytes*3 (汉字 2 字节 = 12 像素); 不用字体实测宽度",
+  "center_in": "在 box 宽内居中: x = box_x + (box_w - bytes*6)/2 (C 整除)",
+  "center": "复刻用法: (w - measure)/2, 迁移时改为 center_in"
+ },
+ "motions": {
+  "tick": {
+   "sec": 0.04,
+   "status": "verified"
+  },
+  "slide.bri": {
+   "offsets": [
+    16,
+    8,
+    4,
+    2,
+    0
+   ],
+   "status": "verified"
+  },
+  "slide.list": {
+   "offsets": [
+    8,
+    4,
+    2,
+    0
+   ],
+   "status": "verified"
+  },
+  "slide.camp": {
+   "offsets": [
+    16,
+    8,
+    4,
+    2,
+    0
+   ],
+   "status": "verified"
+  },
+  "slide.levelup": {
+   "offsets": [
+    16,
+    8,
+    4,
+    2,
+    0
+   ],
+   "direction": "left",
+   "status": "verified"
+  },
+  "slide.title": {
+   "offsets": [
+    16,
+    16,
+    8,
+    4,
+    2,
+    0
+   ],
+   "direction": "left",
+   "status": "screenshot"
+  },
+  "title.dim": {
+   "steps": [
+    0.827,
+    0.704,
+    0.575,
+    0.452
+   ],
+   "tick": 2,
+   "status": "screenshot"
+  }
+ },
+ "sprite_rules": {
+  "frame_origin": "帧部件 (x,y) 一律生效 (use_offset 缺省 true); 帧尺寸/外框只按原版 1 倍贴图计算, 不读 hd4x/hd6x 的 used_rect",
+  "map_conventions": {
+   "unit": [
+    -142,
+    -110
+   ],
+   "object": [
+    -142,
+    -106
+   ],
+   "fx": [
+    -145,
+    -88
+   ]
+  },
+  "rounding": "布局坐标整数原版像素; 公式按 C 整除 (向零取整) 与 sar (向下取整) 照原版写; 屏幕偏移按 ScreenLayout._snap 取整到 1/SCALE",
+  "frame_size": "帧外框 = 部件偏移 + 原版 1 倍贴图 used_rect (Assets.used_rect / UiPanel.frame_rect), 与 hd4x/hd6x 无关"
+ },
+ "elements": {
+  "dialog.box": {
+   "type": "panel",
+   "anchor": "BOTTOM",
+   "pos": [
+    2,
+    137
+   ],
+   "sprite": {
+    "anim": "ui.dialog",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/msg_box.gd UiMsgBox._init/open",
+   "migrated": true
+  },
+  "dialog.face": {
+   "type": "sprite",
+   "anchor": "BOTTOM_LEFT|BOTTOM_RIGHT",
+   "formula": "y=200-H; left: x=0 (mirror); right: x=320-W",
+   "sprite": {
+    "anim": "Face/<n>",
+    "frame": "expr",
+    "use_offset": true,
+    "bbox": "opaque"
+   },
+   "status": "verified",
+   "code": "engine/ui/msg_box.gd UiMsgBox.place_face (帧外框按原版 1 倍)",
+   "migrated": true
+  },
+  "dialog.text": {
+   "type": "text",
+   "anchor": "BOTTOM",
+   "parent": "dialog.box",
+   "pos": [
+    9,
+    4
+   ],
+   "size": [
+    298,
+    39
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left",
+    "line_height": 13,
+    "max_lines": 3,
+    "face_left_x": 122,
+    "face_w": 185
+   },
+   "status": "verified",
+   "code": "engine/ui/msg_box.gd UiMsgBox.text_rect",
+   "migrated": true
+  },
+  "dialog.text_color": {
+   "type": "color",
+   "color": "text.main",
+   "status": "verified",
+   "code": "-",
+   "migrated": true
+  },
+  "dialog.arrow": {
+   "type": "anim",
+   "parent": "dialog.text",
+   "formula": "字尾 (最后一行行宽, 行号*行距) + pos",
+   "sprite": {
+    "anim": "ui.dialog",
+    "start": 27,
+    "end": 41
+   },
+   "status": "verified",
+   "code": "engine/ui/msg_box.gd UiMsgBox._page_done",
+   "pos": [
+    -2,
+    0
+   ],
+   "migrated": true
+  },
+  "dialog.typing": {
+   "type": "param",
+   "status": "unknown",
+   "code": "engine/ui/dialog_box.gd:14-16",
+   "migrated": true
+  },
+  "choice.box": {
+   "type": "panel",
+   "anchor": "BOTTOM",
+   "pos": [
+    2,
+    137
+   ],
+   "sprite": {
+    "anim": "ui.dialog",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/choice_box.gd:34",
+   "migrated": true
+  },
+  "choice.question": {
+   "type": "text",
+   "parent": "choice.box",
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "screenshot",
+   "code": "engine/ui/choice_box.gd ask",
+   "formula": "同 dialog.text 起点 (UiMsgBox.text_rect)",
+   "migrated": true
+  },
+  "choice.option": {
+   "type": "text",
+   "pos": [
+    17,
+    13
+   ],
+   "repeat": {
+    "count": 2,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/choice_box.gd ask",
+   "formula": "x = 问句 x + pos.x; y = 问句 y + pos.y*(i+1)",
+   "migrated": true
+  },
+  "choice.option_icon": {
+   "type": "anim",
+   "pos": [
+    -17,
+    1
+   ],
+   "sprite": {
+    "anim": "ui.dialog",
+    "frame": "1|12",
+    "frames": [
+     [
+      1,
+      12
+     ],
+     [
+      12,
+      23
+     ]
+    ]
+   },
+   "status": "verified",
+   "code": "engine/ui/choice_box.gd ask",
+   "formula": "相对选项文字",
+   "migrated": true,
+   "idle_alpha": 0.6
+  },
+  "choice.idle_color": {
+   "type": "color",
+   "color": "text.disabled",
+   "status": "screenshot",
+   "code": "engine/ui/choice_box.gd:13",
+   "migrated": true
+  },
+  "title.menu_box": {
+   "type": "panel",
+   "anchor": "CENTER",
+   "pos": [
+    130,
+    67
+   ],
+   "formula": "(160-61/2, 100-67/2).round()",
+   "sprite": {
+    "anim": "title.art",
+    "frame": 0
+   },
+   "status": "screenshot",
+   "code": "scripts/title_scene.gd:37"
+  },
+  "title.menu_item": {
+   "type": "text",
+   "parent": null,
+   "pos": [
+    130,
+    "76+12*i"
+   ],
+   "repeat": {
+    "count": 4,
+    "step": [
+     0,
+     12
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "title.idle_color",
+    "align": "center_bytes",
+    "center_x": 30.5
+   },
+   "status": "verified",
+   "formula": "x = 框 130 + 卷面中心 30.5 - 字节数*3; y = 框 67 + 8 + (51-48)/2",
+   "code": "scripts/title_scene.gd (UiText.make)",
+   "migrated": true
+  },
+  "title.idle_color": {
+   "type": "color",
+   "color": [
+    214,
+    181,
+    107
+   ],
+   "status": "screenshot",
+   "code": "scripts/title_scene.gd:12"
+  },
+  "title.dim": {
+   "type": "param",
+   "color": [
+    0.452,
+    0.452,
+    0.452
+   ],
+   "status": "screenshot",
+   "code": "scripts/title_scene.gd:13"
+  },
+  "map.cell": {
+   "type": "param",
+   "size": [
+    30,
+    24
+   ],
+   "status": "verified",
+   "code": "BattleStage.CELL_W/CELL_H (规则常量, 寻路/镜头/界面共用)",
+   "migrated": true
+  },
+  "map.unit_origin": {
+   "type": "param",
+   "pos": [
+    -142,
+    -106
+   ],
+   "status": "verified",
+   "code": "FxPlace.offset(\"object\")",
+   "migrated": true
+  },
+  "map.cursor": {
+   "type": "anim",
+   "pos": [
+    -145,
+    -88
+   ],
+   "sprite": {
+    "anim": "battle.cursor",
+    "frame": 0,
+    "use_offset": true,
+    "end": 36,
+    "area_stride": 36,
+    "convention": "fx"
+   },
+   "status": "verified",
+   "code": "BattleScene.show_cursor (FxPlace.at_cell fx)",
+   "migrated": true
+  },
+  "battle.face": {
+   "type": "param",
+   "by_unit": [
+    1,
+    2,
+    4,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+   ],
+   "status": "verified",
+   "code": "engine/battle/battle_actions.gd BattleActions.face_of"
+  },
+  "map.camera_offset": {
+   "type": "param",
+   "pos": [
+    10,
+    4
+   ],
+   "status": "verified",
+   "code": "BattleScene.move_camera_to_cell / pan_camera_to_cell / follow_cell",
+   "pan_speed": [
+    "sx*25",
+    "sy*25"
+   ],
+   "follow_speed": [
+    300,
+    300
+   ],
+   "follow_margin": 1,
+   "migrated": true
+  },
+  "map.range.move": {
+   "type": "color",
+   "color": [
+    167,
+    33,
+    225
+   ],
+   "status": "verified",
+   "code": "BattleView.RANGE_MOVE (代码常量 由 ab37bf6a 定案, 本表仅记录)"
+  },
+  "map.range.enemy": {
+   "type": "color",
+   "color": [
+    255,
+    0,
+    0
+   ],
+   "status": "unknown",
+   "code": "BattleView.RANGE_ENEMY (代码常量, 本表仅记录)"
+  },
+  "map.range.attack": {
+   "type": "color",
+   "color": [
+    255,
+    0,
+    0
+   ],
+   "status": "unknown",
+   "code": "BattleView.RANGE_ATTACK (代码常量, 本表仅记录)"
+  },
+  "map.range.alpha": {
+   "type": "param",
+   "value": 0.87,
+   "status": "verified",
+   "code": "BattleView.RANGE_ALPHA (代码常量, 本表仅记录)"
+  },
+  "map.unit.acted_grey": {
+   "type": "param",
+   "color": [
+    0.55,
+    0.55,
+    0.55
+   ],
+   "status": "unknown",
+   "code": "BattleView.shade",
+   "migrated": true
+  },
+  "map.unit.status_fx": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/unit_status_fx.gd UnitStatusFx",
+   "tick": 0.12,
+   "offset": [
+    0,
+    4
+   ],
+   "berserk_tint": [
+    1.0,
+    0.55,
+    0.55
+   ],
+   "entries": [
+    {
+     "mask": 1024,
+     "base": 45,
+     "period": 42,
+     "layer": "above"
+    },
+    {
+     "mask": 15,
+     "base": 1,
+     "period": 22,
+     "layer": "below"
+    },
+    {
+     "mask": 15,
+     "base": 23,
+     "period": 22,
+     "layer": "above"
+    },
+    {
+     "mask": 16,
+     "base": 109,
+     "period": 20,
+     "layer": "split",
+     "front": 10
+    },
+    {
+     "mask": 32,
+     "base": 129,
+     "period": 20,
+     "layer": "above"
+    },
+    {
+     "mask": 512,
+     "base": 87,
+     "period": 22,
+     "layer": "above"
+    },
+    {
+     "mask": 8192,
+     "base": 155,
+     "period": 20,
+     "layer": "above"
+    }
+   ],
+   "migrated": true
+  },
+  "map.unit.expire_fx": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/unit_status_fx.gd UnitStatusFx.release_range, BattleFlow.release_fx (_tick_phase 阶段开始到期 / flush_releases 冰結被打碎)",
+   "positive_mask": 2175,
+   "positive": [
+    60,
+    81
+   ],
+   "negative": [
+    81,
+    99
+   ],
+   "freeze_break": [
+    32,
+    46
+   ],
+   "tick": 3,
+   "migrated": true
+  },
+  "dialog.release": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/battle_flow.gd release_fx, engine/ui/msg_box.gd open(opts)",
+   "lines_per_page": 4,
+   "chars_per_sec": 25,
+   "auto_last_sec": 2.0,
+   "migrated": true
+  },
+  "map.unit.poison_fx": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/battle_flow.gd _tick_phase, engine/battle/unit_status_fx.gd UnitStatusFx.poison_range",
+   "frames": [
+    2,
+    10
+   ],
+   "migrated": true
+  },
+  "map.item_fx": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/battle_actions.gd BattleActions.item_fx_range, use_item",
+   "limit_from": 5,
+   "limit_to": 11,
+   "limit": [
+    18,
+    32
+   ],
+   "other": [
+    46,
+    60
+   ],
+   "migrated": true
+  },
+  "map.result_fx": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/battle_actions.gd BattleActions.result_plan, engine/rules/skills.gd Skills.result_code",
+   "modes": [
+    [
+     2,
+     10
+    ],
+    [
+     10,
+     18
+    ],
+    [
+     18,
+     32
+    ],
+    [
+     32,
+     46
+    ],
+    [
+     46,
+     60
+    ],
+    [
+     60,
+     81
+    ],
+    [
+     81,
+     99
+    ]
+   ],
+   "code_mode": {
+    "1": 1,
+    "2": 0,
+    "3": 2,
+    "4": 2,
+    "5": 2,
+    "6": 2,
+    "7": 2,
+    "8": 3,
+    "9": 3,
+    "10": 3,
+    "11": 0,
+    "12": 3,
+    "13": 3,
+    "14": 4,
+    "15": 4,
+    "16": 2,
+    "17": 2,
+    "18": 2,
+    "19": 3,
+    "20": 2,
+    "21": 4,
+    "22": 2,
+    "26": 4
+   },
+   "dead_fallback": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    12,
+    13,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+   ],
+   "red": [
+    1,
+    2,
+    8,
+    9,
+    10,
+    11,
+    13,
+    19
+   ],
+   "blue": [
+    14,
+    21,
+    26
+   ]
+  },
+  "map.unit.status_tint": {
+   "type": "color",
+   "status": "verified",
+   "code": "BattleUnit._tint",
+   "colors": {
+    "freeze": [
+     0.74,
+     0.8,
+     1.0
+    ],
+    "poison": [
+     0.6,
+     0.92,
+     0.63
+    ]
+   },
+   "phantom_alpha": 0.5,
+   "migrated": true
+  },
+  "map.damage": {
+   "type": "digits",
+   "pos": [
+    "cx*30+15",
+    "cy*24-3"
+   ],
+   "formula": "x=cx*30+15-len*8/2, y=cy*24-3 (cx cy = 目标格)",
+   "digits": {
+    "anim": "battle.closeup_misc",
+    "frame": "4|5",
+    "fmt": "%d",
+    "step": 8,
+    "space": "blank",
+    "cell": [
+     8,
+     7
+    ],
+    "max_len": 8
+   },
+   "status": "verified",
+   "code": "engine/battle/damage_digits.gd, BattleView.digits",
+   "migrated": true
+  },
+  "map.result_anim": {
+   "type": "anim",
+   "formula": "unit.position+map_conventions.unit",
+   "sprite": {
+    "anim": "Misc/MAN_RES|Misc/Maplup",
+    "frame": "range",
+    "use_offset": true,
+    "convention": "unit"
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_view.gd res_anim()"
+  },
+  "map.magic_anim": {
+   "type": "anim",
+   "formula": "cell*(30,24)+map_conventions.fx",
+   "sprite": {
+    "anim": "Magic/magicNNN/MN | Sprite/manNNN/NNN[-n]S (battle_type 1) | NNN[-n]SM (battle_type 2)",
+    "frame": "*",
+    "use_offset": true,
+    "convention": "fx"
+   },
+   "status": "verified",
+   "code": "engine/fx/fx_place.gd, engine/fx/cast_fx.gd (演出表 fx/cast.json), engine/battle/battle_view.gd cast_fx()"
+  },
+  "map.cast_fx": {
+   "type": "anim",
+   "formula": "cell(施法者)*(30,24)+map_conventions.fx",
+   "sprite": {
+    "anim": "fx.magic_misc",
+    "frame": "1-17",
+    "use_offset": true,
+    "convention": "fx"
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_view.gd cast_begin()"
+  },
+  "map.cast_banner": {
+   "type": "panel",
+   "anchor": "TOP",
+   "pos": [
+    "(320-w)/2",
+    "(200-h)>>3"
+   ],
+   "formula": "((320-w)/2, (200-h)>>3)",
+   "sprite": {
+    "anim": "fx.magic_misc",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_view.gd cast_banner()",
+   "migrated": true
+  },
+  "map.cast_banner.text": {
+   "type": "text",
+   "parent": "map.cast_banner",
+   "pos": [
+    0,
+    5
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "center_bytes",
+    "center_x": 46
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_view.gd cast_banner (UiText.make + align_x center_bytes)",
+   "migrated": true
+  },
+  "map.cast_dim": {
+   "type": "param",
+   "color": [
+    0,
+    0,
+    0,
+    0.6875
+   ],
+   "status": "verified",
+   "code": "BattleView.cast_begin (盖住当前图层 BattleScene.layer_rect 外扩一屏)",
+   "migrated": true
+  },
+  "map.reward_msg": {
+   "type": "param",
+   "status": "verified",
+   "code": "BattleFlow._kill_get -> UiMsgBox (dialog.*)",
+   "migrated": true
+  },
+  "turn_banner.anim": {
+   "type": "anim",
+   "anchor": "CENTER",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "battle.turn_banner",
+    "frame": 12,
+    "use_offset": true,
+    "frames": [
+     [
+      12,
+      27
+     ],
+     [
+      28,
+      43
+     ]
+    ]
+   },
+   "status": "screenshot",
+   "code": "BattleView.banner",
+   "migrated": true
+  },
+  "turn_banner.digits": {
+   "type": "sprite",
+   "pos": [
+    216,
+    169
+   ],
+   "repeat": {
+    "step": [
+     22,
+     0
+    ]
+   },
+   "sprite": {
+    "anim": "battle.turn_banner",
+    "frame": 0,
+    "use_offset": true,
+    "frames": "0 其 / 1-9 一~九 / 10 十"
+   },
+   "status": "screenshot",
+   "code": "BattleView.banner / _turn_glyphs",
+   "migrated": true,
+   "slide": [
+    [
+     18,
+     0,
+     4
+    ],
+    [
+     16,
+     0,
+     4
+    ],
+    [
+     14,
+     0,
+     6
+    ],
+    [
+     12,
+     0,
+     6
+    ],
+    [
+     10,
+     0,
+     8
+    ],
+    [
+     8,
+     0,
+     8
+    ],
+    [
+     6,
+     0,
+     10
+    ],
+    [
+     4,
+     0,
+     12
+    ],
+    [
+     2,
+     0,
+     14
+    ]
+   ],
+   "slide_frames": 3
+  },
+  "turn_banner.exit": {
+   "type": "param",
+   "status": "screenshot",
+   "code": "BattleView.banner",
+   "migrated": true,
+   "hold_frames": 12,
+   "step_frames": 2,
+   "dy_table": [
+    1,
+    3,
+    7,
+    12,
+    18,
+    25,
+    33,
+    42,
+    52
+   ]
+  },
+  "infobar.left": {
+   "type": "panel",
+   "anchor": "TOP_LEFT|BOTTOM_LEFT",
+   "pos": [
+    1,
+    "1|168"
+   ],
+   "sprite": {
+    "anim": "ui.infobar",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init / block_pos",
+   "migrated": true
+  },
+  "infobar.right": {
+   "type": "panel",
+   "anchor": "TOP_RIGHT|BOTTOM_RIGHT",
+   "pos": [
+    146,
+    "1|168"
+   ],
+   "sprite": {
+    "anim": "ui.infobar",
+    "frame": 1
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init / block_pos",
+   "migrated": true
+  },
+  "infobar.name": {
+   "type": "text",
+   "parent": "infobar.left",
+   "pos": [
+    11,
+    4
+   ],
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "text.red",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init / block_pos",
+   "migrated": true
+  },
+  "infobar.hp": {
+   "type": "digits",
+   "parent": "infobar.left",
+   "pos": [
+    72,
+    7
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.hp_max": {
+   "type": "digits",
+   "parent": "infobar.left",
+   "pos": [
+    105,
+    7
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.mp": {
+   "type": "digits",
+   "parent": "infobar.left",
+   "pos": [
+    72,
+    19
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.mp_max": {
+   "type": "digits",
+   "parent": "infobar.left",
+   "pos": [
+    105,
+    19
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.move": {
+   "type": "digits",
+   "parent": "infobar.left",
+   "pos": [
+    22,
+    19
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%2d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.move_max": {
+   "type": "digits",
+   "parent": "infobar.left",
+   "pos": [
+    45,
+    19
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%2d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.attack": {
+   "type": "digits",
+   "parent": "infobar.right",
+   "pos": [
+    28,
+    6
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.defence": {
+   "type": "digits",
+   "parent": "infobar.right",
+   "pos": [
+    28,
+    18
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.lv": {
+   "type": "digits",
+   "parent": "infobar.right",
+   "pos": [
+    71,
+    6
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.exp": {
+   "type": "digits",
+   "parent": "infobar.right",
+   "pos": [
+    71,
+    18
+   ],
+   "digits": {
+    "anim": "ui.infobar",
+    "frame": 6,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init (UiLayout.number)",
+   "migrated": true
+  },
+  "infobar.buffs": {
+   "type": "icon",
+   "parent": "infobar.right",
+   "pos": [
+    94,
+    8
+   ],
+   "repeat": {
+    "count": 4,
+    "step": [
+     18,
+     0
+    ]
+   },
+   "sprite": {
+    "anim": "ui.infobar",
+    "frame": 2,
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "status": "verified",
+   "code": "engine/ui/info_bar.gd UiInfoBar._init",
+   "migrated": true
+  },
+  "infobar.slide": {
+   "type": "motion",
+   "status": "verified",
+   "code": "engine/ui/ui_slide.gd BRI_OFFSETS",
+   "migrated": true
+  },
+  "actionmenu.icon": {
+   "type": "icon",
+   "size": [
+    27,
+    21
+   ],
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frame": "0/4/8/12/16 行动; 28/32/36/40 物品; 禁用 20/24"
+   },
+   "status": "verified",
+   "code": "engine/ui/icon_menu.gd:18-19",
+   "formula": "由素材帧外框算 (UiIconMenu.metrics)",
+   "migrated": true
+  },
+  "actionmenu.icons": {
+   "type": "menu",
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frames": [
+     0,
+     4,
+     8,
+     12,
+     16
+    ],
+    "disabled": {
+     "0": 20,
+     "1": 24
+    }
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_ui.gd BattleUi.icon_menu / UiIconMenu.setup_id",
+   "migrated": true
+  },
+  "actionmenu.item_icons": {
+   "type": "menu",
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frames": [
+     28,
+     32,
+     36,
+     40
+    ]
+   },
+   "status": "verified",
+   "code": "engine/battle/control/item_menu_state.gd",
+   "migrated": true
+  },
+  "actionmenu.step": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/ui/icon_menu.gd UiIconMenu.metrics",
+   "formula": "W0 + (W2-W0)/2 (由素材帧算, 写 value 可强制)",
+   "migrated": true
+  },
+  "actionmenu.pos": {
+   "type": "menu",
+   "formula": "原版镜头按格对齐 (卷动 = 格*30-10, 格*24-4) => x = 格x*30 - w/2 + x - 10 (以格为中心), y = 格y*24 - h + y - 4 (格顶下 3); 首/末整列 ±edge_shift; 复刻另夹在可见区内",
+   "status": "verified",
+   "code": "engine/ui/icon_menu.gd UiIconMenu.place_near (唯一实现)",
+   "params": {
+    "x": 25,
+    "y": 28,
+    "edge_shift": 30,
+    "cam_round": [
+     10,
+     4
+    ]
+   },
+   "migrated": true
+  },
+  "actionmenu.sub_pos": {
+   "type": "param",
+   "pos": [
+    "-w0/4",
+    "-h/4"
+   ],
+   "status": "verified",
+   "code": "engine/battle/battle_ui.gd BattleUi.sub_menu",
+   "migrated": true
+  },
+  "actionmenu.dim": {
+   "type": "param",
+   "color": [
+    0.45,
+    0.45,
+    0.45
+   ],
+   "status": "verified",
+   "code": "engine/ui/icon_menu.gd UiIconMenu.dimmed",
+   "migrated": true
+  },
+  "listmenu.spell.panel": {
+   "type": "panel",
+   "anchor": "CENTER",
+   "size": [
+    246,
+    94
+   ],
+   "formula": "((320-w)/2, (199-h-33)/2)",
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frame": 44
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu.panel_pos",
+   "migrated": true,
+   "pos": [
+    "(320-w)/2",
+    "(199-h-dh)/2"
+   ]
+  },
+  "listmenu.item.panel": {
+   "type": "panel",
+   "anchor": "CENTER",
+   "size": [
+    202,
+    83
+   ],
+   "formula": "((320-w)/2, (199-h-33)/2)",
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frame": 45
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu.panel_pos",
+   "migrated": true,
+   "pos": [
+    "(320-w)/2",
+    "(199-h-dh)/2"
+   ]
+  },
+  "listmenu.desc.panel": {
+   "type": "panel",
+   "size": [
+    202,
+    33
+   ],
+   "formula": "((319-202)/2, panel.y+panel.h+1)",
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frame": 46
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu.desc_pos",
+   "migrated": true,
+   "pos": [
+    "(319-w)/2",
+    "py+ph+1"
+   ]
+  },
+  "listmenu.desc.text": {
+   "type": "text",
+   "parent": "listmenu.desc.panel",
+   "pos": [
+    12,
+    4
+   ],
+   "repeat": {
+    "count": 2,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "listmenu.text_color",
+    "align": "left",
+    "wrap_chars": 15
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._init/_set_desc",
+   "migrated": true
+  },
+  "listmenu.spell.row": {
+   "type": "box",
+   "parent": "listmenu.spell.panel",
+   "pos": [
+    [
+     5,
+     8
+    ],
+    [
+     5,
+     24
+    ],
+    [
+     5,
+     39
+    ],
+    [
+     5,
+     54
+    ],
+    [
+     5,
+     69
+    ],
+    [
+     126,
+     8
+    ],
+    [
+     126,
+     24
+    ],
+    [
+     126,
+     39
+    ],
+    [
+     126,
+     54
+    ],
+    [
+     126,
+     69
+    ]
+   ],
+   "size": [
+    115,
+    16
+   ],
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu.slot_pos",
+   "migrated": true
+  },
+  "listmenu.spell.name": {
+   "type": "text",
+   "parent": "listmenu.spell.row",
+   "pos": [
+    15,
+    3
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "listmenu.text_color",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._build_rows",
+   "migrated": true
+  },
+  "listmenu.spell.tag": {
+   "type": "icon",
+   "parent": "listmenu.spell.row",
+   "pos": [
+    77,
+    1
+   ],
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frame": 47
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._build_rows",
+   "migrated": true
+  },
+  "listmenu.spell.num": {
+   "type": "digits",
+   "parent": "listmenu.spell.row",
+   "pos": [
+    91,
+    1
+   ],
+   "repeat": {
+    "count": 2,
+    "step": [
+     0,
+     7
+    ]
+   },
+   "digits": {
+    "anim": "ui.menu_icons",
+    "frame": 48,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._build_rows",
+   "migrated": true
+  },
+  "listmenu.item.row": {
+   "type": "box",
+   "parent": "listmenu.item.panel",
+   "pos": [
+    [
+     8,
+     8
+    ],
+    [
+     8,
+     21
+    ],
+    [
+     8,
+     34
+    ],
+    [
+     8,
+     47
+    ],
+    [
+     8,
+     60
+    ],
+    [
+     104,
+     8
+    ],
+    [
+     104,
+     21
+    ],
+    [
+     104,
+     34
+    ],
+    [
+     104,
+     47
+    ],
+    [
+     104,
+     60
+    ]
+   ],
+   "size": [
+    89,
+    15
+   ],
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu.slot_pos",
+   "migrated": true
+  },
+  "listmenu.item.name": {
+   "type": "text",
+   "parent": "listmenu.item.row",
+   "pos": [
+    16,
+    2
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "listmenu.text_color",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._build_rows",
+   "migrated": true
+  },
+  "listmenu.item.type": {
+   "type": "icon",
+   "parent": "listmenu.item.row",
+   "pos": [
+    3,
+    2
+   ],
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frame": 49,
+    "use_offset": true,
+    "frames": [
+     49,
+     50,
+     51,
+     52
+    ]
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._build_rows",
+   "migrated": true
+  },
+  "listmenu.item.equip": {
+   "type": "icon",
+   "parent": "listmenu.item.row",
+   "pos": [
+    76,
+    2
+   ],
+   "sprite": {
+    "anim": "ui.menu_icons",
+    "frame": 53,
+    "use_offset": true,
+    "frames": [
+     53,
+     54,
+     55
+    ]
+   },
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._build_rows",
+   "migrated": true
+  },
+  "listmenu.select_box": {
+   "type": "box",
+   "color": "box.select",
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._Box",
+   "migrated": true
+  },
+  "listmenu.text_color": {
+   "type": "color",
+   "color": "text.main",
+   "status": "verified",
+   "code": "listmenu.*.name / desc.text 的 text.color",
+   "migrated": true
+  },
+  "listmenu.disabled_alpha": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/ui/list_menu.gd UiListMenu._build_rows",
+   "migrated": true,
+   "value": 0.25
+  },
+  "listmenu.slide": {
+   "type": "motion",
+   "status": "verified",
+   "code": "engine/ui/ui_slide.gd LIST_OFFSETS",
+   "migrated": true
+  },
+  "sysmenu.icons": {
+   "type": "menu",
+   "sprite": {
+    "anim": "ui.system_menu",
+    "frame": "0/4/8/12; 16/20/24/28; 声音 36/40/44/48",
+    "frames": [
+     0,
+     4,
+     8,
+     12
+    ]
+   },
+   "status": "verified",
+   "code": "engine/battle/control/system_menu_state.gd (BattleUi.icon_menu)",
+   "migrated": true
+  },
+  "sysmenu.sl_icons": {
+   "type": "menu",
+   "sprite": {
+    "anim": "ui.system_menu",
+    "frames": [
+     16,
+     20,
+     24,
+     28
+    ],
+    "disabled": {
+     "1": 32
+    }
+   },
+   "status": "verified",
+   "code": "engine/battle/control/system_sub_state.gd",
+   "migrated": true
+  },
+  "sysmenu.sound": {
+   "type": "menu",
+   "sprite": {
+    "anim": "ui.system_menu",
+    "frames": [
+     36,
+     40
+    ],
+    "frames_off": [
+     44,
+     48
+    ]
+   },
+   "status": "verified",
+   "code": "engine/battle/control/system_sub_state.gd _sound_frames",
+   "migrated": true
+  },
+  "brief.panel": {
+   "type": "panel",
+   "anchor": "CENTER",
+   "sprite": {
+    "anim": "battle.brief",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "pos": [
+    "floor((320-w)/2.0)",
+    "floor((200-h)/2.0)"
+   ],
+   "migrated": true
+  },
+  "brief.title": {
+   "type": "text",
+   "parent": "brief.panel",
+   "pos": [
+    "floor((144-mw)/2.0)+12",
+    5
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "migrated": true
+  },
+  "brief.win_label": {
+   "type": "text",
+   "parent": "brief.panel",
+   "pos": [
+    7,
+    24
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "label": "胜利条件",
+   "migrated": true
+  },
+  "brief.win_text": {
+   "type": "text",
+   "parent": "brief.panel",
+   "pos": [
+    7,
+    38
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left",
+    "line_height": 13,
+    "max_width": 156
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "migrated": true,
+   "max_bytes": 52
+  },
+  "brief.lose_label": {
+   "type": "text",
+   "parent": "brief.panel",
+   "pos": [
+    7,
+    65
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "label": "失败条件",
+   "migrated": true
+  },
+  "brief.lose_text": {
+   "type": "text",
+   "parent": "brief.panel",
+   "pos": [
+    7,
+    79
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left",
+    "line_height": 13,
+    "max_width": 156
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "migrated": true,
+   "max_bytes": 52
+  },
+  "brief.counts": {
+   "type": "digits",
+   "parent": "brief.panel",
+   "pos": [
+    [
+     21,
+     53,
+     85
+    ],
+    113
+   ],
+   "digits": {
+    "anim": "battle.brief",
+    "frame": 1,
+    "fmt": "%02d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "migrated": true
+  },
+  "brief.turn": {
+   "type": "digits",
+   "parent": "brief.panel",
+   "pos": [
+    138,
+    113
+   ],
+   "digits": {
+    "anim": "battle.brief",
+    "frame": 1,
+    "fmt": "%03d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_brief.gd BattleBrief._init",
+   "migrated": true
+  },
+  "mapview.panel": {
+   "type": "panel",
+   "anchor": "CENTER",
+   "pos": [
+    78,
+    42
+   ],
+   "formula": "窗口坐标 (0x6c,0x42) - 缓冲区原点 (30,24); 不居中",
+   "sprite": {
+    "anim": "battle.map_view",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_map_view.gd BattleMapView.load_cfg",
+   "migrated": true
+  },
+  "mapview.viewport": {
+   "type": "box",
+   "parent": "mapview.panel",
+   "pos": [
+    3,
+    8
+   ],
+   "size": [
+    162,
+    111
+   ],
+   "formula": "缩略图窄/矮于可视区时该方向居中 ((162-w)/2+3, (111-h)/2+8), 否则从卷动 (0,0) 起",
+   "status": "verified",
+   "code": "engine/battle/ui/battle_map_view.gd BattleMapView.load_cfg/_apply",
+   "migrated": true
+  },
+  "mapview.thumb": {
+   "type": "sprite",
+   "parent": "mapview.viewport",
+   "sprite": {
+    "anim": "battle.map_view",
+    "frame": "17+stage"
+   },
+   "frame_base": 17,
+   "cell": 3,
+   "status": "verified",
+   "code": "engine/battle/ui/battle_map_view.gd BattleMapView._init",
+   "migrated": true
+  },
+  "mapview.arrows": {
+   "type": "icon",
+   "parent": "mapview.panel",
+   "at": {
+    "up": [
+     80,
+     -11
+    ],
+    "down": [
+     80,
+     128
+    ],
+    "left": [
+     -9,
+     60
+    ],
+    "right": [
+     170,
+     60
+    ]
+   },
+   "frames": {
+    "up": 1,
+    "down": 5,
+    "left": 9,
+    "right": 13
+   },
+   "cycle_frames": 4,
+   "cycle_ticks": 5,
+   "formula": "位置 + 帧部件偏移; 可卷的方向才显示",
+   "sprite": {
+    "anim": "battle.map_view",
+    "frame": "1-16"
+   },
+   "status": "verified",
+   "code": "engine/battle/ui/battle_map_view.gd BattleMapView.load_cfg/_tick",
+   "migrated": true
+  },
+  "mapview.dots": {
+   "type": "color",
+   "size": 3,
+   "blend": "add",
+   "colors": {
+    "player": "#0000f8",
+    "enemy": "#f80000",
+    "ally": "#00f800"
+   },
+   "pulse": {
+    "start": 4,
+    "min": 4,
+    "max": 16,
+    "step": 2,
+    "ticks": 3,
+    "full": 16
+   },
+   "formula": "在场单位 (+8==1) 格 x3 画 3x3; 阵营 +6==0: 字段 友军绿 0x3e0 否则蓝 0x1f; 敌方 (字段 隐身除外) 红 0x7c00; 加色, 强度 pulse/16",
+   "status": "verified",
+   "code": "engine/battle/ui/battle_map_view.gd BattleMapView._init/_apply_pulse",
+   "migrated": true
+  },
+  "mapview.scroll": {
+   "type": "param",
+   "step": 3,
+   "formula": "按住方向键每帧 (40ms) 3 像素, 无连发延迟 (GetAsyncKeyState); 确认/取消关闭",
+   "status": "verified",
+   "code": "engine/battle/ui/battle_map_view.gd BattleMapView.scroll",
+   "migrated": true
+  },
+  "mapview.motion": {
+   "type": "motion",
+   "open_slide": [
+    16,
+    8,
+    4,
+    2,
+    0
+   ],
+   "open_alpha": [
+    6,
+    8,
+    10,
+    12,
+    14
+   ],
+   "close_slide": [
+    0,
+    2,
+    4,
+    8,
+    16
+   ],
+   "close_alpha": [
+    10,
+    8,
+    6,
+    4,
+    2
+   ],
+   "formula": "每帧 x 向左偏 slide, 不透明度 alpha/16; 打开从左滑入, 关闭向左滑出",
+   "status": "verified",
+   "code": "engine/battle/ui/battle_map_view.gd BattleMapView.open/dismiss",
+   "migrated": true
+  },
+  "levelup.window": {
+   "type": "panel",
+   "anchor": "CENTER",
+   "pos": [
+    "(320-w)/2",
+    "(200-h)/2"
+   ],
+   "status": "verified",
+   "code": "engine/ui/level_up_window.gd UiLevelUp._init",
+   "migrated": true,
+   "sprite": {
+    "anim": "battle.levelup",
+    "frame": 0
+   },
+   "formula": "((320-w)/2, (200-h)/2), w/h = 帧外框 92x127 => (114,36)",
+   "motion": "slide.bri"
+  },
+  "levelup.window_art": {
+   "type": "art",
+   "status": "verified",
+   "code": "无 (帧内)",
+   "parent": "levelup.window",
+   "migrated": true
+  },
+  "levelup.lv": {
+   "type": "digits",
+   "parent": "levelup.window",
+   "pos": [
+    "23|46",
+    19
+   ],
+   "digits": {
+    "anim": "battle.levelup",
+    "frame": 1,
+    "fmt": "%2d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/level_up_window.gd _row",
+   "migrated": true
+  },
+  "levelup.hp": {
+   "type": "digits",
+   "parent": "levelup.window",
+   "pos": [
+    "22|58",
+    32
+   ],
+   "digits": {
+    "anim": "battle.levelup",
+    "frame": 1,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/level_up_window.gd _row",
+   "migrated": true
+  },
+  "levelup.mp": {
+   "type": "digits",
+   "parent": "levelup.window",
+   "pos": [
+    "22|58",
+    45
+   ],
+   "digits": {
+    "anim": "battle.levelup",
+    "frame": 1,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/level_up_window.gd _row",
+   "migrated": true
+  },
+  "levelup.stats": {
+   "type": "digits",
+   "parent": "levelup.window",
+   "pos": [
+    "25|62",
+    "56+10*i"
+   ],
+   "repeat": {
+    "count": 5
+   },
+   "digits": {
+    "anim": "battle.levelup",
+    "frame": 1,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/level_up_window.gd _init",
+   "migrated": true,
+   "keys": [
+    "str",
+    "vit",
+    "int",
+    "avg",
+    "luk"
+   ]
+  },
+  "levelup.skill_text": {
+   "type": "text",
+   "parent": "levelup.window",
+   "pos": [
+    24,
+    112
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "screenshot",
+   "code": "engine/ui/level_up_window.gd _init",
+   "migrated": true
+  },
+  "closeup.zoom": {
+   "type": "motion",
+   "pos": [
+    160,
+    100
+   ],
+   "status": "unknown",
+   "code": "engine/battle/battle_closeup.gd open/close",
+   "scale": 2,
+   "alpha": 0.1,
+   "sec": 0.5,
+   "migrated": true
+  },
+  "closeup.floor": {
+   "type": "anim",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "FLOOR_NN",
+    "frame": "cell.floor",
+    "use_offset": true
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd open",
+   "migrated": true
+  },
+  "closeup.unit": {
+   "type": "anim",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "Sprite/manNNN/NNNmisc|a|ab",
+    "frame": "*",
+    "use_offset": true
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd open/_play_attack",
+   "migrated": true
+  },
+  "closeup.special_fx": {
+   "type": "anim",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "Misc/Sp000l|r",
+    "frame": "*",
+    "use_offset": true
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd strike",
+   "migrated": true
+  },
+  "closeup.flash.white": {
+   "type": "param",
+   "color": [
+    1,
+    1,
+    1,
+    0.5
+   ],
+   "status": "screenshot",
+   "code": "engine/battle/battle_closeup.gd _flash",
+   "sec": 0.05,
+   "migrated": true
+  },
+  "closeup.flash.red": {
+   "type": "param",
+   "color": [
+    1,
+    0,
+    0,
+    0.6
+   ],
+   "status": "screenshot",
+   "code": "engine/battle/battle_closeup.gd _flash_red",
+   "migrated": true
+  },
+  "closeup.panel.left": {
+   "type": "panel",
+   "anchor": "BOTTOM_LEFT",
+   "pos": [
+    0,
+    174
+   ],
+   "size": [
+    104,
+    26
+   ],
+   "sprite": {
+    "anim": "battle.closeup_misc",
+    "frame": 0,
+    "clip": "四角定界点不画"
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._init",
+   "migrated": true
+  },
+  "closeup.panel.right": {
+   "type": "panel",
+   "anchor": "TOP_RIGHT",
+   "pos": [
+    216,
+    0
+   ],
+   "size": [
+    104,
+    26
+   ],
+   "sprite": {
+    "anim": "battle.closeup_misc",
+    "frame": 1,
+    "clip": "四角定界点不画"
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._init",
+   "migrated": true
+  },
+  "closeup.name.left": {
+   "type": "text",
+   "parent": "closeup.panel.left",
+   "pos": [
+    1,
+    1
+   ],
+   "text": {
+    "font": "body",
+    "flags": "edge5",
+    "color": "closeup.name",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._init (UiText.make)",
+   "migrated": true
+  },
+  "closeup.name.right": {
+   "type": "text",
+   "parent": "closeup.panel.right",
+   "pos": [
+    56,
+    1
+   ],
+   "text": {
+    "font": "body",
+    "flags": "edge5",
+    "color": "closeup.name",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._init (UiText.make)",
+   "migrated": true
+  },
+  "closeup.hpbar.left": {
+   "type": "bar",
+   "parent": "closeup.panel.left",
+   "pos": [
+    2,
+    14
+   ],
+   "size": [
+    100,
+    2
+   ],
+   "bar": {
+    "grow": "right",
+    "tip": 4,
+    "colors": ""
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._draw/_seg",
+   "migrated": true
+  },
+  "closeup.hpbar.right": {
+   "type": "bar",
+   "parent": "closeup.panel.right",
+   "pos": [
+    101,
+    14
+   ],
+   "size": [
+    100,
+    2
+   ],
+   "bar": {
+    "grow": "left",
+    "tip": 4,
+    "colors": ""
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._draw/_seg",
+   "migrated": true
+  },
+  "closeup.hpbar.flash": {
+   "type": "box",
+   "parent": "closeup.panel.left",
+   "pos": [
+    1,
+    13
+   ],
+   "size": [
+    102,
+    4
+   ],
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel (_flash_add BLEND_ADD)",
+   "blend": {
+    "dst16": 12,
+    "add16": [
+     10,
+     6
+    ]
+   },
+   "migrated": true
+  },
+  "closeup.hp.left": {
+   "type": "digits",
+   "parent": "closeup.panel.left",
+   "pos": [
+    4,
+    18
+   ],
+   "digits": {
+    "anim": "battle.closeup_misc",
+    "frame": 3,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "gap",
+    "qmark": 10
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._refresh_numbers (UiLayout.number)",
+   "migrated": true
+  },
+  "closeup.hp.right": {
+   "type": "digits",
+   "parent": "closeup.panel.right",
+   "pos": [
+    36,
+    18
+   ],
+   "digits": {
+    "anim": "battle.closeup_misc",
+    "frame": 3,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "gap",
+    "qmark": 10
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._refresh_numbers (UiLayout.number)",
+   "migrated": true
+  },
+  "closeup.hp_max.left": {
+   "type": "digits",
+   "parent": "closeup.panel.left",
+   "pos": [
+    39,
+    18
+   ],
+   "digits": {
+    "anim": "battle.closeup_misc",
+    "frame": 3,
+    "fmt": "%d",
+    "step": 7,
+    "space": "gap",
+    "qmark": 10
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._refresh_numbers (UiLayout.number)",
+   "migrated": true
+  },
+  "closeup.hp_max.right": {
+   "type": "digits",
+   "parent": "closeup.panel.right",
+   "pos": [
+    71,
+    18
+   ],
+   "digits": {
+    "anim": "battle.closeup_misc",
+    "frame": 3,
+    "fmt": "%d",
+    "step": 7,
+    "space": "gap",
+    "qmark": 10
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd InfoPanel._refresh_numbers (UiLayout.number)",
+   "migrated": true
+  },
+  "closeup.damage.left": {
+   "type": "digits",
+   "pos": [
+    117,
+    77
+   ],
+   "formula": "x=cx-len*8/2",
+   "digits": {
+    "anim": "battle.closeup_misc",
+    "frame": "4|5",
+    "fmt": "%d",
+    "step": 8,
+    "space": "blank",
+    "cell": [
+     8,
+     7
+    ],
+    "max_len": 8
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd DamageDigits._init",
+   "migrated": true
+  },
+  "closeup.damage.right": {
+   "type": "digits",
+   "pos": [
+    213,
+    123
+   ],
+   "formula": "x=cx-len*8/2",
+   "digits": {
+    "anim": "battle.closeup_misc",
+    "frame": "4|5",
+    "fmt": "%d",
+    "step": 8,
+    "space": "blank",
+    "cell": [
+     8,
+     7
+    ],
+    "max_len": 8
+   },
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd DamageDigits._init",
+   "migrated": true
+  },
+  "closeup.vampire": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd BattleCloseup._vampire",
+   "anim": "battle.vampire_fx",
+   "delay": 0.08,
+   "digit_delay": 0.04,
+   "anim_left": "battle.vampire_fx_left"
+  },
+  "closeup.damage.bounce": {
+   "type": "motion",
+   "status": "verified",
+   "code": "engine/battle/battle_closeup.gd DamageDigits._draw",
+   "offsets": [
+    -2,
+    -4,
+    -8,
+    -6,
+    -2,
+    0,
+    -1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "migrated": true
+  },
+  "camp.menu.panel": {
+   "type": "panel",
+   "anchor": "TOP_LEFT",
+   "pos": [
+    24,
+    20
+   ],
+   "sprite": {
+    "anim": "camp.menu",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_menu.gd _init",
+   "migrated": true
+  },
+  "camp.menu.item": {
+   "type": "text",
+   "parent": "camp.menu.panel",
+   "pos": [
+    15,
+    10
+   ],
+   "repeat": {
+    "count": 7,
+    "step": [
+     0,
+     12
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_menu.gd _init (UiText.make)",
+   "migrated": true
+  },
+  "camp.menu.arrow": {
+   "type": "anim",
+   "parent": "camp.menu.panel",
+   "pos": [
+    3,
+    10
+   ],
+   "repeat": {
+    "step": [
+     0,
+     12
+    ]
+   },
+   "sprite": {
+    "anim": "camp.menu",
+    "frame": 1,
+    "frames": 2,
+    "ticks": 4
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_menu.gd _place_arrow/_process",
+   "migrated": true
+  },
+  "camp.menu.hit": {
+   "type": "hit",
+   "parent": "camp.menu.panel",
+   "pos": [
+    2,
+    9
+   ],
+   "repeat": {
+    "count": 7,
+    "step": [
+     0,
+     12
+    ]
+   },
+   "size": [
+    17,
+    12
+   ],
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_menu.gd ui_hits",
+   "migrated": true
+  },
+  "camp.ask.box": {
+   "type": "panel",
+   "pos": [
+    86,
+    84
+   ],
+   "sprite": {
+    "anim": "camp.ask_box",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_ask.gd Question._init",
+   "migrated": true
+  },
+  "camp.ask.text": {
+   "type": "text",
+   "parent": "camp.ask.box",
+   "pos": [
+    12,
+    "11|5+12*k"
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left",
+    "wrap_bytes": 20
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_ask.gd Question._init",
+   "migrated": true
+  },
+  "camp.ask.yesno": {
+   "type": "anim",
+   "parent": "camp.ask.box",
+   "pos": [
+    128,
+    24
+   ],
+   "sprite": {
+    "anim": "camp.ask",
+    "frame": "sel*11+phase"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_ask.gd YesNo.make",
+   "migrated": true
+  },
+  "camp.desc.panel": {
+   "type": "panel",
+   "pos": [
+    20,
+    164
+   ],
+   "sprite": {
+    "anim": "camp.desc_bar",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_desc_bar.gd _init",
+   "migrated": true
+  },
+  "camp.desc.text": {
+   "type": "text",
+   "parent": "camp.desc.panel",
+   "pos": [
+    12,
+    5
+   ],
+   "repeat": {
+    "count": 2,
+    "step": [
+     0,
+     12
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left",
+    "wrap_chars": 21
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_desc_bar.gd _init/set_text",
+   "migrated": true
+  },
+  "camp.item.panel.left": {
+   "type": "panel",
+   "pos": [
+    20,
+    21
+   ],
+   "sprite": {
+    "anim": "camp.item_window",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _init/_rebuild (SIDES)",
+   "migrated": true
+  },
+  "camp.item.panel.right": {
+   "type": "panel",
+   "pos": [
+    162,
+    21
+   ],
+   "sprite": {
+    "anim": "camp.item_window",
+    "frame": 1
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _init/_rebuild (SIDES)",
+   "migrated": true
+  },
+  "camp.item.tab": {
+   "type": "text",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    "5|88",
+    4
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "center_in",
+    "box": [
+     48,
+     12
+    ]
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _rebuild",
+   "migrated": true
+  },
+  "camp.item.row": {
+   "type": "box",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    5,
+    22
+   ],
+   "repeat": {
+    "count": 8,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _rebuild",
+   "migrated": true
+  },
+  "camp.item.row.icon": {
+   "type": "icon",
+   "parent": "camp.item.row",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "camp.item_window",
+    "frame": 4,
+    "use_offset": true
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _make_row",
+   "migrated": true,
+   "no_equip": 4
+  },
+  "camp.item.row.name": {
+   "type": "text",
+   "parent": "camp.item.row",
+   "pos": [
+    14,
+    0
+   ],
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _make_row",
+   "migrated": true
+  },
+  "camp.item.row.equip": {
+   "type": "icon",
+   "parent": "camp.item.row",
+   "pos": [
+    74,
+    2
+   ],
+   "sprite": {
+    "anim": "camp.item_window",
+    "frame": 12
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _make_row",
+   "migrated": true
+  },
+  "camp.item.row.coin": {
+   "type": "icon",
+   "parent": "camp.item.row",
+   "pos": [
+    85,
+    2
+   ],
+   "sprite": {
+    "anim": "camp.item_window",
+    "frame": 17
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _make_row",
+   "migrated": true
+  },
+  "camp.item.row.price": {
+   "type": "digits",
+   "parent": "camp.item.row",
+   "pos": [
+    101,
+    1
+   ],
+   "digits": {
+    "anim": "camp.item_window",
+    "frame": 15,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _make_row",
+   "migrated": true
+  },
+  "camp.item.select_box": {
+   "type": "box",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    4,
+    "20+13*k"
+   ],
+   "size": [
+    132,
+    15
+   ],
+   "color": "box.select",
+   "status": "verified",
+   "code": "camp_item_window.gd _rebuild",
+   "migrated": true
+  },
+  "camp.item.arrow_up": {
+   "type": "anim",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    64,
+    1
+   ],
+   "sprite": {
+    "anim": "camp.item_window",
+    "frame": 18,
+    "frames": 4,
+    "ticks": 4
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _rebuild/_process",
+   "migrated": true
+  },
+  "camp.item.arrow_down": {
+   "type": "anim",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    64,
+    135
+   ],
+   "sprite": {
+    "anim": "camp.item_window",
+    "frame": 22,
+    "frames": 4,
+    "ticks": 4
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _rebuild/_process",
+   "migrated": true
+  },
+  "camp.item.money.panel": {
+   "type": "panel",
+   "pos": [
+    234,
+    2
+   ],
+   "sprite": {
+    "anim": "camp.item_money",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _init",
+   "anchor": "TOP_RIGHT",
+   "migrated": true
+  },
+  "camp.item.money.value": {
+   "type": "digits",
+   "parent": "camp.item.money.panel",
+   "pos": [
+    29,
+    4
+   ],
+   "digits": {
+    "anim": "camp.item_money",
+    "frame": 1,
+    "fmt": "%5d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _init/_update_money",
+   "migrated": true
+  },
+  "camp.item.menu.panel": {
+   "type": "panel",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    93,
+    "13*r"
+   ],
+   "sprite": {
+    "anim": "camp.item_menu",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _open_menu",
+   "migrated": true
+  },
+  "camp.item.menu.text": {
+   "type": "text",
+   "parent": "camp.item.menu.panel",
+   "pos": [
+    13,
+    9
+   ],
+   "repeat": {
+    "count": 3,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _open_menu",
+   "disabled_color": "text.disabled",
+   "migrated": true
+  },
+  "camp.item.menu.arrow": {
+   "type": "anim",
+   "parent": "camp.item.menu.panel",
+   "pos": [
+    3,
+    9
+   ],
+   "repeat": {
+    "step": [
+     0,
+     13
+    ]
+   },
+   "sprite": {
+    "anim": "camp.item_menu",
+    "frame": 1,
+    "frames": 2,
+    "ticks": 4
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _open_menu/_menu_key",
+   "migrated": true
+  },
+  "camp.item.confirm.yesno": {
+   "type": "anim",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    93,
+    "13*r+30"
+   ],
+   "sprite": {
+    "anim": "camp.ask",
+    "frame": "sel*11+phase"
+   },
+   "status": "verified",
+   "code": "camp_item_window.gd _open_ask (CampAsk.YesNo.make)",
+   "migrated": true
+  },
+  "camp.item.hit.tab": {
+   "type": "hit",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    "5|88",
+    1
+   ],
+   "size": [
+    48,
+    15
+   ],
+   "status": "unknown",
+   "code": "camp_item_window.gd ui_hits",
+   "migrated": true
+  },
+  "camp.item.hit.row": {
+   "type": "hit",
+   "parent": "camp.item.panel.*",
+   "pos": [
+    4,
+    "20+13*k"
+   ],
+   "size": [
+    132,
+    13
+   ],
+   "status": "unknown",
+   "code": "camp_item_window.gd ui_hits",
+   "migrated": true
+  },
+  "camp.item.hit.menu": {
+   "type": "hit",
+   "parent": "camp.item.menu.panel",
+   "pos": [
+    1,
+    7
+   ],
+   "repeat": {
+    "count": 3,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "size": [
+    "w-2",
+    13
+   ],
+   "status": "unknown",
+   "code": "camp_item_window.gd ui_hits",
+   "migrated": true
+  },
+  "camp.item.hit.arrow": {
+   "type": "hit",
+   "grow": 2,
+   "status": "unknown",
+   "code": "camp_item_window.gd ui_hits",
+   "migrated": true
+  },
+  "camp.equip.panel": {
+   "type": "panel",
+   "formula": "x=44|110 (which=栏); y = r<=4 ? 54+13r : 13r-38 (按本页行号 r 查表)",
+   "sprite": {
+    "anim": "camp.equip_preview",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/equip_preview.gd _init",
+   "pos": [
+    "44|110",
+    [
+     54,
+     67,
+     80,
+     93,
+     106,
+     27,
+     40,
+     53
+    ]
+   ],
+   "migrated": true
+  },
+  "camp.equip.list_offset": {
+   "type": "panel",
+   "left": [
+    22,
+    13
+   ],
+   "right": [
+    -102,
+    13
+   ],
+   "status": "verified",
+   "code": "engine/ui/equip_preview.gd:at_list_slot"
+  },
+  "camp.equip.values": {
+   "type": "digits",
+   "parent": "camp.equip.panel",
+   "pos": [
+    [
+     17,
+     54,
+     96,
+     134
+    ],
+    [
+     11,
+     20,
+     36,
+     51,
+     66
+    ]
+   ],
+   "digits": {
+    "anim": "camp.equip_preview",
+    "frame": "1|2|3",
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/equip_preview.gd _pair",
+   "migrated": true
+  },
+  "camp.forge.backdrop": {
+   "type": "panel",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 18
+   },
+   "status": "verified",
+   "code": "engine/fx/cutscene.gd"
+  },
+  "camp.forge.panel.left": {
+   "type": "panel",
+   "pos": [
+    20,
+    20
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _init/_build_panel",
+   "migrated": true
+  },
+  "camp.forge.panel.result": {
+   "type": "panel",
+   "pos": [
+    71,
+    20
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 1
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _init/_build_panel",
+   "migrated": true
+  },
+  "camp.forge.tab": {
+   "type": "text",
+   "parent": "camp.forge.panel.*",
+   "pos": [
+    5,
+    4
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "center_in",
+    "box": [
+     48,
+     12
+    ]
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "migrated": true
+  },
+  "camp.forge.row": {
+   "type": "box",
+   "parent": "camp.forge.panel.*",
+   "pos": [
+    5,
+    22
+   ],
+   "repeat": {
+    "count": 8,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "migrated": true
+  },
+  "camp.forge.row.icon": {
+   "type": "icon",
+   "parent": "camp.forge.row",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 2
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel"
+  },
+  "camp.forge.row.name": {
+   "type": "text",
+   "parent": "camp.forge.row",
+   "pos": [
+    14,
+    0
+   ],
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "migrated": true
+  },
+  "camp.forge.row.equip": {
+   "type": "icon",
+   "parent": "camp.forge.row",
+   "pos": [
+    74,
+    2
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 6
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "migrated": true
+  },
+  "camp.forge.row.owner": {
+   "type": "text",
+   "parent": "camp.forge.row",
+   "pos": [
+    90,
+    0
+   ],
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "migrated": true
+  },
+  "camp.forge.row.arrow": {
+   "type": "icon",
+   "parent": "camp.forge.row",
+   "pos": [
+    141,
+    2
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 17
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "migrated": true
+  },
+  "camp.forge.row.product": {
+   "type": "text",
+   "parent": "camp.forge.row",
+   "pos": [
+    156,
+    0
+   ],
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "migrated": true
+  },
+  "camp.forge.select_box": {
+   "type": "box",
+   "pos": [
+    4,
+    "20+13*k"
+   ],
+   "size": [
+    "142|223",
+    15
+   ],
+   "color": "box.select",
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel",
+   "parent": "camp.forge.panel.*",
+   "migrated": true
+  },
+  "camp.forge.arrow_up": {
+   "type": "anim",
+   "parent": "camp.forge.panel.*",
+   "pos": [
+    "70|110",
+    1
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 9,
+    "frames": 4,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel/_process"
+  },
+  "camp.forge.arrow_down": {
+   "type": "anim",
+   "parent": "camp.forge.panel.*",
+   "pos": [
+    "70|110",
+    135
+   ],
+   "sprite": {
+    "anim": "camp.forge",
+    "frame": 13,
+    "frames": 4,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_forge_window.gd _build_panel/_process"
+  },
+  "camp.forge.yesno": {
+   "type": "anim",
+   "pos": [
+    280,
+    "37+13*r"
+   ],
+   "sprite": {
+    "anim": "camp.ask",
+    "frame": "sel*11+phase"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_forge_window.gd key (CampAsk.YesNo.make)",
+   "migrated": true
+  },
+  "camp.forge.hit.row": {
+   "type": "hit",
+   "parent": "camp.forge.panel.*",
+   "pos": [
+    4,
+    "20+13*k"
+   ],
+   "size": [
+    "142|223",
+    13
+   ],
+   "status": "unknown",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_forge_window.gd ui_hits"
+  },
+  "camp.forge.hit.arrow": {
+   "type": "hit",
+   "grow": 2,
+   "status": "unknown",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_forge_window.gd ui_hits"
+  },
+  "camp.profile.left": {
+   "type": "panel",
+   "pos": [
+    28,
+    16
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left/open",
+   "migrated": true
+  },
+  "camp.profile.right": {
+   "type": "panel",
+   "pos": [
+    177,
+    16
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": "1|2"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right/open",
+   "migrated": true
+  },
+  "camp.profile.name": {
+   "type": "text",
+   "parent": "camp.profile.left",
+   "pos": [
+    5,
+    11
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.red",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.lv_exp": {
+   "type": "digits",
+   "parent": "camp.profile.left",
+   "pos": [
+    75,
+    [
+     13,
+     26
+    ]
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.move": {
+   "type": "digits",
+   "parent": "camp.profile.left",
+   "pos": [
+    [
+     17,
+     40
+    ],
+    26
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%2d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.hp": {
+   "type": "digits",
+   "parent": "camp.profile.left",
+   "pos": [
+    [
+     17,
+     50
+    ],
+    42
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.mp": {
+   "type": "digits",
+   "parent": "camp.profile.left",
+   "pos": [
+    [
+     16,
+     49
+    ],
+    54
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.hp_bar": {
+   "type": "bar",
+   "parent": "camp.profile.left",
+   "pos": [
+    18,
+    39
+   ],
+   "size": [
+    76,
+    2
+   ],
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left/_bar",
+   "bar": {
+    "colors": [
+     "0x5040",
+     "0x7d80",
+     "0x7e61",
+     "0x7f25",
+     "0x7feb"
+    ]
+   },
+   "migrated": true
+  },
+  "camp.profile.mp_bar": {
+   "type": "bar",
+   "parent": "camp.profile.left",
+   "pos": [
+    18,
+    51
+   ],
+   "size": [
+    76,
+    2
+   ],
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left/_bar",
+   "bar": {
+    "colors": [
+     "0x1d16",
+     "0x2db8",
+     "0x3a19",
+     "0x467a",
+     "0x52db"
+    ]
+   },
+   "migrated": true
+  },
+  "camp.profile.stats": {
+   "type": "digits",
+   "parent": "camp.profile.left",
+   "pos": [
+    [
+     22,
+     64
+    ],
+    [
+     22,
+     76
+    ],
+    [
+     69,
+     64
+    ],
+    [
+     69,
+     76
+    ],
+    [
+     113,
+     76
+    ]
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.spirit_bar": {
+   "type": "icon",
+   "parent": "camp.profile.left",
+   "pos": [
+    "19+28*k",
+    87
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 4
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.spirit_value": {
+   "type": "digits",
+   "parent": "camp.profile.left",
+   "pos": [
+    "25+28*k",
+    108
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%3d",
+    "step": 6,
+    "space": "blank",
+    "vertical": true
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true
+  },
+  "camp.profile.portrait": {
+   "type": "anim",
+   "parent": "camp.profile.left",
+   "pos": [
+    -38,
+    -66
+   ],
+   "sprite": {
+    "anim": "camp.man",
+    "frame": 0,
+    "use_offset": true
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_left",
+   "migrated": true,
+   "frames": [
+    11,
+    10,
+    10,
+    10,
+    10,
+    6,
+    10,
+    4,
+    10,
+    8
+   ]
+  },
+  "camp.profile.res.head": {
+   "type": "digits",
+   "parent": "camp.profile.right",
+   "pos": [
+    [
+     22,
+     10
+    ],
+    [
+     22,
+     20
+    ],
+    [
+     79,
+     10
+    ],
+    [
+     79,
+     20
+    ]
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "migrated": true
+  },
+  "camp.profile.res.bar": {
+   "type": "bar",
+   "parent": "camp.profile.right",
+   "pos": [
+    18,
+    "32+15*k"
+   ],
+   "size": [
+    90,
+    3
+   ],
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right/_bar",
+   "per_point": 0.9,
+   "bar": {
+    "colors": [
+     "0x0cb3",
+     "0x14d4",
+     "0x1d16",
+     "0x2576",
+     "0x2db8"
+    ],
+    "colors_neg": [
+     "0x3400",
+     "0x4000",
+     "0x5040",
+     "0x6080",
+     "0x6cc0"
+    ]
+   },
+   "migrated": true
+  },
+  "camp.profile.res.value": {
+   "type": "digits",
+   "parent": "camp.profile.right",
+   "pos": [
+    79,
+    "37+15*k"
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%4d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "migrated": true
+  },
+  "camp.profile.item.icon": {
+   "type": "icon",
+   "parent": "camp.profile.right",
+   "pos": [
+    14,
+    "11+15*k"
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 28
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "migrated": true
+  },
+  "camp.profile.item.name": {
+   "type": "text",
+   "parent": "camp.profile.right",
+   "pos": [
+    28,
+    "11+15*k"
+   ],
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "text.red",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "repeat": {
+    "count": 10
+   },
+   "migrated": true
+  },
+  "camp.profile.item.equip": {
+   "type": "icon",
+   "parent": "camp.profile.right",
+   "pos": [
+    89,
+    "11+15*k"
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 32
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "migrated": true
+  },
+  "camp.profile.spell.name": {
+   "type": "text",
+   "parent": "camp.profile.right",
+   "pos": [
+    6,
+    "11+15*k"
+   ],
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "repeat": {
+    "count": 10
+   },
+   "migrated": true
+  },
+  "camp.profile.spell.icon": {
+   "type": "icon",
+   "parent": "camp.profile.right",
+   "pos": [
+    68,
+    "10+15*k"
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 35
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "migrated": true
+  },
+  "camp.profile.spell.cost": {
+   "type": "digits",
+   "parent": "camp.profile.right",
+   "pos": [
+    84,
+    [
+     "10+15*k",
+     "17+15*k"
+    ]
+   ],
+   "digits": {
+    "anim": "camp.profile",
+    "frame": 3,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/profile.gd _build_right",
+   "migrated": true
+  },
+  "camp.profile.arrow_left": {
+   "type": "anim",
+   "pos": [
+    18,
+    92
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 36,
+    "frames": 4,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/profile.gd _init/_process"
+  },
+  "camp.profile.arrow_right": {
+   "type": "anim",
+   "pos": [
+    293,
+    92
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 40,
+    "frames": 4,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/profile.gd _init/_process"
+  },
+  "camp.profile.hit.arrow": {
+   "type": "hit",
+   "grow": 3,
+   "status": "unknown",
+   "migrated": true,
+   "code": "engine/ui/profile.gd ui_hits"
+  },
+  "camp.spirit.panel": {
+   "type": "panel",
+   "pos": [
+    88,
+    44
+   ],
+   "sprite": {
+    "anim": "camp.spirit",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_spirit.gd _init/_build",
+   "migrated": true
+  },
+  "camp.spirit.glow": {
+   "type": "panel",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "camp.spirit",
+    "frame": 1
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd _build/_process"
+  },
+  "camp.spirit.name": {
+   "type": "text",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    5,
+    4
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "center_in",
+    "box": [
+     48,
+     12
+    ]
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_spirit.gd _build",
+   "migrated": true
+  },
+  "camp.spirit.points": {
+   "type": "digits",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    [
+     39,
+     70
+    ],
+    24
+   ],
+   "digits": {
+    "anim": "camp.spirit",
+    "frame": 2,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_spirit.gd _build",
+   "migrated": true
+  },
+  "camp.spirit.bar": {
+   "type": "icon",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    "19+28*k",
+    46
+   ],
+   "sprite": {
+    "anim": "camp.spirit",
+    "frame": 4
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_spirit.gd _build",
+   "migrated": true
+  },
+  "camp.spirit.value": {
+   "type": "digits",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    "25+28*k",
+    67
+   ],
+   "digits": {
+    "anim": "camp.spirit",
+    "frame": "2|3",
+    "fmt": "%3d",
+    "step": 6,
+    "space": "blank",
+    "vertical": true
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_spirit.gd _build",
+   "migrated": true
+  },
+  "camp.spirit.added": {
+   "type": "digits",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    "7+28*k",
+    85
+   ],
+   "digits": {
+    "anim": "camp.spirit",
+    "frame": "2|3",
+    "fmt": "%2d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "screenshot",
+   "code": "engine/ui/camp/camp_spirit.gd _build",
+   "migrated": true
+  },
+  "camp.spirit.alloc_up": {
+   "type": "anim",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    "11+28*k",
+    36
+   ],
+   "sprite": {
+    "anim": "camp.spirit",
+    "frame": 22,
+    "frames": 3,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd _build/_process"
+  },
+  "camp.spirit.alloc_down": {
+   "type": "anim",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    "11+28*k",
+    94
+   ],
+   "sprite": {
+    "anim": "camp.spirit",
+    "frame": 25,
+    "frames": 3,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd _build/_process"
+  },
+  "camp.spirit.swap_left": {
+   "type": "anim",
+   "pos": [
+    78,
+    100
+   ],
+   "sprite": {
+    "anim": "camp.spirit",
+    "frame": 14,
+    "frames": 4,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd _init/_process"
+  },
+  "camp.spirit.swap_right": {
+   "type": "anim",
+   "pos": [
+    239,
+    100
+   ],
+   "sprite": {
+    "anim": "camp.spirit",
+    "frame": 18,
+    "frames": 4,
+    "ticks": 5
+   },
+   "status": "verified",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd _init/_process"
+  },
+  "camp.spirit.hit.column": {
+   "type": "hit",
+   "parent": "camp.spirit.panel",
+   "pos": [
+    "11+28*k",
+    34
+   ],
+   "size": [
+    26,
+    72
+   ],
+   "status": "unknown",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd ui_hits"
+  },
+  "camp.spirit.hit.arrow": {
+   "type": "hit",
+   "grow": 2,
+   "status": "unknown",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd ui_hits"
+  },
+  "camp.spirit.hit.swap": {
+   "type": "hit",
+   "grow": 3,
+   "status": "unknown",
+   "migrated": true,
+   "code": "engine/ui/camp/camp_spirit.gd ui_hits"
+  },
+  "camp.save.bg": {
+   "type": "panel",
+   "pos": [
+    0,
+    0
+   ],
+   "sprite": {
+    "anim": "camp.save",
+    "frame": 0
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.title_box": {
+   "type": "panel",
+   "pos": [
+    3,
+    5
+   ],
+   "sprite": {
+    "anim": "camp.save",
+    "frame": 1
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.title": {
+   "type": "text",
+   "pos": [
+    20,
+    10
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot": {
+   "type": "panel",
+   "pos": [
+    3,
+    30
+   ],
+   "repeat": {
+    "count": 5,
+    "step": [
+     0,
+     33
+    ]
+   },
+   "sprite": {
+    "anim": "camp.save",
+    "frame": "2|3"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd _init/open",
+   "migrated": true
+  },
+  "camp.save.slot.title": {
+   "type": "text",
+   "parent": "camp.save.slot",
+   "pos": [
+    152,
+    4
+   ],
+   "text": {
+    "font": "body",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.lv": {
+   "type": "digits",
+   "parent": "camp.save.slot",
+   "pos": [
+    125,
+    14
+   ],
+   "digits": {
+    "anim": "camp.save",
+    "frame": 4,
+    "fmt": "%3d",
+    "step": 7,
+    "space": "blank"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.time": {
+   "type": "digits",
+   "parent": "camp.save.slot",
+   "pos": [
+    112,
+    21
+   ],
+   "digits": {
+    "anim": "camp.save",
+    "frame": 4,
+    "fmt": "MM/DD HH:MM",
+    "step": 7,
+    "space": "gap"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.yesno": {
+   "type": "anim",
+   "pos": [
+    270,
+    "42+33*s"
+   ],
+   "sprite": {
+    "anim": "camp.ask",
+    "frame": "sel*11+phase"
+   },
+   "status": "verified",
+   "code": "engine/ui/camp/camp_save_window.gd key (CampAsk.YesNo.make)",
+   "migrated": true
+  },
+  "settings.panel": {
+   "type": "panel",
+   "pos": [
+    30,
+    2
+   ],
+   "size": [
+    260,
+    196
+   ],
+   "color": [
+    10,
+    5,
+    3,
+    0.96
+   ],
+   "border": [
+    150,
+    112,
+    52
+   ],
+   "anchor": "CENTER",
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd open",
+   "migrated": true
+  },
+  "settings.title": {
+   "type": "text",
+   "parent": "settings.panel",
+   "pos": [
+    12,
+    5
+   ],
+   "text": {
+    "font": "label11b",
+    "flags": 0,
+    "color": [
+     255,
+     224,
+     116
+    ],
+    "align": "left"
+   },
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd open",
+   "migrated": true
+  },
+  "settings.row": {
+   "type": "text",
+   "parent": "settings.panel",
+   "dim_alpha": 0.5,
+   "pos": [
+    14,
+    24
+   ],
+   "size": [
+    234,
+    13
+   ],
+   "repeat": {
+    "count": 11,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": [
+     242,
+     235,
+     217
+    ],
+    "align": "left"
+   },
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd open",
+   "migrated": true
+  },
+  "settings.hint": {
+   "type": "text",
+   "parent": "settings.panel",
+   "pos": [
+    12,
+    8
+   ],
+   "size": [
+    236,
+    10
+   ],
+   "text": {
+    "font": "label8",
+    "flags": 0,
+    "color": [
+     179,
+     166,
+     140
+    ],
+    "align": "right",
+    "box": 236
+   },
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd open",
+   "migrated": true
+  },
+  "toast.top": {
+   "type": "text",
+   "pos": [
+    0,
+    8
+   ],
+   "size": [
+    320,
+    16
+   ],
+   "text": {
+    "font": "label11b",
+    "size": 11,
+    "bold": true,
+    "outline": 8,
+    "color": [
+     255,
+     224,
+     116
+    ],
+    "align": "center"
+   },
+   "status": "unknown",
+   "code": "scripts/game.gd _toast",
+   "anchor": "TOP",
+   "life": 1.2,
+   "fade": 0.4,
+   "migrated": true
+  },
+  "fx.screen_tint": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/event_vm.gd:454"
+  },
+  "shop.bg": {
+   "type": "box",
+   "size": [
+    320,
+    200
+   ],
+   "status": "verified",
+   "code": "engine/ui/shop_ui.gd open (UiLayout.rect)",
+   "pos": [
+    0,
+    0
+   ],
+   "color": [
+    0,
+    0,
+    0
+   ],
+   "migrated": true
+  },
+  "touch.pad": {
+   "type": "menu",
+   "anchor": "LEFT",
+   "pos": [
+    0,
+    130
+   ],
+   "arm": 19,
+   "bar_h": 20,
+   "half_w": 34,
+   "hit_pad": 2,
+   "press_dy": 1,
+   "sprite": {
+    "anim": "battle.map_view",
+    "frames": {
+     "up": 1,
+     "down": 5,
+     "left": 9,
+     "right": 13
+    }
+   },
+   "formula": "组中心 x = 留边中点 (留边 < half_w*2 时取 half_w), y = pos.y; 十字两臂长 arm、粗 bar_h",
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _init/_place",
+   "migrated": true
+  },
+  "touch.bar": {
+   "type": "panel",
+   "sprite": {
+    "anim": "fx.magic_misc",
+    "frame": 0
+   },
+   "cap": 7,
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _Bar",
+   "migrated": true,
+   "src_size": [
+    90,
+    20
+   ]
+  },
+  "touch.keys": {
+   "type": "menu",
+   "anchor": "LEFT",
+   "pos": [
+    0,
+    130
+   ],
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _place",
+   "migrated": true
+  },
+  "touch.key.page_up": {
+   "type": "box",
+   "parent": "touch.keys",
+   "pos": [
+    -30,
+    -44
+   ],
+   "size": [
+    28,
+    16
+   ],
+   "text": {
+    "font": "label10b",
+    "align": "center_in"
+   },
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _text_key",
+   "migrated": true
+  },
+  "touch.key.page_down": {
+   "type": "box",
+   "parent": "touch.keys",
+   "pos": [
+    2,
+    -44
+   ],
+   "size": [
+    28,
+    16
+   ],
+   "text": {
+    "font": "label10b",
+    "align": "center_in"
+   },
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _text_key",
+   "migrated": true
+  },
+  "touch.key.confirm": {
+   "type": "box",
+   "parent": "touch.keys",
+   "pos": [
+    -30,
+    -20
+   ],
+   "size": [
+    60,
+    20
+   ],
+   "text": {
+    "font": "body",
+    "align": "center_in"
+   },
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _text_key",
+   "migrated": true
+  },
+  "touch.key.cancel": {
+   "type": "box",
+   "parent": "touch.keys",
+   "pos": [
+    -30,
+    6
+   ],
+   "size": [
+    60,
+    20
+   ],
+   "text": {
+    "font": "body",
+    "align": "center_in"
+   },
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _text_key",
+   "migrated": true
+  },
+  "touch.key.toggle": {
+   "type": "box",
+   "anchor": "BOTTOM_LEFT",
+   "pos": [
+    3,
+    183
+   ],
+   "size": [
+    24,
+    14
+   ],
+   "text": {
+    "font": "label10b",
+    "align": "center_in"
+   },
+   "formula": "x 相对画面左边 (留边内)",
+   "status": "unknown",
+   "code": "engine/input/touch_pad.gd _text_key",
+   "migrated": true
+  },
+  "gallery.bg": {
+   "type": "color",
+   "color": [
+    40,
+    52,
+    44
+   ],
+   "grid": [
+    60,
+    76,
+    64
+   ],
+   "status": "unknown",
+   "code": "engine/ui/gallery.gd _draw",
+   "migrated": true
+  },
+  "gallery.cells": {
+   "type": "param",
+   "pos": [
+    [
+     3,
+     4
+    ],
+    [
+     7,
+     2
+    ]
+   ],
+   "color": [
+    0.9,
+    0.8,
+    0.3,
+    0.35
+   ],
+   "status": "unknown",
+   "code": "engine/ui/gallery.gd _page_menus",
+   "migrated": true,
+   "sub_dy": 23
+  },
+  "settings.value": {
+   "type": "text",
+   "parent": "settings.panel",
+   "pos": [
+    108,
+    24
+   ],
+   "size": [
+    120,
+    13
+   ],
+   "repeat": {
+    "count": 11,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": [
+     242,
+     235,
+     217
+    ],
+    "align": "center_in",
+    "box": 120
+   },
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "settings.button": {
+   "type": "text",
+   "parent": "settings.panel",
+   "pos": [
+    12,
+    24
+   ],
+   "size": [
+    236,
+    13
+   ],
+   "repeat": {
+    "count": 11,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "text": {
+    "font": "body",
+    "flags": 0,
+    "color": [
+     242,
+     235,
+     217
+    ],
+    "align": "center_in",
+    "box": 236
+   },
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "settings.desc": {
+   "type": "text",
+   "parent": "settings.panel",
+   "pos": [
+    12,
+    170
+   ],
+   "size": [
+    236,
+    24
+   ],
+   "text": {
+    "font": "small10",
+    "flags": 0,
+    "color": [
+     214,
+     181,
+     107
+    ],
+    "align": "left",
+    "max_width": 236,
+    "line_height": 11
+   },
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "settings.cursor": {
+   "type": "rect",
+   "parent": "settings.panel",
+   "pos": [
+    8,
+    23
+   ],
+   "size": [
+    244,
+    13
+   ],
+   "repeat": {
+    "count": 11,
+    "step": [
+     0,
+     13
+    ]
+   },
+   "color": [
+    190,
+    110,
+    30,
+    0.45
+   ],
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "settings.arrow": {
+   "type": "rect",
+   "parent": "settings.panel",
+   "pos": [
+    96,
+    28
+   ],
+   "size": [
+    5,
+    7
+   ],
+   "color": [
+    255,
+    224,
+    116
+   ],
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "settings.hit": {
+   "type": "hit",
+   "parent": "settings.panel",
+   "pad": 4,
+   "gap": 20,
+   "arrow_w": 16,
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd ui_hits",
+   "migrated": true
+  },
+  "settings.bar": {
+   "type": "rect",
+   "parent": "settings.panel",
+   "pos": [
+    109,
+    28
+   ],
+   "size": [
+    9,
+    7
+   ],
+   "repeat": {
+    "count": 10,
+    "step": [
+     11,
+     0
+    ]
+   },
+   "color": [
+    242,
+    235,
+    217
+   ],
+   "color_off": [
+    90,
+    80,
+    66
+   ],
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "settings.sel_color": {
+   "type": "color",
+   "color": [
+    255,
+    224,
+    116
+   ],
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "settings.dim_color": {
+   "type": "color",
+   "color": [
+    170,
+    160,
+    140
+   ],
+   "status": "unknown",
+   "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "guide.panel": {
+   "type": "panel",
+   "pos": [
+    8,
+    4
+   ],
+   "size": [
+    304,
+    192
+   ],
+   "color": [
+    10,
+    5,
+    3,
+    0.96
+   ],
+   "border": [
+    150,
+    112,
+    52
+   ],
+   "anchor": "CENTER",
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.title": {
+   "type": "text",
+   "parent": "guide.panel",
+   "pos": [
+    88,
+    6
+   ],
+   "size": [
+    210,
+    12
+   ],
+   "text": {
+    "font": "label11b",
+    "flags": 0,
+    "color": [
+     255,
+     224,
+     116
+    ],
+    "align": "left"
+   },
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.list": {
+   "type": "text",
+   "parent": "guide.panel",
+   "pos": [
+    10,
+    23
+   ],
+   "size": [
+    70,
+    12
+   ],
+   "repeat": {
+    "count": 13,
+    "step": [
+     0,
+     12
+    ]
+   },
+   "text": {
+    "font": "small10",
+    "flags": 0,
+    "color": [
+     242,
+     235,
+     217
+    ],
+    "align": "left"
+   },
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.cursor": {
+   "type": "rect",
+   "parent": "guide.panel",
+   "pos": [
+    6,
+    22
+   ],
+   "size": [
+    76,
+    12
+   ],
+   "repeat": {
+    "count": 13,
+    "step": [
+     0,
+     12
+    ]
+   },
+   "color": [
+    190,
+    110,
+    30,
+    0.45
+   ],
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.body": {
+   "type": "text",
+   "parent": "guide.panel",
+   "pos": [
+    88,
+    22
+   ],
+   "size": [
+    208,
+    156
+   ],
+   "font_size": 8,
+   "line_step": 10,
+   "text": {
+    "font": "small10",
+    "flags": 0,
+    "color": [
+     242,
+     235,
+     217
+    ],
+    "align": "left"
+   },
+   "head_color": [
+    255,
+    224,
+    116
+   ],
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true,
+   "line_gap": 2,
+   "para_gap": 4
+  },
+  "guide.divider": {
+   "type": "rect",
+   "parent": "guide.panel",
+   "pos": [
+    84,
+    22
+   ],
+   "size": [
+    1,
+    156
+   ],
+   "color": [
+    150,
+    112,
+    52,
+    0.6
+   ],
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.scrollbar": {
+   "type": "rect",
+   "parent": "guide.panel",
+   "pos": [
+    300,
+    22
+   ],
+   "size": [
+    2,
+    156
+   ],
+   "color": [
+    255,
+    224,
+    116,
+    0.8
+   ],
+   "color_off": [
+    90,
+    80,
+    66,
+    0.6
+   ],
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.hint": {
+   "type": "text",
+   "parent": "guide.panel",
+   "pos": [
+    10,
+    182
+   ],
+   "size": [
+    288,
+    10
+   ],
+   "text": {
+    "font": "label8",
+    "flags": 0,
+    "color": [
+     179,
+     166,
+     140
+    ],
+    "align": "right",
+    "box": 288
+   },
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.sel_color": {
+   "type": "color",
+   "color": [
+    255,
+    224,
+    116
+   ],
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  },
+  "guide.dim_color": {
+   "type": "color",
+   "color": [
+    170,
+    160,
+    140
+   ],
+   "status": "unknown",
+   "code": "engine/ui/guide_panel.gd",
+   "migrated": true
+  }
+ }
+}

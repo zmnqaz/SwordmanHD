@@ -1,0 +1,58 @@
+{
+ "id": 36,
+ "name": "外传  夜魑巢穴",
+ "music": 0,
+ "briefing": {
+  "title": "外传  夜魑巢穴",
+  "win": "敌全灭",
+  "lose": "殷剑平死亡"
+ },
+ "assets": {
+  "dir": "Stage/Stage00",
+  "title_card": "Stage/Stage00/Tanm_00",
+  "battle_floor": "Stage/Stage00/FLOOR_00",
+  "event_anims": {
+   "0": "Stage/Stage00/Eanm_00",
+   "1": "Stage/Stage00/Eanm_01",
+   "10": "Stage/Stage00/Eanm_10",
+   "11": "Stage/Stage00/Eanm_11",
+   "12": "Stage/Stage00/Eanm_12",
+   "13": "Stage/Stage00/Eanm_13",
+   "14": "Stage/Stage00/Eanm_14"
+  }
+ },
+ "turn_events": [
+  {
+   "turn": 1,
+   "timing": 0,
+   "event": 1
+  }
+ ],
+ "map_events": [
+  {
+   "index": 0,
+   "type": -1,
+   "trigger": 0,
+   "event": 0,
+   "item_type": 0,
+   "item": 0,
+   "prompt": 0,
+   "show": 0
+  }
+ ],
+ "judge": {
+  "win": [
+   {
+    "type": 1,
+    "unit": -1,
+    "event": 2
+   }
+  ],
+  "lose": []
+ },
+ "script": {
+  "source": "scripts/stage_36.evs"
+ },
+ "text": "stages/36/text.json",
+ "_comment": "改动包示例关: 地图是简单的竞技场, 底图贴图引用基础包素材, 单位与剧情是本包自己的; 用 --mods=example_mod --scene=stage36 进入"
+}

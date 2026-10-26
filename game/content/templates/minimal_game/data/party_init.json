@@ -1,0 +1,30 @@
+[
+ {
+  "unit_id": 0,
+  "lv": 1,
+  "exp": 0,
+  "hp": 40,
+  "mp": 10,
+  "str": 10,
+  "int": 8,
+  "avg": 10,
+  "vit": 10,
+  "luk": 8,
+  "spirit": {
+   "迅": 25,
+   "烈": 21,
+   "神": 18,
+   "魔": 16,
+   "魂": 25
+  },
+  "weapon": 0,
+  "armor": null,
+  "accessory": null,
+  "in_team": 0,
+  "spirit_points": 0,
+  "items": [
+   0
+  ],
+  "skills": []
+ }
+]

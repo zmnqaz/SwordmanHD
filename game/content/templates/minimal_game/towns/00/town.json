@@ -1,0 +1,25 @@
+{
+ "id": 0,
+ "assets": {
+  "dir": "Rpg/min",
+  "map_file": "map.mpl",
+  "map_image": "Rpg/min/map.png"
+ },
+ "entries": [
+  {
+   "music": 0,
+   "map_x": 0,
+   "map_y": 0,
+   "x": 5,
+   "y": 5,
+   "dir": 0
+  }
+ ],
+ "shops": [
+  "town00.0"
+ ],
+ "script": {
+  "source": "scripts/town_00.evs"
+ },
+ "text": "towns/00/text.json"
+}

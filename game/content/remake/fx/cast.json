@@ -1,0 +1,61 @@
+{
+ "format": "tdj-fx/1",
+ "_comment": "地图施法演出表 (/ CSkillTheater)。动画放置规则见 engine/fx/fx_place.gd: convention 取 ui_theme/layout.json sprite_rules.map_conventions, anchor = target|caster|unit。技能记录里可加 \"fx\": {...} 覆盖本表 skill 段的任意字段 (新技能只加数据)。动画路径占位: {anim} 动画号, {anim3} 三位动画号, {spr3} 施法者精灵号三位, {bspr} 招式精灵后缀 (battle_sprite>0 时为 -n)。",
+ "camera": {
+  "center": true,
+  "speed": [750, 600],
+  "return": true,
+  "return_speed": [375, 300],
+  "source": ": 镜头移到施法者、再移到落点 (col*30-0x91,row*24-0x58), 每 tick 30/24 像素; 结束后以 15/12 像素回到施法前镜头 (字段/字段)"
+ },
+ "dim": {
+  "alpha": 0.6875,
+  "source": "实测 200 块帝国 离火神诀: 演出期间地图与人物亮度 ≈ 0.30~0.33 (≈ 5/16), 即黑色 11/16 覆盖"
+ },
+ "aura": {
+  "anim": "Misc/Mag_misc",
+  "start": 1,
+  "end": 18,
+  "convention": "fx",
+  "anchor": "caster",
+  "source": ": Mag_misc 第 1 帧起播到末帧, 与法术同在屏幕 (0,0) 画 (实测与屏幕原点偏差 0)"
+ },
+ "banner": {
+  "element": "map.cast_banner",
+  "hold_ticks": 37,
+  "in": {"dy": [-16, -16, -8, -4, -2, 0], "alpha16": [4, 6, 8, 10, 12, 14]},
+  "out": {"dy": [0, 0, 2, 4, 8, 16], "alpha16": [12, 10, 8, 6, 4, 2]},
+  "source": " 显示: 偏移 (16,8,4,2,0) 自上滑入、混合 4/16 起每 tick +2; 定时 0x25 tick 后 收起: 偏移 0,0,2,4,8,16 向下滑出、混合 12/16 起每 tick -2, 之后消失"
+ },
+ "skill": {
+  "default": {
+   "anim": "Magic/magic{anim3}/M{anim}",
+   "convention": "fx",
+   "anchor": "target",
+   "hide_caster": false
+  },
+  "battle_type": {
+   "1": {
+    "anim": "Sprite/man{spr3}/{spr3}{bspr}s",
+    "hide_caster": false,
+    "source": ": 地图上演出的绝技播施法者的 NNN[-n]S.SAF (近景同款全屏帧), 由 在落点处按法术约定画"
+   },
+   "2": {
+    "anim": "Sprite/man{spr3}/{spr3}{bspr}sm",
+    "hide_caster": false,
+    "source": ": skill+0x42 == 2 时文件名加 M (NNN[-n]SM.SAF)"
+   }
+  }
+ },
+ "result": {
+  "anim": "Misc/MAN_RES",
+  "convention": "unit",
+  "anchor": "unit",
+  "source": "实测 (离火神诀 结果动画 46~59 帧): 与人物帧同原点 (偏差 ≤1)"
+ },
+ "movie": {
+  "path": "Magic/magic{anim3}/M{anim}",
+  "skip": ["cancel"],
+  "source": ": skill+0x40 (has_movie)==1 置 字段; 状态 4 镜头到落点后 载入 MAGIC\\MAGIC%03d\\M%d.MOV 播放 (CBinkPlayer 参数 skip_cancel=1, skip_confirm=0: Esc 可跳过, 回车不可), 播完进状态 6 (法术 SAF 动画)。实测九俱焚灭: 横幅 -> 全屏视频约 14 s -> 地图上的 SAF 落点动画 -> 结果动画; 与施法方无关 (AI 同走)"
+ }
+}

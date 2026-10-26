@@ -1,0 +1,20 @@
+# 最小骨架的第一关剧情 (格式见 docs/剧情脚本格式.md); 对白 msg=N 指本事件 (事件号 = 对白组号) 的第 N 句, 文本在 stages/00/text.json
+script battle
+events 3
+
+event 0
+    return
+
+# 第 1 回合开始 (stage.json turn_events)
+event 1
+    camera_set x=4 y=3
+    show ids=0,1
+    say cursor=-1 face=1 msg=0
+    say cursor=-1 face=1 msg=1
+    return
+
+# 胜利: 全灭 (stage.json judge.win)
+event 2
+    say cursor=-1 face=1 msg=0
+    to_title
+    return

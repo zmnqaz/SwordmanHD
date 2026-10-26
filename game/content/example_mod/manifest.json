@@ -1,0 +1,11 @@
+{
+ "format": "tdj-content/1",
+ "id": "example_mod",
+ "name": "改动包示例",
+ "version": "0.1.0",
+ "engine_min": "1.0.0",
+ "base": ["remake"],
+ "stage_count": 37,
+ "description": "最小改动包示例 (docs/内容格式.md「如何做 mod」): 殷剑平移动力 +3、长剑售价 45 -> 30、回合上限 100 -> 120; 界面布局叠加 (ui_theme/layout.json: 对话框文字右移 1 像素、近景名字白色); 并带一整关 stages/36 (地图+单位+剧情 scripts/stage_36.evs, 进入: --scene=stage36)。启用: -- --mods=example_mod",
+ "tables": {}
+}

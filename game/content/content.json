@@ -1,0 +1,4 @@
+{
+ "_comment": "内容包搜索目录的配置: main = 缺省主包 id (命令行 --content= 与设置可覆盖); 引擎代码里不写包名。remake (项目手写配置) 以 tdj (原版生成内容) 为 base",
+ "main": "remake"
+}

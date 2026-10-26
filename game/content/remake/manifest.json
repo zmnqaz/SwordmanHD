@@ -1,0 +1,11 @@
+{
+ "format": "tdj-content/1",
+ "id": "remake",
+ "name": "复刻版界面与演出",
+ "version": "1.0.0",
+ "engine_min": "1.0.0",
+ "base": ["tdj"],
+ "save_neutral": true,
+ "description": "本项目自己写的配置 (随程序发布, 不含原作内容): ui_theme/ 界面布局 (layout.json)、字体清单 (fonts.json)、资源命名 (assets.json), fx/ 法术与过场演出定位。叠加在原版内容包 tdj 之上; tdj 由 资源生成工具 从玩家的原版游戏生成。save_neutral: 只影响表现, 不记入存档的内容包签名。",
+ "tables": {}
+}

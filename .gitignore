@@ -1,0 +1,38 @@
+# 导出器的标记文件 (出现在导出目录里, 不入库)
+/.swordmanhd-export
+# 中间文件与缓存
+/.work/
+/.cache/
+/ci-logs/
+__pycache__/
+/game/.godot/
+game/assets/font/*.import
+# 工具下载的东西 (Godot、Android 构建环境、便携 7z), 大二进制不入库
+/tools/godot/
+/tools/android/
+/tools/7z/
+/tools/dl/
+# 打包产物
+/dist/
+# 导出用图标 (tools/platform/make_ico.py 由 app_icon.png 生成)
+/game/assets/icon.ico
+# 本机开发环境配置 (模板 tools/dev_env.example.json)
+/tools/dev_env.json
+# 任何资源与签名材料都不入库
+*.pck
+*.tar.xz
+/original/
+/hd4x/
+/pkgs/
+/data/
+/game/content/tdj/
+*.keystore
+*.jks
+/keys/
+android.env
+tools/sideloader/
+tools/ios_win/bin/
+tools/ios_win/*.ipa
+tools/android_win/bin/
+tools/android_win/*.apk
+.claude/

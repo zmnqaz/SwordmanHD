@@ -1,0 +1,85 @@
+# 代码里允许保留的中文字符串字面量 (文件|字面量), 由 check_ui_text.py --update 生成; 新增前先想想能不能走 UiStrings.t(键)。
+# 都是: 内容包取不到时的后备值、数据键 (不显示)、开发者消息。玩家可见的新文字不要加到这里。
+engine/battle/battle_actions.gd| 会心
+engine/battle/battle_actions.gd| 击杀
+engine/battle/battle_actions.gd| 连击
+engine/battle/battle_actions.gd|命中
+engine/battle/battle_actions.gd|未中
+engine/battle/battle_actions.gd|格挡
+engine/battle/battle_flow.gd|发现了宝箱,是否要开启它呢?
+engine/battle/battle_flow.gd|否,不开启这个宝箱.
+engine/battle/battle_flow.gd|否,放弃该物品.
+engine/battle/battle_flow.gd|得到{0}.
+engine/battle/battle_flow.gd|得到金钱{0}两.
+engine/battle/battle_flow.gd|是,丢弃物品来存放它.
+engine/battle/battle_flow.gd|是,丢弃身上的其它物品.
+engine/battle/battle_flow.gd|是,开启发现的宝箱.
+engine/battle/battle_flow.gd|是否丢弃其它物品,来存放{0}.
+engine/battle/battle_flow.gd|是否丢弃物品,来存放宝箱的物品?
+engine/battle/battle_flow.gd|金钱%d两
+engine/battle/battle_rules.gd|%s %s 分 %s/%s
+engine/battle/battle_rules.gd|待命
+engine/battle/battle_view.gd|技能演出动画不存在 (原版数据缺口, 跳过): 
+engine/battle/control/battle_input.gd|取得{0}.
+engine/battle/control/battle_input.gd|放弃给予物品.
+engine/battle/control/battle_input.gd|身上物品太多了,请选择欲交换的物品.
+engine/battle/event_vm.gd|事件
+engine/core/res_packs.gd|  (目录里没有任何文件)
+engine/core/res_packs.gd|(空)
+engine/core/res_packs.gd|(都是空)
+engine/core/res_packs.gd|候选: 
+engine/core/res_packs.gd|已挂载: 
+engine/core/res_packs.gd|打不开该目录 (错误 %d)
+engine/core/res_packs.gd|找不到原版资源 (original 目录, 见 README「获取游戏资源」)。
+engine/core/res_packs.gd|找不到资源包 common_assets.pck。请把 resource 文件夹放在游戏目录 (与可执行文件同一目录), 它由 资源生成工具 从你自己的原版游戏生成。
+engine/core/res_packs.gd|找不到资源包。请把 resource 文件夹 (里面是 common_assets.pck 等) 拷进本应用的文件夹 (「文件」App → 我的 iPhone/iPad → 天地劫; 或电脑上 Finder/iTunes 的文件共享), 它们由 资源生成工具 从你自己的原版游戏生成。\n\n%s
+engine/core/res_packs.gd|找不到资源包。请把 resource 文件夹 (里面是 common_assets.pck 等) 放进 %s (电脑上用 adb push), 它们由 资源生成工具 从你自己的原版游戏生成。\n\n%s
+engine/core/res_packs.gd|挂载失败: 
+engine/core/res_packs.gd|无
+engine/core/res_packs.gd|目录: 
+engine/core/res_packs.gd|缺少画面资源包。请在 resource 文件夹里再放入 hd_images.pck (AI 高清, 推荐) 或 classic_images.pck (原版画质) 之一, 它们由 资源生成工具 从你自己的原版游戏生成。
+engine/core/res_packs.gd|读不开
+engine/rpg/rpg_scene.gd|%s事件%d %s 意外离开了场景
+engine/rpg/rpg_scene.gd|%s事件%d %s 离开场景的事件走不到
+engine/rpg/rpg_scene.gd|%s事件%d %s 走/执行超时 (主角在 %s, 行走中=%s 事件中=%s)
+engine/rpg/rpg_scene.gd|对话
+engine/rpg/rpg_scene.gd|踩踏
+engine/rpg/rpg_vm.gd|RPG 事件
+engine/rules/attack.gd|主
+engine/rules/attack.gd|反
+engine/rules/attr_names.gd|光
+engine/rules/attr_names.gd|冰
+engine/rules/attr_names.gd|幻
+engine/rules/attr_names.gd|暗
+engine/rules/attr_names.gd|火
+engine/rules/attr_names.gd|烈
+engine/rules/attr_names.gd|神
+engine/rules/attr_names.gd|迅
+engine/rules/attr_names.gd|雷
+engine/rules/attr_names.gd|魂
+engine/rules/attr_names.gd|魔
+engine/rules/context.gd|光
+engine/rules/context.gd|冰
+engine/rules/context.gd|幻
+engine/rules/context.gd|暗
+engine/rules/context.gd|火
+engine/rules/context.gd|雷
+engine/rules/unit_state.gd|中毒
+engine/rules/unit_state.gd|冰結
+engine/rules/unit_state.gd|地縛
+engine/rules/unit_state.gd|封咒
+engine/rules/unit_state.gd|對技全禦
+engine/rules/unit_state.gd|對術全禦
+engine/rules/unit_state.gd|幻影
+engine/rules/unit_state.gd|技法提昇
+engine/rules/unit_state.gd|攻擊提昇
+engine/rules/unit_state.gd|狂暴
+engine/rules/unit_state.gd|護禦提昇
+engine/rules/unit_state.gd|速敏提昇
+engine/rules/unit_state.gd|麻痺
+engine/script/script_vm.gd|事件
+engine/ui/boot_error_screen.gd|无法启动
+engine/ui/boot_error_screen.gd|请放好资源包后重新打开本应用 (按返回键或划掉应用退出)。
+scripts/game.gd|内容包里没有任何关卡 (game/content/tdj 缺失? 见 docs/内容格式.md)。
+scripts/game.gd|场景 %s 超出内容包范围 (共 %d 个), 进标题
+scripts/game.gd|找不到游戏内容包 common_story.pck (原版剧情与数值)。请把它放进游戏目录的 resource 文件夹, 它与 common_assets.pck 由同一工具生成。

@@ -1,0 +1,45 @@
+{
+  "format": "ui-fonts/1",
+  "default": "kai",
+  "fonts": [
+    {
+      "id": "sans",
+      "name": "思源黑体",
+      "desc": "清晰的黑体, 小字号最稳。",
+      "file": "res://assets/font/NotoSansSC-Medium.otf",
+      "baseline_in_cell": 10.75,
+      "embolden": 0.6,
+      "license": "SIL OFL 1.1",
+      "license_file": "res://assets/font/NotoSansCJK-LICENSE.txt"
+    },
+    {
+      "id": "kai",
+      "name": "霞鹜文楷",
+      "desc": "温润的楷体, 书卷气, 小字也清楚, 默认。",
+      "file": "res://assets/font/WuxiaKai-Subset.ttf",
+      "baseline_in_cell": 10.5,
+      "embolden": 0.5,
+      "license": "SIL OFL 1.1",
+      "license_file": "res://assets/font/LXGWWenKai-OFL.txt",
+      "source": {
+        "file": "LXGWWenKai-Medium.ttf",
+        "url": "https://github.com/lxgw/LxgwWenKai/releases/download/v1.522/LXGWWenKai-Medium.ttf",
+        "family": "WuxiaKai Subset"
+      }
+    },
+    {
+      "id": "serif",
+      "name": "思源宋体",
+      "desc": "端正的宋体, 笔画锋利, 古籍刻本的味道。",
+      "file": "res://assets/font/NotoSerifSC-Subset.otf",
+      "baseline_in_cell": 11.0,
+      "embolden": 0.5,
+      "license": "SIL OFL 1.1",
+      "license_file": "res://assets/font/NotoSerifCJK-OFL.txt",
+      "source": {
+        "file": "NotoSerifSC-Medium.otf",
+        "url": "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Serif/SubsetOTF/SC/NotoSerifSC-Medium.otf"
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "_说明": "复制为 tools/dev_env.json (已 .gitignore) 并按本机改; 环境变量 TDJ_GODOT/TDJ_PYTHON 优先于本文件。不需要的项删掉即用默认位置。相对路径相对仓库根; 路径一律用正斜杠。",
+  "godot": "C:/tools/godot/Godot_v4.7.2-stable_win64_console.exe",
+  "python": "python"
+}

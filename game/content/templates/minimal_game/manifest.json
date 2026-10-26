@@ -1,0 +1,58 @@
+{
+ "format": "tdj-content/1",
+ "id": "minimal_game",
+ "name": "最小新游戏骨架",
+ "version": "0.1.0",
+ "engine_min": "1.0.0",
+ "base": [],
+ "description": "全新游戏的最小骨架 (docs/新游戏接入指南.md): base 为空, 一个关卡 + 一个城镇 + 对白; 复制整个目录改名即可开始做自己的游戏。",
+ "asset_roots": [
+  "original"
+ ],
+ "stage_count": 1,
+ "town_count": 1,
+ "start": {
+  "kind": "town",
+  "id": 0,
+  "entry": 0,
+  "gold": 50
+ },
+ "tables": {
+  "units": {
+   "file": "data/units.json",
+   "key": "id"
+  },
+  "items": {
+   "file": "data/items.json",
+   "key": "id"
+  },
+  "skills": {
+   "file": "data/skills.json",
+   "key": "id"
+  },
+  "levelup": {
+   "file": "data/levelup.json",
+   "key": "unit_id"
+  },
+  "party_init": {
+   "file": "data/party_init.json",
+   "key": "unit_id"
+  },
+  "attribute_defense": {
+   "file": "data/attribute_defense.json",
+   "key": "index"
+  },
+  "terrain": {
+   "file": "data/terrain.json",
+   "key": "move_type"
+  },
+  "shops": {
+   "file": "data/shops.json",
+   "key": "id"
+  },
+  "camps": {
+   "file": "camps/camps.json",
+   "key": "stage"
+  }
+ }
+}
