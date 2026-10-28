@@ -37,6 +37,21 @@ func is_empty() -> bool:
 	return chapters.is_empty()
 
 
+## 章 id 的下标, 没有 -1
+func index_of(id: String) -> int:
+	for i in chapters.size():
+		if chapters[i]["id"] == id:
+			return i
+	return -1
+
+
+## 第一次打开 (本次运行里还没翻过) 的章: 目录第一章是非关卡章 (本仓库是「完美结局」) 就是它, 否则按关号 (index_for_stage)
+func first_open_index(stage: int) -> int:
+	if not chapters.is_empty() and int(chapters[0]["stage"]) < 0:
+		return 0
+	return index_for_stage(stage)
+
+
 ## 默认打开的章: 关号 stage 的章; 没有就取关号不超过它的最近一章; 再没有取第一个关卡章; 都没有 0
 func index_for_stage(stage: int) -> int:
 	var best := -1

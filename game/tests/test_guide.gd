@@ -46,12 +46,17 @@ func _gc(db: Object, stage := 0, next_stage := 0, in_battle := true) -> GameCont
 
 
 func _open(gc: GameContext, r = null) -> GuidePanel:
+	GuidePanel.last_id = ""   # 每个用例都当「本次运行第一次打开」
 	var p := GuidePanel.new()
 	p.gc = gc
 	p.router = r if r != null else Router.new()
 	_tree().root.add_child(p)
 	p.open()   # 协程: 停在 await closed, 面板已搭好并入栈
 	return p
+
+
+func set_chapter_for_test(p: GuidePanel, i: int) -> void:
+	p.set_chapter(i)
 
 
 func _close(p: GuidePanel) -> void:
@@ -129,12 +134,61 @@ func test_default_chapter_selection():
 	eq(empty.index_for_stage(3), 0)
 
 
+## 战场里 = 本关的章, 不看「上次看的章」, 在战场里翻页也不改它
+func test_battle_always_opens_stage_chapter():
+	var gc := _gc(_db([0, 1, 3, 5]), 3, 4, true)
+	var p := _open(gc)
+	eq(p.book.chapters[p.chapter]["id"], "stage_03", "战场: 本关")
+	p.set_chapter(1)
+	eq(GuidePanel.last_id, "", "战场里翻到的章不记")
+	await _close(p)
+	GuidePanel.last_id = "stage_05"
+	var q := GuidePanel.new()
+	q.gc = gc
+	q.router = Router.new()
+	_tree().root.add_child(q)
+	q.open()
+	eq(q.book.chapters[q.chapter]["id"], "stage_03", "战场: 不理会营地里记下的章")
+	await _close(q)
+	gc.in_battle = false
+	var r := GuidePanel.new()
+	r.gc = gc
+	r.router = Router.new()
+	_tree().root.add_child(r)
+	r.open()
+	eq(r.book.chapters[r.chapter]["id"], "stage_05", "出了战场: 用营地里记下的章")
+	await _close(r)
+
+
+## 第一次打开 = 目录第一章 (非关卡章); 之后关了再开 = 上次看的章; 目录第一章是关卡章的内容包仍按当前关
+func test_first_open_then_remember_last_chapter():
+	var gc := _gc(_db([0, 1, 3, 5]), 3, 4, false)
+	var p := _open(gc)
+	eq(p.book.chapters[p.chapter]["id"], "about", "第一次: 第一章, 不是当前关")
+	p.set_chapter(3)
+	await _close(p)
+	var q := GuidePanel.new()
+	q.gc = gc
+	q.router = Router.new()
+	_tree().root.add_child(q)
+	q.open()
+	eq(q.book.chapters[q.chapter]["id"], "stage_03", "再开: 停在上次看的章")
+	await _close(q)
+	GuidePanel.last_id = ""
+	var g := GuideBook.load_from(_gc(_db([0, 1, 3, 5])).content)
+	g.chapters.remove_at(0)
+	eq(g.first_open_index(3), 2, "第一章是关卡章: 按关号")
+	eq(g.index_of("stage_05"), 3)
+	eq(g.index_of("nope"), -1)
+
+
 ## 指定章 id 打开 (营地「五魂化蘊」翻到 spirit_<单位号>): 有就直接是它, 没有按默认章
 func test_open_at_chapter_id():
 	var db := _db([0, 1, 3, 5])
 	db.files["guide/spirit_2.json"] = {"title": "五魂 上官远", "label": "五魂 上官远", "body": "正文"}
 	db.files["guide/guide.json"]["chapters"].append({"id": "spirit_2", "file": "guide/spirit_2.json"})
 	var gc := _gc(db, 1, 1, false)
+	GuidePanel.last_id = ""
 	var p := GuidePanel.new()
 	p.gc = gc
 	p.router = Router.new()
@@ -149,17 +203,18 @@ func test_open_at_chapter_id():
 	q.start_id = "spirit_99"
 	_tree().root.add_child(q)
 	q.open()
-	eq(q.book.chapters[q.chapter]["id"], "stage_01", "没有这一章: 回到当前关的默认章")
+	eq(q.book.chapters[q.chapter]["id"], "spirit_2", "没有这一章: 按上次看的章 (刚才翻到的 spirit_2)")
 	await _close(q)
 
 
 ## 打开默认章 → 左右切章 (首尾循环, 正文回顶) → 上下/翻页滚动 (夹在 0..最大) → 取消关闭出栈
 func test_panel_switch_scroll_close():
-	var p := _open(_gc(_db(), 5, 6, false))   # 城镇: 下一关 6 没有章 → 关 5
+	var p := _open(_gc(_db(), 5, 6, false))
 	var r = p.router
 	check(GuidePanel.is_open(), "面板打开")
 	eq(r.top(), p, "模态浮层在栈顶")
-	eq(p.chapter, 4, "默认章: 关 5")
+	eq(p.chapter, 0, "第一次打开: 目录第一章 (说明)")
+	set_chapter_for_test(p, 4)
 	eq(p._title.text, "第5幕 测试", "标题")
 	check(p.max_scroll() > 0.0, "长正文可以滚 (%.1f)" % p.max_scroll())
 	_act(p, UiAction.DOWN)
@@ -291,6 +346,7 @@ func test_hotkey_toggles():
 	eq(r._handle(e), true, "F4 吞键")
 	eq(got[0], 1, "F4 = 攻略")
 	var gc := _gc(_db(), 1, 1, true)
+	GuidePanel.last_id = ""
 	var p := GuidePanel.toggle(_tree().root, gc, r)
 	check(p != null and GuidePanel.is_open(), "第一次: 打开")
 	eq(p.chapter, 2, "战场第 1 关")

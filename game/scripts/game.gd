@@ -5,6 +5,7 @@ extends Node
 
 const MovieScene := preload("res://scripts/movie_scene.gd")
 const TitleScene := preload("res://scripts/title_scene.gd")
+const NoticeScene := preload("res://scripts/notice_scene.gd")
 const BattleScene := preload("res://engine/battle/battle_scene.gd")
 
 var current: Node
@@ -279,13 +280,19 @@ func _enter_replay_base() -> bool:
 	return true
 
 
-## 正常启动的起点: logo 动画 -> 标题动画 -> 标题 (跳过动画时直接标题)。录像时钟从这里起算, 所以回放也必须走同一段;
+## 正常启动的起点: [版权声明] -> logo 动画 -> 标题动画 -> 标题 (跳过动画时直接标题)。录像时钟从这里起算, 所以回放也必须走同一段;
 ## 结束回放后重新录的录像 (PlayLog.fresh) 是从标题画面起录的, 回放它直接进标题
 func _enter_title_flow() -> void:
 	if skip_movies or PlayLog.title_start():
 		goto(TitleScene.new())
+	elif NoticeScene.needed(PlayLog.current != null and PlayLog.current.mode == "replay"):   # 每次启动先让玩家同意版权声明, 不同意就退出
+		goto(NoticeScene.create(_play_intro, quit_game))
 	else:
-		goto(MovieScene.create([ThemeAssets.p("movie.logo"), ThemeAssets.p("movie.title")], func(): goto(TitleScene.new())))
+		_play_intro()
+
+
+func _play_intro() -> void:
+	goto(MovieScene.create([ThemeAssets.p("movie.logo"), ThemeAssets.p("movie.title")], func(): goto(TitleScene.new())))
 
 
 ## --scene= 名字的编号是否在内容包范围内: 越界返回提示文字, 否则 ""

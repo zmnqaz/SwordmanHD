@@ -8,7 +8,9 @@ extends UiLayer
 ##   鼠标: 点章节换章; 滚轮在章节栏上滚章节栏、在正文上滚正文。触屏: 在正文或章节栏上拖动 = 滚动 (InputRouter 的竖排列表
 ##   拖动机制: 正文按 line_step 切成一条条命中区, 拖过一条发一步 ↑/↓), 点章节换章。手柄同键位语义 (十字键/摇杆、确认、取消、LB/RB)。
 ## (「整理行囊」原来是这里的左上角按钮, 2026-10-25 搬进了设定面板, 见 SettingsPanel._sort_bag。)
-## 打开时默认当前关卡的章 (GuideBook.current_stage: 战场 = 本关, 城镇/营地 = 下一关; 该关没有章取前面最近的一章)。
+## 打开时的章: 战场里 = 本关的章 (GuideBook.index_for_stage; 该关没有章取前面最近的一章); 其余画面 (营地 / 客栈 / 城镇 / 标题):
+##   start_id 指定的 > 本次运行里上次看的章 (关了再开停在原处, 营地加点要来回翻) > 第一次打开: 目录第一章 (非关卡章, 本仓库是「完美结局」);
+##   目录第一章是关卡章的内容包按下一关 (state.next_stage)。start_id 在战场里也优先。「上次看的章」只记非战场里看的 (战场里看的本关章不算)。
 ## 内容包没有攻略 (mod / 新游戏): 面板只显示「没有攻略」(设定面板也不列「攻略」行)。
 
 signal closed
@@ -19,7 +21,9 @@ var gc: GameContext = GameContext.current()  # 运行上下文 (引擎不直接�
 var router: Object = null    # 统一输入层: 打开方注入 (组装层 / 设定面板传 InputRouter, 测试传独立实例)
 var book := GuideBook.new()
 var chapter := 0             # 当前章
-var start_id := ""           # 打开时直接翻到的章 id (如营地「五魂化蘊」翻到 spirit_<单位号>); 空/找不到 = 当前关卡的章
+var start_id := ""           # 打开时直接翻到的章 id (如营地「五魂化蘊」翻到 spirit_<单位号>); 空/找不到 = 按打开时的章规则 (见文件头)
+
+static var last_id := ""     # 本次运行里上次在非战场画面看的章 id (只在内存里, 程序关掉就忘; 面板关了再开用它)
 var list_top := 0            # 章节栏第一个可见行
 var scroll := 0.0            # 正文已上卷的高度 (原版像素)
 
@@ -71,11 +75,13 @@ static func is_open() -> bool:
 func open() -> void:
 	_current = self
 	book = GuideBook.load_from(gc.content)
-	chapter = book.index_for_stage(GuideBook.current_stage(gc))
-	if start_id != "":
-		for i in book.chapters.size():
-			if book.chapters[i]["id"] == start_id:
-				chapter = i
+	var stage := GuideBook.current_stage(gc)
+	chapter = book.index_for_stage(stage) if gc.in_battle else book.first_open_index(stage)
+	for id in [start_id, "" if gc.in_battle else last_id]:
+		var i := book.index_of(id) if id != "" else -1
+		if i >= 0:
+			chapter = i
+			break
 	_build()
 	_show_chapter()
 	if router != null:
@@ -177,6 +183,8 @@ func _show_chapter() -> void:
 		_text.text = GuideText.inline(UiStrings.t("guide.empty"))
 	else:
 		var c: Dictionary = book.chapters[chapter]
+		if not gc.in_battle:
+			last_id = String(c["id"])
 		_title.text = String(c["title"])
 		_text.text = GuideText.to_bbcode(String(c["body"]), UiLayout.color(UiLayout.val("guide.body", "head_color"), Color8(255, 224, 116)),
 			int(round(UiLayout.num("guide.body", "para_gap", 4) * _s)))
