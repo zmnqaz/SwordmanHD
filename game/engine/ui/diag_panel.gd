@@ -64,7 +64,7 @@ static func lines(info: Dictionary = {}, frame_ms: Array = []) -> Array:
 		var parts2: Array = []
 		for e in sl:
 			parts2.append("%s %.0f ms" % [String(e["rel"]).get_file() if String(e["rel"]).count("/") < 2 else String(e["rel"]).trim_prefix("Sprite/"), float(e["ms"])])
-		out.append("SlowLoad  最慢的几次贴图载入: " + "   |   ".join(parts2))
+		out.append("SlowLoad  slowest texture loads: " + "   |   ".join(parts2))
 	var fps := "FPS       %d" % Engine.get_frames_per_second()
 	if not frame_ms.is_empty():
 		var sorted := frame_ms.duplicate()
@@ -76,7 +76,7 @@ static func lines(info: Dictionary = {}, frame_ms: Array = []) -> Array:
 	out.append(fps)
 	var fr := FrameStats.report()
 	if int(fr["frames"]) > 0:
-		out.append("Gameplay  %s %d frames: avg %.1f ms   p95 %.1f ms   worst %.1f ms   >25 ms: %d (其中载入贴图的帧 %d)   >50 ms: %d" % ["(before this menu)" if fr["frozen"] else "(live)", fr["frames"], fr["avg"], fr["p95"], fr["worst"], fr["slow"], fr["slow_loading"], fr["very_slow"]])
+		out.append("Gameplay  %s %d frames: avg %.1f ms   p95 %.1f ms   worst %.1f ms   >25 ms: %d (%d on texture-load frames)   >50 ms: %d" % ["(before this menu)" if fr["frozen"] else "(live)", fr["frames"], fr["avg"], fr["p95"], fr["worst"], fr["slow"], fr["slow_loading"], fr["very_slow"]])
 	return out
 
 

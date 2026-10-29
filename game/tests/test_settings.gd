@@ -206,6 +206,7 @@ func test_action_row_has_no_value():
 func test_panel_list_scrolls_with_selection():
 	var p := SettingsPanel.new()
 	var vis: int = p._vis
+	p._n = vis + 6   # 主菜单现在比一屏短 (声音 / 图像显示 / 控制器设置收进了二级菜单), 滚动机制用人为加长的条目数来测
 	var total: int = p.total()
 	check(total > vis, "条目比版面行数多")
 	p._sel = 0
