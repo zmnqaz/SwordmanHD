@@ -25,7 +25,8 @@ var _buttons: Array[UiText] = []
 var _desc: UiText
 var _sel := 0            # 选中的条目 (0.._n-1 设定项, _n / _n+1 两个按钮)
 var _top := 0            # 列表第一个可见条目
-var _n := SettingsSchema.shown_rows().size()  # 设定项数; 之后是「还原预设」「完成」两个按钮行
+var _group := ""              # 二级菜单: 只列 SettingsSchema 里 group 相同的行 ("" = 主菜单; 「控制器」= controls); 标题 settings.<组>.title, 「还原预设」只复位本组
+var _n := SettingsSchema.shown_rows().size()  # 设定项数; 之后是「还原预设」「完成」两个按钮行 (二级菜单在 open 里按本组重算)
 var _vis := visible_rows()
 var _sort_msg := ""          # 「整理行囊」的结果提示, 临时换掉这一行的值文字约 2 秒
 var _sort_flash := 0         # 提示的代号 (旧提示的复位计时不能盖掉新提示)
@@ -66,14 +67,24 @@ func _ready() -> void:
 	ScreenLayout.bind_layer(self, UiLayout.anchor("settings.panel", ScreenLayout.SAFE))
 
 
+## 本面板列的行 (主菜单或某个二级菜单)
+func _srows() -> Array:
+	return SettingsSchema.shown_rows(_group)
+
+
 ## 打开并等到关闭 (改动当场生效并存盘, 没有「保存/放弃」: 确认、取消、点面板外都只是关闭)
 func open() -> bool:
+	if _group == "":
+		FrameStats.freeze()   # 冻结打开菜单之前玩的那段帧耗时, 画质诊断页读它 (不混进菜单自己的帧)
+	_n = _srows().size()
 	_body = Body.new()
-	_build("settings.title", "")
+	_build("settings.title" if _group == "" else "settings.%s.title" % _group, "")
 	_update()
 	router.push(self, true)  # 模态浮层: 之后下层 (对白、选择框) 再入栈也抢不走输入
 	await closed
 	router.pop(self)
+	if _group == "":
+		FrameStats.unfreeze()
 	queue_free()
 	return true
 
@@ -127,7 +138,7 @@ func _update() -> void:
 			_buttons[s].text = UiStrings.t("settings.button.reset" if e == _n else "settings.button.done")
 			_buttons[s].color = c
 		elif is_row:
-			var r: Dictionary = SettingsSchema.shown_rows()[e]
+			var r: Dictionary = _srows()[e]
 			_rows[s].text = SettingsSchema.label_of(r)
 			_rows[s].color = c
 			_values[s].color = c
@@ -137,18 +148,31 @@ func _update() -> void:
 				"live": _values[s].text = SettingsSchema.text_of(r["key"], SettingsSchema.live_value(r["key"]))
 				_: _values[s].text = SettingsSchema.text_of(r["key"], gc.settings[r["key"]])
 	if _sel < _n:
-		var rs: Dictionary = SettingsSchema.shown_rows()[_sel]
+		var rs: Dictionary = _srows()[_sel]
 		_desc.text = SettingsSchema.row_desc(rs) if (rs["kind"] == "action" or rs["kind"] == "live") else SettingsSchema.desc_of(rs["key"], gc.settings[rs["key"]])
+		if rs["key"] == "hq":
+			_desc.text += _hq_note(int(gc.settings["hq"]))
 	else:
 		_desc.text = UiStrings.t("settings.desc.reset" if _sel == _n else "settings.desc.done")
 	_body.queue_redraw()
 
 
+## 「贴图精度」要重启才生效: 选的倍数 (自动取当前自动值) 与正在跑的倍数不同时, 说明后面补一句当前实际倍数 (数据取自 GameContext.diag_info, 没有就不提示)
+func _hq_note(want: int) -> String:
+	if not gc.diag_info.is_valid():
+		return ""
+	var info: Dictionary = gc.diag_info.call()
+	var run := int(info.get("hq_scale", 0))
+	if want == 0:
+		want = int(info.get("auto_scale", run))
+	return "" if run == 0 or run == want else " " + UiStrings.t("settings.hq.running", [run])
+
+
 func _change(d: int) -> void:
-	if _sel >= _n or SettingsSchema.shown_rows()[_sel]["kind"] == "action":
+	if _sel >= _n or _srows()[_sel]["kind"] == "action":
 		return
-	var k: String = SettingsSchema.shown_rows()[_sel]["key"]
-	if SettingsSchema.shown_rows()[_sel]["kind"] == "live":   # 回放速度: 直接改运行中的回放, 不进设定文件
+	var k: String = _srows()[_sel]["key"]
+	if _srows()[_sel]["kind"] == "live":   # 回放速度: 直接改运行中的回放, 不进设定文件
 		SettingsSchema.set_live(k, SettingsSchema.step(k, SettingsSchema.live_value(k), d))
 		if not _rows.is_empty():
 			_update()
@@ -178,7 +202,7 @@ func ui_hits() -> Array:
 		if e >= _n:
 			out.append(UiHit.area(Rect2(x0, y, UiLayout.size_of("settings.button").x, rr.size.y), e, _origin))
 			continue
-		if SettingsSchema.shown_rows()[e]["kind"] == "action":   # 动作行: 整行点按 = 确认 (打开子界面)
+		if _srows()[e]["kind"] == "action":   # 动作行: 整行点按 = 确认 (打开子界面)
 			out.append(UiHit.area(Rect2(x0, y, vr.position.x + vr.size.x + arw - x0, rr.size.y), e, _origin))
 			continue
 		out.append(UiHit.area(Rect2(x0, y, vr.position.x - gap - x0, rr.size.y), e, _origin, UiAction.NONE))
@@ -206,9 +230,12 @@ func ui_action(a: UiAction) -> bool:
 		UiAction.RIGHT, UiAction.PAGE_DOWN: _change(1)
 		UiAction.CONFIRM, UiAction.SELECT:
 			if _sel == _n:
-				SettingsSchema.reset_all(gc)
-			elif _sel < _n and SettingsSchema.shown_rows()[_sel]["kind"] == "action":
-				_activate(String(SettingsSchema.shown_rows()[_sel]["key"]))
+				if _group == "":
+					SettingsSchema.reset_all(gc)
+				else:
+					SettingsSchema.reset_group(gc, _group)
+			elif _sel < _n and _srows()[_sel]["kind"] == "action":
+				_activate(String(_srows()[_sel]["key"]))
 			else:
 				closed.emit(true)
 		UiAction.CANCEL: closed.emit(true)
@@ -237,7 +264,7 @@ func _sort_bag() -> void:
 
 
 ## 动作行被确认: bag_sort = 整理行囊 (就地执行, 不开子面板); key_edit = 键盘按键设置 (engine/ui/key_map_panel.gd, 同手柄那个); pad_edit = 手柄按键设置 (模态子面板, 压在本面板之上; 每次绑定自己存盘, 取消时它自己还原覆盖项);
-## guide = 攻略面板 (engine/ui/guide_panel.gd, 关掉后回到设定面板);
+## SettingsSchema.GROUPS (声音 / 显示 / 控制器) = 二级菜单 (本类的另一个实例, 只列同组的行); guide = 攻略面板 (engine/ui/guide_panel.gd, 关掉后回到设定面板); diag = 画质诊断页 (engine/ui/diag_panel.gd, 点任意处返回);
 ## replay = 录像列表 (engine/ui/replay_panel.gd): 选定后关掉本面板, 下一帧经 SceneFlow.start_replay 切到回放;
 ## replay_stop = 结束回放 (关掉本面板, 经 SceneFlow.stop_replay 回标题)
 func _activate(key: String) -> void:
@@ -249,6 +276,11 @@ func _activate(key: String) -> void:
 		closed.emit(true)
 		return
 	var sub: Node
+	if SettingsSchema.GROUPS.has(key):   # 二级菜单: 同一个面板类, 只列该组的行 (声音 = 音乐 / 音效; 图像显示 = 窗口模式 / 分辨率 / 贴图精度 / 画质诊断; 控制器设置 = 键盘 / 手柄)
+		var cp := SettingsPanel.new()
+		cp._group = key
+		cp.router = router
+		sub = cp
 	match key:
 		"pad_edit":
 			sub = PadMapPanel.new()
@@ -260,8 +292,12 @@ func _activate(key: String) -> void:
 		"replay":
 			sub = ReplayPanel.new()
 			sub.router = router
+		"diag":
+			sub = DiagPanel.new()
+			sub.router = router
 		_:
-			return
+			if sub == null:
+				return
 	sub.gc = gc
 	get_parent().add_child(sub)   # 兄弟节点而不是子节点: 下面把本面板藏起来时不能连子面板一起藏
 	visible = false   # 子面板整屏盖在上面: 本面板先藏起来, 否则两层半透明底会让下层文字透上来

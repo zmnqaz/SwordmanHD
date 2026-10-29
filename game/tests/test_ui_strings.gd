@@ -13,7 +13,9 @@ func _before() -> Dictionary:
 ## 各键经真实取用路径 (SettingsSchema / CampMenu / 标题场景) 取到的文案
 func _resolved() -> Dictionary:
 	var out := {}
-	for r in SettingsSchema.shown_rows():
+	for r in SettingsSchema.all_shown_rows():   # 主菜单 + 全部二级菜单
+		if r.get("needs", "") == "face_hk":
+			continue   # 头像风格行只有装了港漫 mod 才列 (基线按没装 mod 录的)
 		var k: String = r["key"]
 		out["settings.%s.label" % k] = SettingsSchema.label_of(r)
 		out["settings.%s.desc" % k] = SettingsSchema.row_desc(r)

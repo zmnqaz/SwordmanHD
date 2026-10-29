@@ -199,6 +199,7 @@ func _parse_value(a: String) -> void:
 		"--set-turn=": inject.append(["set_turn", v])
 		"--place=": inject.append(["place", v])
 		"--equip=": inject.append(["equip", v])
+		"--teach=": inject.append(["teach", v])
 		"--hp-cur=": inject.append(["hp_cur", v])
 		"--kill=": inject.append(["kill", v])
 		"--hp=":

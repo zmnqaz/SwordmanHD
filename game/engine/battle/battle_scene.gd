@@ -26,6 +26,7 @@ var cam := Vector2.ZERO
 var _cam_target := Vector2.ZERO
 var _cam_speed := Vector2.ZERO
 var _cam_moving := false
+var _cam_ease := false         # true: 光标跟随的缓动 (按距离追赶, 见 ease_step); false: 剧情 / 演出的匀速平移 (原版实测速度, 不能改)
 var objs0 := {}                # L0 下标 -> 节点
 var objs1 := {}                # L1 下标 -> AnimPlayer
 var layer_size := {}           # 图层 id -> 地图尺寸
@@ -121,14 +122,34 @@ func _start() -> void:
 	await ctl.run()
 
 
+## 光标跟随的镜头缓动: 每帧追上剩余距离的一部分 (指数追赶, 与帧率无关), 离目标越远走得越快, 快到时自然减速并贴住目标 (小于 EASE_SNAP 像素直接到位)。
+## 以前是固定每秒 300 像素的匀速: 鼠标 / 光标扫得比它快镜头就落在后面 (用户 2026-10-30 「鼠标跟不太住」), 到点还是突然停
+const EASE_RATE := 18.0   # 1/秒: 约 0.055 秒追上 63% 的距离, 0.17 秒追上 95%
+const EASE_SNAP := 0.35
+
+static func ease_step(cur: Vector2, target: Vector2, delta: float) -> Vector2:
+	var next := cur + (target - cur) * (1.0 - exp(-EASE_RATE * delta))
+	return target if (target - next).length() < EASE_SNAP else next
+
+
+## 镜头位置取整到「画面像素」(1/SCALE 原版像素, 即 1280x800 视口的 1 像素), 不再取整到整个原版像素: 一个原版像素在 1920 窗口里是 6 个屏幕像素 (1280 里是 4 个),
+## 镜头平移时每帧的位移取整成 1 原版像素的倍数, 步长忽大忽小, 窗口越大越看得出来「不流畅」(用户 2026-10-29: 1280 不卡, 1920 战斗走路镜头往下跟着动有点顿)。
+## 取到画面像素仍与格子 / 贴图对齐 (它们的坐标都是原版像素的整数倍, 即画面像素的整数倍)
+static func _snap_px(v: Vector2) -> Vector2:
+	return (v * Assets.SCALE).round() / float(Assets.SCALE)
+
+
 func _process(delta: float) -> void:
 	if _cam_moving:
-		cam.x = move_toward(cam.x, _cam_target.x, _cam_speed.x * delta)
-		cam.y = move_toward(cam.y, _cam_target.y, _cam_speed.y * delta)
+		if _cam_ease:
+			cam = ease_step(cam, _cam_target, delta)
+		else:
+			cam.x = move_toward(cam.x, _cam_target.x, _cam_speed.x * delta)
+			cam.y = move_toward(cam.y, _cam_target.y, _cam_speed.y * delta)
 		if cam.is_equal_approx(_cam_target):
 			_cam_moving = false
 			camera_arrived.emit()
-	world.position = -(cam + Vector2(0, layer_y)).round()
+	world.position = -_snap_px(cam + Vector2(0, layer_y))
 	if shake != Vector2.ZERO:
 		world.position += Vector2(randf_range(-shake.x, shake.x), randf_range(-shake.y, shake.y)).round()
 	units_node.position.y = layer_y
@@ -495,6 +516,7 @@ func move_camera_to_cell(x: int, y: int) -> void:
 
 ## 打断正在进行的平移: 仍要发 camera_arrived, 否则在等平移结束的剧情 (0x08)、跟随 (follow_cell) 永远等不到而卡死
 func _stop_cam() -> void:
+	_cam_ease = false
 	if _cam_moving:
 		_cam_moving = false
 		camera_arrived.emit()
@@ -509,6 +531,7 @@ static func _valid_cam_speed(v: Vector2) -> Vector2:
 func pan_camera_to_cell(x: int, y: int, sx: int, sy: int) -> void:
 	_cam_target = _script_cam(_orig_to_view(_cell_px(x, y) - cam_offset()))
 	_cam_speed = _valid_cam_speed(UiLayout.vec_of("map.camera_offset", "pan_speed", {"sx": sx, "sy": sy}))
+	_cam_ease = false
 	if cam.is_equal_approx(_cam_target):
 		return
 	_cam_moving = true
@@ -519,6 +542,7 @@ func pan_camera_to_cell(x: int, y: int, sx: int, sy: int) -> void:
 func pan_camera_to(p: Vector2, speed: Vector2) -> void:
 	_cam_target = _clamp_cam(_orig_to_view(p))
 	_cam_speed = _valid_cam_speed(speed)
+	_cam_ease = false
 	if cam.is_equal_approx(_cam_target):
 		_stop_cam()  # 已在目标: 若还有平移在等 camera_arrived, 要把它放行 (不能只清标志)
 		return
@@ -532,16 +556,36 @@ func scroll_camera(d: Vector2) -> void:
 	cam = _clamp_cam(cam + d)
 
 
-## 让镜头跟随某个格子 (说话、移动时), 格子不在可视范围内才移动
-func follow_cell(x: int, y: int) -> void:
+## 指针悬停时的最小镜头位移: 格子 (左上角 p) 超出可见区 [rpos, rend) 才推, 每轴推整数个格 (至少 1 格) 让它回到可见区内, 在可见区内的轴不动。
+## 鼠标指着的格子本来就在屏幕上, 不需要像键盘光标那样重新居中; 鼠标停在边缘时每推一格, 鼠标下面又是新的一格, 于是一格接一格平滑滚动 (边缘滚动)
+static func minimal_follow_shift(p: Vector2, rpos: Vector2, rend: Vector2, cell: Vector2) -> Vector2:
+	var out := Vector2.ZERO
+	for ax in 2:
+		if p[ax] < rpos[ax]:
+			out[ax] = -ceilf((rpos[ax] - p[ax]) / cell[ax]) * cell[ax]
+		elif p[ax] >= rend[ax]:
+			out[ax] = (floorf((p[ax] - rend[ax]) / cell[ax]) + 1.0) * cell[ax]
+	return out
+
+
+## 让镜头跟随某个格子 (说话、移动时), 格子不在可视范围内才移动。
+## minimal: 指针悬停 / 点按选格 (格子一定在鼠标下面 = 在屏幕上), 以及键盘 / 手柄一格一格移光标: 只推一小步让它回到可见区 (缓动追赶, ease_step) (见 minimal_follow_shift), 不重新居中 (旧行为: 鼠标一碰边缘镜头一次冲半个屏幕, 期间鼠标下的格子不断变, 用户 2026-10-30 「移动光标地图移动不流畅」)
+func follow_cell(x: int, y: int, minimal := false) -> void:
 	var p := _cell_px(x, y)
 	var v := view()
 	var cell := _cell_px(1, 1)
 	var m := UiLayout.num("map.camera_offset", "follow_margin")
-	var rect := Rect2(cam + cell * m, v - cell * m - cell * m - cell)  # 可见区四边各缩 m 格, 再扣一格 (格左上角判定)
+	# 正在缓动的小步跟随: 以它的目标位置为准判断 (镜头还没到, 但马上就到), 否则连推几格会越推越远
+	var base := _cam_target if (minimal and _cam_moving and _cam_ease) else cam
+	var rect := Rect2(base + cell * m, v - cell * m - cell * m - cell)  # 可见区四边各缩 m 格, 再扣一格 (格左上角判定)
 	if rect.has_point(p):
 		return
-	_cam_target = _clamp_cam(p - v / 2 + cell / 2)
+	if minimal:
+		_cam_target = _clamp_cam(base + minimal_follow_shift(p, rect.position, rect.end, cell))
+		_cam_ease = true
+	else:
+		_cam_target = _clamp_cam(p - v / 2 + cell / 2)
+		_cam_ease = false
 	_cam_speed = UiLayout.vec("map.camera_offset", "follow_speed")
 	_cam_moving = true
 	await camera_arrived

@@ -20,6 +20,8 @@ const EXPLICIT_ONLY := ["etc2"]            # 只在命令行显式指定时才�
 
 ## 缓存目录 (user:// 下); 测试里可改
 static var cache_dir := "user://hq_cache"
+## 退出时置位: 后台的缓存扫描 / 清理马上停手 (扫一遍几万个文件在 Windows 上可能要好几秒, 退出要等线程池任务结束, 不能让它拖住关窗口)。主线程写、工作线程读, 一个布尔不需要锁
+static var cancel := false
 
 
 ## 格式名 -> [Image.CompressMode, ASTC 档位]
@@ -124,6 +126,8 @@ static func cache_scan() -> Dictionary:
 	var total := 0
 	var stack: Array = [cache_dir]
 	while not stack.is_empty():
+		if cancel:
+			return {"total": 0, "files": []}
 		var d: String = stack.pop_back()
 		var da := DirAccess.open(d)
 		if da == null:
@@ -136,6 +140,8 @@ static func cache_scan() -> Dictionary:
 				continue
 			if not fn.ends_with(".tcb"):
 				continue
+			if cancel:
+				return {"total": 0, "files": []}
 			var p := d + "/" + fn
 			var fa := FileAccess.open(p, FileAccess.READ)
 			var sz := fa.get_length() if fa != null else 0
@@ -157,7 +163,7 @@ static func cache_trim(cap_bytes: int) -> int:
 	var n := 0
 	var target := int(cap_bytes * 0.9)
 	for e in s["files"]:
-		if total <= target:
+		if total <= target or cancel:
 			break
 		if DirAccess.remove_absolute(e["path"]) == OK:
 			total -= int(e["size"])

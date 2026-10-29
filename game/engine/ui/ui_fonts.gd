@@ -4,7 +4,7 @@ extends RefCounted
 ## 字库字体清单 (内容包 ui_theme/fonts.json, 格式): 设定里「字体」项的选项来自这里,
 ## 新增字体只需加一条数据 + 一个字体文件 (生成工具的脚本 裁子集并量基线)。
 ## 条目: id、name (设定里显示)、desc (一句话)、file (res:// 字体文件)、baseline_in_cell (12 号字格内基线, 原版像素)、
-##   embolden (粗体变体的加粗量)、license / license_file (见 docs/字体许可.md)。
+##   embolden (粗体变体的加粗量)、license / license_file (见 docs/字体许可.md)、full (可选, true = 完整字库: 其余裁过的子集字体缺字时回退到它, 见 complete_id)。
 ## 叠加: 按包加载顺序 (基础包在前) 合并, 同 id 后者覆盖, 新 id 追加在后; default 取最后一个写了的包。
 ## 缺失/损坏的清单退回内置思源黑体一项, 所以任何情况下都至少有一个可用字体。
 
@@ -72,6 +72,17 @@ static func all() -> Array:
 static func default_id() -> String:
 	_ensure()
 	return _default
+
+
+## 缺字兜底字体: 清单里标了 "full": true 的第一个; 都没标就取内置思源黑体 (FALLBACK), 清单里也没有它才取缺省。
+## 裁过的子集字体 (文楷 / 宋体, 含缺省) 缺的字 (繁体字、后加的界面用字) 都回退到它 —— 不能是「缺省字体」: 缺省字体可以本身就是子集 (现在是文楷), 它没有兜底就会丢字
+static func complete_id() -> String:
+	_ensure()
+	for e in _list:
+		if bool(e.get("full", false)):
+			return String(e["id"])
+	var b := String(FALLBACK["id"])
+	return b if not find(b).is_empty() else _default
 
 
 static func find(id: String) -> Dictionary:

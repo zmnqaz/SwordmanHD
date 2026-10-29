@@ -4,6 +4,7 @@
   "fonts": [
     {
       "id": "sans",
+      "full": true,
       "name": "思源黑体",
       "desc": "清晰的黑体, 小字号最稳, 默认。",
       "file": "res://assets/font/NotoSansSC-Medium.otf",

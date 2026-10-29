@@ -102,3 +102,24 @@ func _remove_tree(dir: String) -> void:
 	for sub in da.get_directories():
 		_remove_tree(dir + "/" + sub)
 	DirAccess.remove_absolute(dir)
+
+
+## 退出时 TexCodec.cancel 置位: 后台缓存扫描 / 清理立即停手 (扫几万个文件在 Windows 上要好几秒, 不能拖住关窗口); 没置位时照常
+func test_cancel_stops_scan_and_trim() -> void:
+	var old := TexCodec.cache_dir
+	TexCodec.cache_dir = "user://hq_cache_test_%d" % Time.get_ticks_usec()
+	var img := _sprite(32, 32)
+	TexCodec.compress(img, "bptc")
+	for i in 5:
+		TexCodec.cache_write(TexCodec.cache_path("%02x" % (i * 3) + "0".repeat(30), "sig", "bptc"), img)
+	var n := (TexCodec.cache_scan()["files"] as Array).size()
+	check(n >= 5, "没取消: 扫到 %d 个文件" % n)
+	TexCodec.cancel = true
+	eq(TexCodec.cache_scan(), {"total": 0, "files": []}, "取消后扫描立即返回空")
+	eq(TexCodec.cache_trim(1), 0, "取消后清理不删任何文件")
+	TexCodec.cancel = false
+	eq((TexCodec.cache_scan()["files"] as Array).size(), n, "取消只是停手, 没删文件")
+	for e in TexCodec.cache_scan()["files"]:
+		DirAccess.remove_absolute(e["path"])
+	_remove_tree(TexCodec.cache_dir)
+	TexCodec.cache_dir = old

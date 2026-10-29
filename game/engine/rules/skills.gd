@@ -25,6 +25,11 @@ static func is_physical(skill: Dictionary) -> bool:
 	return int(skill.get("move_attack_type", 0)) != 0
 
 
+## 绝技先放施放者单人近景、再转地图放 SM 全屏特效 (battle_type 2, 如电射星驰; 原版施放分派 ③)
+static func has_solo_closeup(skill: Dictionary) -> bool:
+	return is_physical(skill) and int(skill.get("battle_type", -1)) == 2
+
+
 static func is_self_destruct(skill: Dictionary) -> bool:
 	return is_physical(skill) and int(skill.get("other_type", -1)) == 2 and int(skill.get("other_effect", -1)) == 9
 

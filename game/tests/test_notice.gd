@@ -39,3 +39,38 @@ func test_keyboard_agree_and_decline():
 	check(not FileAccess.file_exists("user://notice.json"), "同意后不落盘")
 	t.queue_free()
 	await _tree().process_frame
+
+
+## 鼠标: 输入层把左键吃掉转成带坐标的确认, 页面靠 ui_hits 命中区认按钮。回归: 点哪都等于「同意」、点「不同意」也进游戏 (2026-10-29)
+func _click_center(b: Button) -> Vector2:
+	return b.get_global_transform_with_canvas() * (b.size * 0.5)
+
+
+func test_mouse_click_hits_buttons_only():
+	var got := []
+	var s := NoticeScene.create(func(): got.append("agree"), func(): got.append("decline"))
+	_tree().root.add_child(s)
+	await _tree().process_frame
+	await _tree().process_frame
+	var agree: Button = s._buttons[0]
+	var decline: Button = s._buttons[1]
+	check(agree.size.x > 0 and decline.size.x > 0, "按钮已布局")
+	InputRouter.dispatch(UiAction.new(UiAction.CONFIRM, "mouse", Vector2(1, 1)))
+	eq(got, [], "点空处 (窗口角落) 不算同意")
+	InputRouter.dispatch(UiAction.new(UiAction.CONFIRM, "mouse", _click_center(decline)))
+	eq(got, [], "没悬停过的第一下点按被防误触挡掉, 更不是同意")
+	InputRouter.dispatch(UiAction.new(UiAction.POINT, "mouse", _click_center(decline)))
+	eq(s._sel, 1, "悬停「不同意」= 选中它")
+	InputRouter.dispatch(UiAction.new(UiAction.CONFIRM, "mouse", _click_center(decline)))
+	eq(got, ["decline"], "点「不同意」= 不同意 (不是同意)")
+	s.queue_free()
+	await _tree().process_frame
+	var t := NoticeScene.create(func(): got.append("agree"), func(): got.append("decline"))
+	_tree().root.add_child(t)
+	await _tree().process_frame
+	await _tree().process_frame
+	InputRouter.dispatch(UiAction.new(UiAction.POINT, "mouse", _click_center(t._buttons[0])))
+	InputRouter.dispatch(UiAction.new(UiAction.CONFIRM, "mouse", _click_center(t._buttons[0])))
+	eq(got, ["decline", "agree"], "点「同意」= 同意")
+	t.queue_free()
+	await _tree().process_frame

@@ -25,6 +25,7 @@ var settings_saved := SettingsSchema.defaults()     # 持久层: 写进 user://s
 var settings_override := {}                         # 本次运行覆盖层 (命令行 --lang= 等、monkey), 不落盘
 var volume_before_mute := {}                        # 战场「声音」开关关掉前的音量 {键: 值}, 再打开时恢复 (本次运行)
 var flow := SceneFlow.new()
+var diag_info := Callable()   # 画质诊断页要的贴图 / 生成器信息 (组装层设成 Assets.diag_report; 引擎层不直接引用 Assets), 返回 Dictionary, 没设则诊断页只显示平台信息
 var debug: DebugArgs = DebugArgs.current()   # 命令行调试/测试参数 (启动时解析一次; 引擎只读字段, 不再自己读命令行)
 var content := ContentInfo.new()   # core 层向内容包问话的窄接口 (存档签名/主角判定), 见 content_info.gd
 var fast := false          # 测试: 跳过视频, 对白快速翻页

@@ -58,3 +58,16 @@ func test_merge_dirs():
 	var m := UiFonts.merge_dirs(["res://content/tdj", "res://content/remake", "res://content/example_mod"])
 	check(m["list"].size() >= 3, "叠加不丢字体")
 	eq(UiFonts.merge_dirs([])["list"].size(), 0, "没有包 = 空清单 (_ensure 再退回内置)")
+
+
+## 回归 (2026-10-29): 缺省字体是文楷子集, 以前「只有非缺省字体才回退」, 文楷自己没兜底, 繁体「畫質診斷」的「診」字 (子集里没有) 直接丢了
+func test_subset_fonts_fall_back_to_the_complete_font():
+	eq(UiFonts.complete_id(), "sans", "完整字库 = 思源黑体 (清单 full 标记)")
+	var ch := "診".unicode_at(0)
+	var full: FontFile = Assets._face("sans")
+	check(full.has_char(ch), "思源黑体有「診」")
+	for id in ["kai", "serif"]:
+		var f: FontFile = Assets._face(id)
+		check(f.fallbacks.size() == 1 and f.fallbacks[0] == full, "%s (裁过的子集) 缺字回退到思源黑体" % id)
+	check(full.fallbacks.is_empty(), "完整字库自己不回退")
+	eq(UiFonts.merge_dirs(["res://content/tdj", "res://content/remake"])["list"].filter(func(e): return e.get("full", false)).size(), 1, "清单里恰好一个完整字库")

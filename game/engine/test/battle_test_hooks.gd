@@ -13,6 +13,7 @@ extends RefCounted
 ##   --set-turn=15           当前回合数
 ##   --place=0:12:22,1:5:5   单位下标:x:y
 ##   --equip=0:14            单位下标:物品 (按物品类别装到武器/护具/饰物栏)
+##   --teach=0:42|43;1:60@7  单位下标:技能号|技能号...[@顶替精灵号] (技能栏 10 格, 术力 999 / 体力 9999 / 移动力 99, 都拉满)
 ##   --hp-cur=29:1           单位下标:当前体力 (只改当前; 测试回合改上限+当前的是 --hp-unit=, 见 player_phase)
 ##   --kill=7,8              单位下标 (当作已阵亡、不再在场)
 ##   --run-event=5,3,3,2     按序执行事件 (等价于触发源依次触发); 另有 tN/kN/hN/j/TN/n 令牌走正常触发源 (见下); 执行完若战斗没有结束, 记 events_done 检查点
@@ -38,6 +39,23 @@ static func inject(bs) -> bool:
 					var u: BattleUnit = bs.unit(int(p[0]))
 					if u:
 						u.equip_item(int(p[1]))
+			"teach":   # --teach=单位下标:技能号|技能号|...;单位下标:...  开场把这些技能写进该单位的技能栏 (最多 10 格), 术力补满到 999 (技能演出对照 / 存「战阵重现」档用)
+				for kv in arg.split(";"):
+					var p := kv.split(":")
+					var u: BattleUnit = bs.unit(int(p[0]))
+					if u:
+						var ids := String(p[1]).split("@")   # 技能号|技能号@精灵号
+						if ids.size() > 1:
+							u.override_sprite(int(ids[1]))
+						u.st.skills = Array(ids[0].split("|")).slice(0, 10).map(func(x): return int(x))
+						u.mp_max = maxi(u.mp_max, 999)
+						u.mp = u.mp_max
+						u.st.hp_max = maxi(u.st.hp_max, 9999)
+						u.st.hp = u.st.hp_max
+						u.st.move_base = maxi(u.st.move_base, 99)   # 回合开始按它重置移动力
+						u.st.move_cap = maxi(u.st.move_cap, 99)   # 绝技耗移动点 (移动力不够技能列表里变灰, 放不出来)
+						u.st.move_left = u.st.move_cap
+						u.st.moved = false
 			"hp_cur":
 				for kv in arg.split(","):
 					var p := kv.split(":")
@@ -121,7 +139,7 @@ static func inject(bs) -> bool:
 
 
 
-## 测试开关: --cast=技能编号[@x;y],... (第 1 回合我方第一个单位依次对第一个有效落点 / 指定格施放); --idle-player (我方全员原地待機, 对照 AI 走位);
+## 测试开关: --cast=技能编号[@x;y[@sN]],... (第 1 回合我方第一个单位依次对第一个有效落点 / 指定格施放); --idle-player (我方全员原地待機, 对照 AI 走位);
 ## --warp=unit_id:x,y (第 1 回合把该主角放到格 (x,y), 截宝箱等画面用)
 static func player_phase(flow, mine: Array) -> bool:
 	for arg in flow.gc.debug.probe_battle_save:  # --probe-battle-save=<回合>:save|check  存读档一致性探针: save 在该回合我方阶段开始时存战阵并记检查点, check (--load-battle 读入后) 记同样的检查点, 两份回归记录对比 (仓库外的开发脚本)
@@ -185,8 +203,12 @@ static func player_phase(flow, mine: Array) -> bool:
 				if at.size() > 1:
 					cells = [Vector2i(int(at[1].split(";")[0]), int(at[1].split(";")[1]))]
 				print("测试施放 %s (%s) 落点 %s 帧%d" % [sk["name"], x, cells.slice(0, 3), RegressLog.log_frame])
+				var keep_sprite = u.info["sprite"]
+				if at.size() > 2 and at[2].begins_with("s"):   # 技能号@x;y@s7: 施放者借用精灵 7 的演出文件 (韩千秀 / 旋刃卷岚这类本关没有施放者的对照用)
+					u.info["sprite"] = int(at[2].substr(1))
 				if not cells.is_empty() and u.alive:
 					await flow.actions.cast(u, sk, cells[0])
+				u.info["sprite"] = keep_sprite
 				for o in flow.rules.units_alive():
 					if o.st.status != 0 or o.summoned:
 						print("  %s hp %d/%d mp %d/%d 状态 0x%x%s" % [o.name_text, o.hp, o.hp_max, o.mp, o.mp_max, o.st.status, " 召唤" if o.summoned else ""])

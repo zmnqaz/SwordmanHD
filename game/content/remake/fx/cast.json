@@ -38,6 +38,7 @@
    "1": {
     "anim": "Sprite/man{spr3}/{spr3}{bspr}s",
     "hide_caster": false,
+    "hide_caster_on_self": true,
     "source": ": 地图上演出的绝技播施法者的 NNN[-n]S.SAF (近景同款全屏帧), 由 在落点处按法术约定画"
    },
    "2": {

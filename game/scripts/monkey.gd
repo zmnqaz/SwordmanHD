@@ -239,7 +239,7 @@ func _window() -> void:
 
 ## 随机改一个设定项并应用 (走覆盖层 SettingsSchema.set_override: 校验并即时生效, 不写盘)
 func _setting() -> void:
-	var rows: Array = SettingsSchema.shown_rows()
+	var rows: Array = SettingsSchema.all_shown_rows()   # 含二级菜单里的行 (音量、手柄预设、分辨率等)
 	var r: Dictionary = rows[rng.randi() % rows.size()]
 	var key := String(r["key"])
 	if r["kind"] == "volume":

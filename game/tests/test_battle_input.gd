@@ -36,8 +36,9 @@ class FakeScene:
 	var units_node := Node2D.new()
 	func _init() -> void:
 		scale = Vector2.ONE * Assets.SCALE  # 同 BattleScene: 子节点用原版坐标 (指针换算按全局变换)
-	func follow_cell(_x, _y) -> void:
-		pass
+	var follows: Array = []
+	func follow_cell(x, y, minimal := false) -> void:
+		follows.append([x, y, minimal])
 	func scroll_camera(d: Vector2) -> void:
 		cam += d
 	func show_cursor(x: int, y: int) -> void:
@@ -704,3 +705,49 @@ func test_icon_menu_wraps_and_skips_disabled():
 	m.free()
 	one.free()
 	none.free()
+
+
+## 回归 (2026-10-30): 鼠标悬停选格时镜头只推一小步 (minimal), 键盘移光标才重新居中。旧行为鼠标一碰边缘镜头就冲半个屏幕, 窗口越大越不流畅
+func test_pointer_hover_and_adjacent_keys_follow_minimally_far_jump_recenters():
+	if not _assets_ready():
+		check(true)
+		return
+	var c := _setup()
+	var fs: FakeScene = c.bs
+	fs.follows.clear()
+	_act(c, UiAction.RIGHT)
+	eq(fs.follows.back()[2], true, "键盘相邻一格: 也只推一小步 (minimal = true)")
+	c.set_cursor(Vector2i(c.cur.x + 6, c.cur.y + 5))
+	eq(fs.follows.back()[2], false, "光标跳得远 (切到下一个目标等): 重新居中 (minimal = false)")
+	c.ui_select(Vector2i(5, 2))
+	eq([fs.follows.back()[0], fs.follows.back()[1], fs.follows.back()[2]], [5, 2, true], "鼠标悬停选格: 只推一小步 (minimal = true)")
+	_cleanup()
+
+
+## 光标跟随的缓动 (BattleScene.ease_step): 离得远走得快, 快到减速, 不越过目标, 小于阈值直接到位; 与帧率无关 (两个半步 ≈ 一个整步)
+func test_camera_ease_step():
+	var S = load("res://engine/battle/battle_scene.gd")
+	var t := Vector2(100, 0)
+	var a: Vector2 = S.ease_step(Vector2.ZERO, t, 1.0 / 60.0)
+	var b: Vector2 = S.ease_step(a, t, 1.0 / 60.0)
+	check(a.x > 0.0 and a.x < b.x and b.x < t.x, "单调逼近目标, 不越过")
+	check((b - a).x < a.x, "越近走得越慢 (减速)")
+	var far: Vector2 = S.ease_step(Vector2.ZERO, Vector2(1000, 0), 1.0 / 60.0)
+	check(far.x > a.x * 5.0, "离得远走得快 (比 100 像素的目标快得多)")
+	var two: Vector2 = S.ease_step(S.ease_step(Vector2.ZERO, t, 1.0 / 120.0), t, 1.0 / 120.0)
+	check(absf(two.x - S.ease_step(Vector2.ZERO, t, 1.0 / 60.0).x) < 0.01, "与帧率无关: 两个 1/120 秒 ≈ 一个 1/60 秒")
+	eq(S.ease_step(Vector2(99.9, 0), t, 1.0 / 60.0), t, "离目标不到 0.35 像素: 直接到位")
+
+
+## 指针悬停的最小镜头位移: 在可见区内不动, 超出的轴推整数个格 (至少 1 格)
+func test_minimal_follow_shift():
+	var S = load("res://engine/battle/battle_scene.gd")
+	var cell := Vector2(30, 24)
+	var rpos := Vector2(100, 100)
+	var rend := Vector2(400, 300)
+	eq(S.minimal_follow_shift(Vector2(200, 150), rpos, rend, cell), Vector2.ZERO, "在可见区内: 不动")
+	eq(S.minimal_follow_shift(Vector2(400, 150), rpos, rend, cell), Vector2(30, 0), "刚出右缘: 推 1 格")
+	eq(S.minimal_follow_shift(Vector2(445, 150), rpos, rend, cell), Vector2(60, 0), "出右缘 45 像素: 推 2 格")
+	eq(S.minimal_follow_shift(Vector2(99, 150), rpos, rend, cell), Vector2(-30, 0), "出左缘一点: 推 -1 格")
+	eq(S.minimal_follow_shift(Vector2(200, 301), rpos, rend, cell), Vector2(0, 24), "出下缘: 推 1 格")
+	eq(S.minimal_follow_shift(Vector2(50, 40), rpos, rend, cell), Vector2(-60, -72), "左上同时出界: 两个轴各推整数格")

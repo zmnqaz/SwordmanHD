@@ -52,6 +52,9 @@ const BUDGET_MAX_DESKTOP := 2048
 var tex_budget_max_mb := -1   # 预算上限 (MB); -1 = 按平台 (桌面 BUDGET_MAX_DESKTOP, 手机 0); 命令行 --tex-budget-max=MB
 var budget_grown := 0         # 累计放大次数 (诊断)
 var _trim_task := -1          # 磁盘缓存清理的线程池任务
+var _trim_cap_mb := 0         # > 0: 启动 TRIM_DELAY_S 秒后再清缓存 (见 _process); 马上退出的玩家不用为它付出代价
+var _trim_wait := 0.0
+const TRIM_DELAY_S := 30.0
 var _pf_queue: Array = []     # 预取队列 (prefetch_list)
 var _pf_i := 0
 var _recent_evicted := {}     # 本场景淘汰过的贴图键 (再次请求 = 重复载入)
@@ -164,7 +167,7 @@ func _init_tiers() -> void:
 		if hq_break:
 			_baker.shaders = {"fill": Shader.new(), "hqx": Shader.new(), "xbrz": Shader.new()}
 			(_baker.shaders["fill"] as Shader).code = "shader_type canvas_item;\nvoid fragment() { COLOR = vec4(1.0) THIS IS BROKEN; }"
-		var out_scale := pick_hq_scale(Vector2(DisplayServer.window_get_size()), Platform.is_mobile(), hq_scale)
+		var out_scale := pick_hq_scale(Vector2(DisplayServer.window_get_size()), Platform.is_mobile(), hq_scale if hq_scale > 0 else saved_hq_scale())
 		_baker.out_scale = out_scale
 		if Platform.is_mobile():   # 手机 CPU 弱 (压缩 / 读回都比电脑慢好几倍): 少排几张压缩任务, 预取让出更多帧, 免得持续占满 CPU 发热掉帧
 			_baker.max_comp_pending = 6
@@ -174,8 +177,18 @@ func _init_tiers() -> void:
 		_baker.cache_on = _baker.codec != "" and cache_mb > 0
 		add_child(_baker)
 		_texsrc.add_tier(out_scale, "", px_idx, true)
-		if _baker.cache_on:   # 缓存超上限就删最旧的 (后台线程, 只动 user://hq_cache); 任务 id 留着, 退出时要等它 (见 _exit_tree)
-			_trim_task = WorkerThreadPool.add_task(TexCodec.cache_trim.bind(cache_mb * 1048576), false, "hq cache trim")
+		if _baker.cache_on:   # 缓存超上限就删最旧的: 延后 TRIM_DELAY_S 秒再开始 (后台线程, 只动 user://hq_cache); 任务 id 留着, 退出时要等它 (见 _exit_tree / prepare_exit)
+			_trim_cap_mb = cache_mb
+
+
+## 设定「贴图精度」(settings.json 的 hq 键: 0 自动 / 6 / 4 / 3): 生成器启动时就要定倍数, 比 Game 读设定还早, 所以这里直接读文件 (改了设定要重启才生效)。
+## 缺文件 / 非法值当自动 (0); 命令行 --hq-scale 优先 (调用处先看它)。path 参数给测试用, 别在测试里写真正的设定文件
+static func saved_hq_scale(path := "user://settings.json") -> int:
+	var d = SaveFile.read_json(path)
+	if not (d is Dictionary) or not (d.get("hq") is int or d.get("hq") is float):
+		return 0
+	var v := int(d["hq"])
+	return v if v in [3, 4, 6] else 0
 
 
 ## 像素画类烘焙倍数: 显式指定 (3/4/6) 优先; 否则手机按屏幕分辨率选 —— 窗口里 1 个原版像素占 m 个物理像素 (m = min(宽/320, 高/200)),
@@ -330,13 +343,25 @@ func prefetch_list(rels: Array) -> void:
 	_pf_i = 0
 
 
+## 退出前调: 让后台的缓存扫描 / 清理马上停手 (TexCodec.cancel), 之后 _exit_tree 里的等待几乎是瞬间。没起过的清理任务也取消
+func prepare_exit() -> void:
+	_trim_cap_mb = 0
+	TexCodec.cancel = true
+
+
 func _exit_tree() -> void:
+	TexCodec.cancel = true
 	if _trim_task >= 0:   # 线程池任务必须等待完成, 否则退出时释放回调崩溃
 		WorkerThreadPool.wait_for_task_completion(_trim_task)
 		_trim_task = -1
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if _trim_cap_mb > 0:
+		_trim_wait += delta
+		if _trim_wait >= TRIM_DELAY_S:
+			_trim_task = WorkerThreadPool.add_task(TexCodec.cache_trim.bind(_trim_cap_mb * 1048576), false, "hq cache trim")
+			_trim_cap_mb = 0
 	if _pf_i < _pf_queue.size():
 		_prefetch_step()
 
@@ -359,6 +384,28 @@ func _prefetch_step() -> void:
 
 
 func _tex(rel_in: String, low: bool) -> Dictionary:
+	var l0 := loads
+	var t0 := Time.get_ticks_usec()
+	var r := _tex_load(rel_in, low)
+	if loads != l0:   # 缓存未命中, 这次真的载入了: 记下耗时 (诊断页列最慢的几张, 看「鼠标扫到新区域卡一下」卡在哪张图)
+		_note_load(rel_in, (Time.get_ticks_usec() - t0) / 1000.0)
+	return r
+
+
+const SLOW_LOADS_KEEP := 6
+var _slow_loads: Array = []   # [{rel, ms}], 按耗时从大到小, 只留最慢的 SLOW_LOADS_KEEP 张 (本次运行)
+
+
+func _note_load(rel: String, ms: float) -> void:
+	if _slow_loads.size() >= SLOW_LOADS_KEEP and ms <= float(_slow_loads[-1]["ms"]):
+		return
+	_slow_loads.append({"rel": rel, "ms": ms})
+	_slow_loads.sort_custom(func(a, b): return float(a["ms"]) > float(b["ms"]))
+	if _slow_loads.size() > SLOW_LOADS_KEEP:
+		_slow_loads.pop_back()
+
+
+func _tex_load(rel_in: String, low: bool) -> Dictionary:
 	var pf := _pack_file(rel_in)
 	if pf != "":  # 内容包自带的贴图: 原版 1 倍大小, 最近邻采样
 		if not _texs.has(pf):
@@ -606,6 +653,31 @@ func cache_report(top := 5) -> Dictionary:
 		"loads": loads, "evicted": evicted, "budget_mb": tex_budget_mb, "budget_grown": budget_grown, "baker_pending": _baker.pending() if _baker else 0, "baker_pool": _baker.pool_size() if _baker else 0}
 
 
+## 已载入贴图的清晰度分布 (诊断页用): 按有效倍数 (1 / 显示缩放系数) 分档, 1 倍 = 原图最近邻 (没有高清版 / 生成器没启用或已回退 / 单边超过显卡上限退回原图),
+## 单边超限被缩小的大图倍数会低于档位 (如 4 倍图缩一半 = 2 倍); low = 预取排队中、还是占位图 (最近邻放大, 烘焙完成才清晰)
+func sharpness_report() -> Dictionary:
+	var by := {}
+	var low := 0
+	for k in _texs:
+		var e: Dictionary = _texs[k]
+		var m := maxi(1, roundi(1.0 / maxf(0.001, float(e.get("scale", 1.0)))))
+		by[m] = int(by.get(m, 0)) + 1
+		if e.has("low"):
+			low += 1
+	return {"by_mult": by, "low": low, "total": _texs.size()}
+
+
+## 画质诊断页 (engine/ui/diag_panel.gd) 要的全部贴图信息: 生成器状态 + 自动选的倍数 + 清晰度分布 + 缓存 + 上限。组装层经 GameContext.diag_info 交给诊断页
+func diag_report() -> Dictionary:
+	var d := hq_report()
+	d["auto_scale"] = pick_hq_scale(Vector2(DisplayServer.window_get_size()), Platform.is_mobile(), 0)
+	d["sharp"] = sharpness_report()
+	d["cache"] = cache_report(0)
+	d["max_tex"] = max_tex
+	d["slow_loads"] = _slow_loads.duplicate(true)
+	return d
+
+
 ## 音效文件的实际路径: 原版目录里是无损 wav (开发版直接读); 导出版的 common_assets.pck 里为省体积转成了同名 .ogg (生成工具的脚本), 先找 wav 再找 ogg。都没有返回 ""
 func sound_file(rel: String) -> String:
 	var wav := path(rel)
@@ -711,7 +783,8 @@ func _face(id: String) -> Font:
 		var f := FontFile.new()
 		var path := String(UiFonts.get_or_default(id)["file"])
 		f.load_dynamic_font(path)  # 字体文件不导入 (.import 为 keep), 原样进主 pck, 开发版/导出版都按 res:// 读
-		if id != UiFonts.default_id():   # 文楷/宋体是按简体裁的子集, 缺的字 (繁体字等) 先回退到自带的完整字库 (缺省字体), 再到系统字体
-			f.fallbacks = [_face(UiFonts.default_id())]
+		var full := UiFonts.complete_id()
+		if id != full:   # 文楷/宋体是裁过的子集 (缺省的文楷也是), 缺的字 (繁体字等) 先回退到自带的完整字库 (清单里 full 标记的, 缺省思源黑体), 再到系统字体
+			f.fallbacks = [_face(full)]
 		_faces[id] = f
 	return _faces[id]

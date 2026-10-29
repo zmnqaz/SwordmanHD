@@ -24,32 +24,42 @@ const ROWS := [
 	# 头像风格: 经典 (hd4x 里的 GenV3 放大) / 港漫 (可选 mod mod/face_hk.pck, 没有这个包不列这一行; 缺省港漫, 没装包时 Assets 自动回退经典)
 	{"key": "face_style", "kind": "choice", "def": "hk", "needs": "face_hk",
 		"options": [{"v": "classic"}, {"v": "hk"}]},
-	{"key": "music", "kind": "volume", "def": 10},
-	{"key": "sfx", "kind": "volume", "def": 10},
+	# 声音 (2026-10-29 设定菜单按用户给的顺序重排): 音乐 / 音效收进二级菜单, 主菜单只留这一行
+	{"key": "sound", "kind": "action"},
+	{"key": "music", "kind": "volume", "def": 10, "group": "sound"},
+	{"key": "sfx", "kind": "volume", "def": 10, "group": "sound"},
 	{"key": "gfx", "kind": "choice", "def": "hd", "hidden": true,
 		"options": [{"v": "hd"}, {"v": "orig"}]},
 	# hidden = 不在设定面板里显示 (2026-10-07 用户嫌菜单太多): 数据与命令行参数仍保留, 值一律取缺省 (旧设定文件里存的也作废)。
 	#   画质固定高清 (命令行 --gfx=orig 仍可临时切原版用于对照); 贴图倍数自动; 画面比例自适应
 	{"key": "tex", "kind": "choice", "def": "auto", "hidden": true,
 		"options": [{"v": "auto"}, {"v": "4"}, {"v": "6"}]},
-	{"key": "fullscreen", "kind": "choice", "def": 0,
+	# 显示 (2026-10-29 用户嫌设定菜单项太多): 窗口模式 / 分辨率 / 画质诊断收进二级菜单, 主菜单只留这一行
+	{"key": "display", "kind": "action"},
+	{"key": "fullscreen", "kind": "choice", "def": 0, "group": "display",
 		"options": [{"v": 0}, {"v": 1}]},
 	{"key": "aspect", "kind": "choice", "def": "auto", "hidden": true,
 		"options": [{"v": "auto"}, {"v": "keep"}]},
 	# 分辨率 (窗口模式的窗口大小, 16:10): 0 = 自动 (缺省, 按屏幕可用区域挑最大的合适档, auto_win), 或手选 1280/1600/1920
-	{"key": "win", "kind": "choice", "def": 0,
+	{"key": "win", "kind": "choice", "def": 0, "group": "display",
 		"options": [{"v": 0}, {"v": 1280}, {"v": 1600}, {"v": 1920}]},
+	# 贴图精度: 像素画类贴图 (人物 / 物件 / 特效, 约 6.9 万张) 运行时生成的倍数, 0 自动 (电脑 6, 手机按屏幕选 3/4/6) / 6 高 / 4 中 / 3 低; 与窗口分辨率无关。
+	#   生成器启动时就定倍数 (Assets.saved_hq_scale 读这个键), 改了要重启生效; 命令行 --hq-scale 优先。AI 类大图 (地图 / 头像) 固定用包里的 4 倍图, 不受它影响
+	{"key": "hq", "kind": "choice", "def": 0, "group": "display",
+		"options": [{"v": 0}, {"v": 6}, {"v": 4}, {"v": 3}]},
+	# 控制器 (2026-10-29 用户嫌设定菜单项太多): 键盘 / 手柄的设置收进二级菜单, 主菜单只留这一行 (动作行 controls 打开同一个 SettingsPanel, 只列 group = controls 的行)
+	{"key": "controls", "kind": "action"},
+	# 键盘: 逐动作改主键 (动作行 key_edit 打开子面板, 覆盖项存 key_map, 见 engine/input/key_map.gd)
+	{"key": "key_edit", "kind": "action", "needs": "keyboard", "group": "controls"},
+	# 手柄: 预设 + 逐动作改键 (动作行 pad_edit 打开子面板, 覆盖项存 pad_map, 见 engine/input/pad_map.gd)
+	{"key": "pad_preset", "kind": "choice", "def": "std", "group": "controls",
+		"options": [{"v": "std"}, {"v": "swap"}]},
+	{"key": "pad_edit", "kind": "action", "group": "controls"},
 	# 战场辅助 (默认全关 = 与原版一致): 宝箱显示 (隐藏宝箱图标 + 宝箱内容提示) / 光标格坐标
 	{"key": "show_hidden", "kind": "choice", "def": 0,
 		"options": [{"v": 0}, {"v": 1}]},
 	{"key": "coord", "kind": "choice", "def": 0,
 		"options": [{"v": 0}, {"v": 1}]},
-	# 键盘: 逐动作改主键 (动作行 key_edit 打开子面板, 覆盖项存 key_map, 见 engine/input/key_map.gd)
-	{"key": "key_edit", "kind": "action", "needs": "keyboard"},
-	# 手柄: 预设 + 逐动作改键 (动作行 pad_edit 打开子面板, 覆盖项存 pad_map, 见 engine/input/pad_map.gd)
-	{"key": "pad_preset", "kind": "choice", "def": "std",
-		"options": [{"v": "std"}, {"v": "swap"}]},
-	{"key": "pad_edit", "kind": "action"},
 	# 录像回放 (复刻新增): 没在回放时列「录像回放」(打开 engine/ui/replay_panel.gd); 回放中改列「结束回放」和「回放速度」
 	#   (live: 值取自运行中的回放, 左右调、立即生效, 不进设定文件)
 	# 整理行囊 (原来是攻略面板里的按钮, 2026-10-25 搬到这里): 公共行囊按物品编号排 (CampInventory.resort_bag); 回放中不列 (整理会改行囊, 回放时不能插手)
@@ -59,6 +69,8 @@ const ROWS := [
 	{"key": "replay_speed", "kind": "live", "needs": "replaying"},
 	# 攻略 (随时也可按 F4): 打开攻略面板 engine/ui/guide_panel.gd; needs guide = 内容包没有攻略 (guide/guide.json) 时不列
 	{"key": "guide", "kind": "action", "needs": "guide"},
+	# 画质诊断 (复刻新增, 2026-10-29): 屏幕 / 贴图倍数 / 生成器状态 / 显存 / 帧率, 手机上画面发糊时用 (engine/ui/diag_panel.gd)
+	{"key": "diag", "kind": "action", "group": "display"},
 ]
 ## 窗口大小档 (宽度, 即 win 的取值; 0 = 自动) 对应的 16:10 窗口像素
 static func win_size(w: int) -> Vector2i:
@@ -74,12 +86,25 @@ static func auto_win(usable: Vector2i) -> int:
 	return 1280
 
 
-## 设定面板里显示的行 (去掉 hidden 的, 以及 needs 条件不满足的)
-static func shown_rows() -> Array:
+## 二级菜单里非行的设定键 (随该组「还原预设」一起复位): 组 -> [键]
+const GROUPS := ["sound", "display", "controls"]   # 二级菜单 (组名 = 主菜单入口行的键)
+const GROUP_EXTRA := {"controls": ["pad_map", "key_map"], "display": [], "sound": []}
+
+
+## 主菜单 + 全部二级菜单里显示的行 (测试 / 猴子测试用)
+static func all_shown_rows() -> Array:
+	var out := shown_rows()
+	for g in GROUPS:
+		out += shown_rows(g)
+	return out
+
+
+## 设定面板里显示的行 (去掉 hidden 的, 以及 needs 条件不满足的)。group: "" = 主菜单 (没有 group 的行 + 各二级菜单的入口行), 否则只列该组的行
+static func shown_rows(group := "") -> Array:
 	var has_guide := GuideBook.available(GameContext.current().content)
 	var replaying := PlayLog.replaying()
 	var has_face_hk: bool = Assets.face_alt_available()
-	return ROWS.filter(func(r): return not r.get("hidden", false) and _need_ok(String(r.get("needs", "")), has_guide, replaying, has_face_hk))
+	return ROWS.filter(func(r): return String(r.get("group", "")) == group and not r.get("hidden", false) and _need_ok(String(r.get("needs", "")), has_guide, replaying, has_face_hk))
 
 
 static func _need_ok(need: String, has_guide: bool, replaying: bool, has_face_hk := false) -> bool:
@@ -236,6 +261,18 @@ static func reset_all(gc) -> void:
 	gc.settings_saved = defaults()
 	gc.settings_override = {}
 	gc.settings = defaults()
+	gc.flow.apply_settings()
+	gc.flow.save_settings()
+
+
+## 二级菜单的「还原预设」: 只把该组的设定项 (和 GROUP_EXTRA 里的覆盖项) 恢复缺省, 不动别的
+static func reset_group(gc, group: String) -> void:
+	var d := defaults()
+	for r in ROWS:
+		if String(r.get("group", "")) == group and not _valueless(r):
+			_put(gc, String(r["key"]), d[r["key"]])
+	for k in GROUP_EXTRA.get(group, []):
+		_put(gc, String(k), d[k])
 	gc.flow.apply_settings()
 	gc.flow.save_settings()
 

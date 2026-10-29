@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 extends CanvasLayer
 ## 版权声明页 (比片头动画还早): 每次启动都弹, 同意才能继续, 不记住同意 (没有「不再提示」)。不同意 = 退出游戏。
-## 文案走 UiStrings notice.* (内容包 text/ui.json, 繁体叠加层同名键); 按钮 = 原生 Button, 鼠标 / 触屏直接点;
-## 键盘 / 手柄走统一输入层: 方向键在两个按钮间切换, 确认执行, 取消无作用 (免得误按退出游戏)。
+## 文案走 UiStrings notice.* (内容包 text/ui.json, 繁体叠加层同名键); 按钮 = 原生 Button 只负责画, 输入全走统一输入层 (InputRouter):
+## 鼠标 / 触屏按 ui_hits 的命中区点按 (点在按钮上 = 选中该按钮并确认, 点空处无作用), 方向键在两个按钮间切换, 确认执行, 取消无作用 (免得误按退出游戏)。
+## 注意: 输入层会把鼠标左键吃掉再转成带坐标的「确认」, 原生 Button 收不到点击; 没有命中区时这个确认会落到 ui_action 变成「选默认的同意」(曾经点哪都等于同意)。
 
 var _on_agree: Callable
 var _on_decline: Callable
@@ -60,7 +61,6 @@ func _ready() -> void:
 		b.add_theme_font_size_override("font_size", int(size * 1.2))
 		b.custom_minimum_size = Vector2(size * 8, size * 2.4)
 		b.focus_mode = Control.FOCUS_NONE
-		b.pressed.connect(_pick.bind(i))
 		row.add_child(b)
 		_buttons.append(b)
 	_refresh()
@@ -96,9 +96,22 @@ func _pick(i: int) -> void:
 		_on_decline.call()
 
 
-## 统一输入层 (InputRouter): 没有 ui_hits, 鼠标 / 触屏交给上面的 Button
+## 指针命中区 (UiHit): 每个按钮一块, index = 按钮序号; 点空处走缺省 (无作用)
+func ui_hits() -> Array:
+	var out := []
+	for i in _buttons.size():
+		out.append(UiHit.area(Rect2(Vector2.ZERO, _buttons[i].size), i, _buttons[i]))
+	return out
+
+
+func ui_select(i) -> void:
+	_sel = int(i)
+	_refresh()
+
+
+## 统一输入层 (InputRouter): 指针点按命中按钮时由输入层先 ui_select 再交一个不带坐标的确认
 func ui_action(a: UiAction) -> bool:
-	if a.echo:
+	if a.echo or a.has_pos():   # 带坐标 = 没经命中区的原始点按 (命中区还没布局好等), 不能当确认
 		return true
 	if a.is_dir():
 		_sel = 1 - _sel

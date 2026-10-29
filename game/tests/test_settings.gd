@@ -45,7 +45,11 @@ func test_hidden_rows_ignore_saved_values():
 		keys.append(r["key"])
 	for k in ["tex", "aspect", "gfx"]:
 		check(not keys.has(k), "面板不显示 %s" % k)
-	eq(keys, ["lang", "font", "music", "sfx", "fullscreen", "win", "show_hidden", "coord", "key_edit", "pad_preset", "pad_edit", "bag_sort", "replay"], "面板项与顺序: 语言下面是字体, 没有画质; 最后是录像回放 (内容包带攻略时, 再多一行攻略)")
+	keys = keys.filter(func(k): return k != "face_style")   # 头像风格只有装了港漫 mod (mod/face_hk.pck) 才列, 带资源包跑测试时会出现
+	eq(keys, ["lang", "font", "sound", "display", "controls", "show_hidden", "coord", "bag_sort", "replay"], "主菜单项与顺序 (内容包带攻略时, 最后再多一行游戏攻略): 语言 字体 [头像风格] 声音 图像显示 控制器设置 隐藏宝箱设置 战场坐标显示 整理行囊 录像回放 游戏攻略; 没有画质项")
+	eq(SettingsSchema.shown_rows("sound").map(func(r): return r["key"]), ["music", "sfx"], "「声音」二级菜单: 音乐 / 音效")
+	eq(SettingsSchema.shown_rows("display").map(func(r): return r["key"]), ["fullscreen", "win", "hq", "diag"], "「显示」二级菜单: 窗口模式 / 分辨率 / 贴图精度 / 画质诊断")
+	eq(SettingsSchema.shown_rows("controls").map(func(r): return r["key"]), ["key_edit", "pad_preset", "pad_edit"], "「控制器」二级菜单: 键盘按键 / 手柄预设 / 手柄按键")
 
 
 ## 窗口大小自动: 屏幕可用区域放得下的最大档 (16:10, 留标题栏), 放不下用最小档
@@ -337,3 +341,130 @@ func _scan_gd(dir: String, out: Array) -> void:
 			out.append(dir.path_join(f))
 	for d in DirAccess.get_directories_at(dir):
 		_scan_gd(dir.path_join(d), out)
+
+
+## 二级菜单「控制器」的「还原预设」只复位本组 (手柄预设 + 逐键覆盖 + 键盘覆盖), 不动音量 / 语言等别的设定
+func test_reset_group_controls_only_touches_controls():
+	var gc := _gc({"pad_preset": "swap", "pad_map": {"info": 5}, "key_map": {"menu": 81}, "music": 2, "coord": 1})
+	SettingsSchema.reset_group(gc, "controls")
+	eq([gc.settings["pad_preset"], gc.settings["pad_map"], gc.settings["key_map"]], ["std", {}, {}], "手柄预设 / 逐键覆盖 / 键盘覆盖恢复缺省")
+	eq([gc.settings["music"], gc.settings["coord"]], [2, 1], "别的设定不动")
+	eq([gc.settings_saved["pad_preset"], gc.settings_saved["music"]], ["std", 2], "持久层同步")
+	check(gc.flow.saved > 0, "存盘了")
+
+
+## 「控制器」入口: 主菜单一行, 确认后打开同一个面板类的二级菜单 (只列键盘 / 手柄行, 标题 = 控制器, 自己的 _n)
+func test_controls_row_opens_submenu_with_its_own_rows():
+	var gc := _gc()
+	var sp := SettingsPanel.new()
+	sp.gc = gc
+	var sub := SettingsPanel.new()
+	sub.gc = gc
+	sub._group = "controls"
+	eq(sub._srows().map(func(r): return r["key"]), ["key_edit", "pad_preset", "pad_edit"], "二级菜单的行")
+	check(sp._srows().map(func(r): return r["key"]).has("controls"), "主菜单有「控制器」入口行")
+	check(not sp._srows().map(func(r): return r["key"]).has("pad_preset"), "手柄预设不在主菜单")
+	eq(UiStrings.t("settings.controls.title"), "控制器设置", "二级菜单标题")
+	sp.free()
+	sub.free()
+
+
+## 端到端: 主菜单确认「控制器」→ 打开二级菜单 (兄弟节点, 主菜单先藏), 取消回到主菜单; 二级菜单里的「还原预设」只复位本组
+func test_controls_submenu_opens_and_returns():
+	var Router = load("res://engine/input/input_router.gd")
+	var tree := Engine.get_main_loop() as SceneTree
+	var gc := _gc({"pad_preset": "swap", "music": 4})
+	var sp := SettingsPanel.new()
+	sp.gc = gc
+	sp.router = Router.new()
+	tree.root.add_child(sp)
+	sp.open()
+	var idx: int = sp._srows().map(func(r): return r["key"]).find("controls")
+	check(idx >= 0, "主菜单里有「控制器」")
+	sp._sel = idx
+	sp.ui_action(UiAction.new(UiAction.CONFIRM, "key"))
+	var sub: SettingsPanel = null
+	for c in tree.root.get_children():
+		if c is SettingsPanel and c != sp and c._group == "controls":
+			sub = c
+	check(sub != null, "二级菜单作为兄弟节点打开")
+	if sub != null:
+		eq(sub._n, SettingsSchema.shown_rows("controls").size(), "二级菜单只有自己的行")
+		check(not sp.visible and sub.visible, "主菜单先藏起来, 二级菜单显示")
+		sub._sel = sub._n   # 「还原预设」
+		sub.ui_action(UiAction.new(UiAction.CONFIRM, "key"))
+		eq([gc.settings["pad_preset"], gc.settings["music"]], ["std", 4], "二级菜单的还原预设: 手柄预设复位, 音量不动")
+		sub.ui_action(UiAction.new(UiAction.CANCEL, "key"))
+		await tree.process_frame
+		await tree.process_frame
+		check(sp.visible, "关掉二级菜单后回到主菜单")
+		check(not is_instance_valid(sub) or sub.is_queued_for_deletion(), "二级菜单已释放")
+	sp.closed.emit(true)
+	await tree.process_frame
+	await tree.process_frame
+
+
+## 端到端: 主菜单 → 「显示」二级菜单 → 画质诊断 (三层), 每层关掉都回到上一层; 二级菜单里的行是窗口模式 / 分辨率 / 画质诊断
+func test_display_submenu_reaches_diag_and_returns():
+	var Router = load("res://engine/input/input_router.gd")
+	var tree := Engine.get_main_loop() as SceneTree
+	var gc := _gc({"win": 1600})
+	gc.diag_info = Callable()
+	var sp := SettingsPanel.new()
+	sp.gc = gc
+	sp.router = Router.new()
+	tree.root.add_child(sp)
+	sp.open()
+	sp._sel = sp._srows().map(func(r): return r["key"]).find("display")
+	sp.ui_action(UiAction.new(UiAction.CONFIRM, "key"))
+	var sub: SettingsPanel = null
+	for c in tree.root.get_children():
+		if c is SettingsPanel and c != sp and c._group == "display":
+			sub = c
+	check(sub != null, "「显示」二级菜单打开")
+	if sub != null:
+		eq(sub._srows().map(func(r): return r["key"]), ["fullscreen", "win", "hq", "diag"], "二级菜单的行")
+		eq(UiStrings.t("settings.fullscreen.label"), "窗口模式", "里面那一行不再和菜单同名叫「显示」")
+		sub._sel = sub._srows().map(func(r): return r["key"]).find("diag")
+		sub.ui_action(UiAction.new(UiAction.CONFIRM, "key"))
+		var dp: DiagPanel = null
+		for c in tree.root.get_children():
+			if c is DiagPanel:
+				dp = c
+		check(dp != null and not sub.visible, "画质诊断打开, 二级菜单先藏")
+		if dp != null:
+			await tree.create_timer(DiagPanel.GUARD + 0.05).timeout
+			dp.ui_action(UiAction.new(UiAction.CANCEL, "key"))
+			await tree.process_frame
+			await tree.process_frame
+			check(sub.visible, "关掉诊断回到「显示」二级菜单")
+		sub.ui_action(UiAction.new(UiAction.CANCEL, "key"))
+		await tree.process_frame
+		await tree.process_frame
+		check(sp.visible, "关掉二级菜单回到主菜单")
+	sp.closed.emit(true)
+	await tree.process_frame
+	await tree.process_frame
+
+
+## 贴图精度 (hq): 缺省自动, 选项 自动 / 6 / 4 / 3 步进循环, 非法值取缺省; 启动时 Assets 直接读设定文件定生成倍数 (非法 / 缺文件 = 自动)
+func test_texture_quality_row_and_saved_scale():
+	eq(SettingsSchema.defaults()["hq"], 0, "缺省自动")
+	eq([SettingsSchema.step("hq", 0, 1), SettingsSchema.step("hq", 6, 1), SettingsSchema.step("hq", 4, 1), SettingsSchema.step("hq", 3, 1)], [6, 4, 3, 0], "自动 → 高 → 中 → 低 → 自动")
+	eq(SettingsSchema.sanitize({"hq": 5})["hq"], 0, "非法倍数取缺省")
+	eq(SettingsSchema.sanitize({"hq": 4.0})["hq"], 4, "JSON 式 4.0 合法")
+	var p := "user://test_hq_settings.json"
+	for case in [[{"hq": 6}, 6], [{"hq": 3.0}, 3], [{"hq": 5}, 0], [{"hq": "6"}, 0], [{"music": 3}, 0]]:
+		var f := FileAccess.open(p, FileAccess.WRITE)
+		f.store_string(JSON.stringify(case[0]))
+		f.close()
+		eq(Assets.saved_hq_scale(p), case[1], "设定文件 %s -> %d" % [JSON.stringify(case[0]), case[1]])
+	DirAccess.remove_absolute(p)
+	eq(Assets.saved_hq_scale("user://no_such_settings_file.json"), 0, "没有设定文件 = 自动")
+
+
+## 「声音」二级菜单的「还原预设」只复位音乐 / 音效 (缺省 10), 不动别的
+func test_reset_group_sound_only_touches_volumes():
+	var gc := _gc({"music": 2, "sfx": 3, "coord": 1})
+	SettingsSchema.reset_group(gc, "sound")
+	eq([gc.settings["music"], gc.settings["sfx"], gc.settings["coord"]], [10, 10, 1], "音量复位, 别的设定不动")

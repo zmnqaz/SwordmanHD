@@ -32,7 +32,7 @@ func _draw() -> void:
 		var e := top + s
 		if e >= n:
 			break
-		var r2: Dictionary = SettingsSchema.shown_rows()[e]
+		var r2: Dictionary = panel._srows()[e]
 		if r2["kind"] == "volume":
 			var v := int(gc.settings[r2["key"]])
 			for k in 10:

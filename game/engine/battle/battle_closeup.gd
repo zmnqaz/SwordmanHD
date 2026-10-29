@@ -61,6 +61,10 @@ func _ready() -> void:
 	add_child(_text)
 
 
+static func anim_exists(dir: String) -> bool:
+	return Assets.exists(dir + "/anim.json")
+
+
 static func misc_dir(u: BattleUnit) -> String:
 	var s := int(u.info["sprite"])
 	return ThemeAssets.f("unit_misc", [s, s])
@@ -73,7 +77,9 @@ static func idle_frame(data: Dictionary) -> Vector2i:
 
 
 ## 打开画面: a 攻击 t; 返回后可多次 strike, 最后 close
-func open(a: BattleUnit, t: BattleUnit) -> void:
+## t = null: 施放者单人近景 (battle_type 2 绝技, 见 cast_solo), 底图取 at 格 (没给就取施放者所在格)
+## hide_target: 远程技能 (battle_ranged = 1, 如无方飞剑) 从开场起守方就不在画面里, 命中帧才出现 (见 strike 的 ranged), 否则放大淡入和闪光期间守方先露脸再消失
+func open(a: BattleUnit, t: BattleUnit, at := Vector2i(-1, -1), hide_target := false) -> void:
 	for c in _stage.get_children():
 		c.queue_free()
 	for c in _ui.get_children():
@@ -82,13 +88,15 @@ func open(a: BattleUnit, t: BattleUnit) -> void:
 		c.queue_free()
 	_sides.clear()
 	var floor_dir: String = bs.st.battle_floor
-	if floor_dir != "" and Assets.exists(floor_dir + "/anim.json"):
+	if floor_dir != "" and anim_exists(floor_dir):
 		var fl := AnimPlayer.new()
-		var cell: Dictionary = bs.st.cell(t.cx, t.cy)
+		var cell: Dictionary = bs.st.cell(at.x, at.y) if at.x >= 0 else (bs.st.cell(t.cx, t.cy) if t != null else bs.st.cell(a.cx, a.cy))
 		var fd := Assets.anim(floor_dir)
 		fl.show_frame(floor_dir, clampi(int(cell.get("floor", 0)), 0, fd["frames"].size() - 1))
 		_stage.add_child(fl)
 	for u in [a, t]:
+		if u == null:
+			continue
 		var side := "left" if u.camp == 1 else "right"
 		if _sides.has(side):  # 同阵营互打 (理论上不会), 退回按攻守分边
 			side = "left" if u == t else "right"
@@ -96,11 +104,12 @@ func open(a: BattleUnit, t: BattleUnit) -> void:
 		m.play_sound = false
 		_stage.add_child(m)
 		var md := misc_dir(u)
-		if Assets.exists(md + "/anim.json"):
+		if anim_exists(md):
 			var r := idle_frame(Assets.anim(md))
 			m.play(md, r.x, r.y)
 		_sides[side] = {"unit": u, "misc": m, "dir": md}
 		_build_info(side, u)
+		m.visible = not (hide_target and u == t)
 	visible = true
 	var z := UiLayout.el("closeup.zoom")
 	_root.scale = Vector2.ONE * float(z.get("scale", 1))
@@ -128,14 +137,16 @@ func _side_of(u: BattleUnit) -> String:
 ## skill_name: 物理绝技的技能名, 近景里和闪光同一刻起在顶部出一块技能名横幅 (敌我一样); 普攻/反击为空
 ## vampire: 武器吸血 (附加类型 0) 命中时的吸血量, -1 = 没触发; 触发了 (吸到 0 也算) 在最后一击的伤害数字之后放吸血表现 (见 _vampire)
 ## digits: 守方弹不弹伤害数字 (物理绝技的结果记录不带伤害数值标志 (Skills.shows_damage) 时近景里也不弹, 如摄魂鬼触, 实测)
-func strike(a: BattleUnit, d: BattleUnit, results: Array, skill_anim := "", skill_name := "", vampire := -1, digits := true) -> void:
+func strike(a: BattleUnit, d: BattleUnit, results: Array, skill_anim := "", skill_name := "", vampire := -1, digits := true, ranged := false) -> void:
 	var asd: Dictionary = _sides[_side_of(a)]
 	var dsd: Dictionary = _sides[_side_of(d)]
 	var kind: String = results[0]["kind"]
 	var sp := int(a.info["sprite"])
 	var atk_dir := ThemeAssets.f("unit_attack", [sp, sp, "ab" if kind in ["miss", "guard"] else "a"])
-	if skill_anim != "" and Assets.exists(skill_anim + "/anim.json"):
+	if skill_anim != "" and anim_exists(skill_anim):
 		atk_dir = skill_anim
+	if ranged:
+		dsd["misc"].visible = false   # 调用方没在 open 时藏 (hide_target) 也兜住: 闪光期间守方不露脸
 	if skill_name != "":
 		bs.ctl.view.cast_banner(skill_name, _ui)
 	if kind in ["critical", "double"] or skill_anim != "":
@@ -145,13 +156,38 @@ func strike(a: BattleUnit, d: BattleUnit, results: Array, skill_anim := "", skil
 		await fx.finished
 		fx.queue_free()
 	for i in results.size():
-		await _play_attack(a, d, asd, dsd, atk_dir, results[i], vampire, i == results.size() - 1, digits)
+		await _play_attack(a, d, asd, dsd, atk_dir, results[i], vampire, i == results.size() - 1, digits, ranged)
 		if int(dsd["panel"].shown) <= 0:
 			break  # 已击杀: 不演剩余命中 (连击第一下致死不再打空气, 2026-10-06 用户实测)
 
 
+## 施放者单人近景 (battle_type 2 绝技, 如电射星驰: 殷剑平放下剑匣、御剑, 随后才转到地图放全屏特效): 闪光 + 施放者的 NNN[-n]s 动画, 没有守方、没有伤害; 原版这里没有技能名横幅 (的横幅标志传 0, 调用方传空名)
+## (结果在回到地图后由 SM 演出和结果动画给)。skill_anim 缺文件就什么都不放。原版依据: ③ (分 2 = 近景 + 地图 SM)
+func cast_solo(a: BattleUnit, skill_anim: String, skill_name: String) -> void:
+	if not anim_exists(skill_anim):
+		return
+	var asd: Dictionary = _sides[_side_of(a)]
+	var amisc = asd["misc"]
+	if skill_name != "":
+		bs.ctl.view.cast_banner(skill_name, _ui)
+	var fx = amisc.get_script().new()   # 同施放者 misc 的播放器类 (引擎层不直接写 AnimPlayer 类名, 见 test_engine_deps)
+	_stage.add_child(fx)
+	fx.play(ThemeAssets.f("cast_flash", ["l" if _side_of(a) == "left" else "r"]), 0, -1, false)
+	await fx.finished
+	fx.queue_free()
+	var atk = amisc.get_script().new()
+	_stage.add_child(atk)
+	amisc.visible = false
+	atk.play(skill_anim, 0, -1, false)
+	await atk.finished
+	atk.queue_free()
+	amisc.visible = true
+	var ia := idle_frame(amisc.data) if not amisc.data.is_empty() else Vector2i(0, 1)
+	amisc.play(asd["dir"], ia.x, ia.y)
+
+
 ## vamp: 吸血量 (-1 没触发); 只在最后一击后演, 致死的一击也算最后一击 (打死了后面的不演, 吸血跟在致死那一击后面)
-func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary, atk_dir: String, r: Dictionary, vamp := -1, last := true, digits := true) -> void:
+func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary, atk_dir: String, r: Dictionary, vamp := -1, last := true, digits := true, ranged := false) -> void:
 	r = r.duplicate()
 	if gc.god and d.camp != 1:
 		r["damage"] = 0
@@ -164,7 +200,8 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 	var dmg := int(r["damage"])
 	var hp_after := maxi(0, hp_before - dmg)
 	var drain := vamp if (last or hp_after <= 0) else -1   # 本击后要演的吸血
-	if not Assets.exists(atk_dir + "/anim.json"):
+	if not anim_exists(atk_dir):
+		dmisc.visible = true   # 远程技能开场藏了守方, 没有攻击动画 (没有命中帧去放它出来) 就直接现身
 		panel.hit(dmg, hp_after > 0)
 		panel.set_hp(hp_after)
 		await _jump(dsd, dmg, digits)
@@ -181,8 +218,15 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 	for i in data["frames"].size():
 		if int(data["frames"][i]["hit"]) > 0:
 			hits += 1
+	# 远程技能 (技能表 battle_ranged = 1, 如无方飞剑): 剑气 / 弹丸飞行期间守方不在画面里, 到第一个命中帧才出现 (用户 2026-10-29 指出无方飞剑发剑气时画面里不该有怪)
+	var hide_until := -1
+	if ranged:
+		for i in data["frames"].size():
+			if int(data["frames"][i]["hit"]) > 0:
+				hide_until = i
+				break
 	var on_frame := func(f: int):
-		var hide_def := int(c[1]) > 0 and f >= int(c[1]) and f < int(c[2])
+		var hide_def := (int(c[1]) > 0 and f >= int(c[1]) and f < int(c[2])) or f < hide_until
 		dmisc.visible = not hide_def
 		if int(data["frames"][f]["hit"]) > 0:
 			if r["kind"] in ["miss", "guard"]:  # 闪避/格挡: 守方格挡姿势

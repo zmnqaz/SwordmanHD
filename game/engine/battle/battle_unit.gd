@@ -30,6 +30,7 @@ var summon_flag := -1   # 召唤物: 召唤标志剧情变量号 (103~106), 死�
 var taken: Array = []   # 剧情 0x53 收走的装备 (关卡结束时从主角 10 格里去掉)
 var anim: AnimPlayer
 var _anim_dir := ""
+var sprite_override := -1   # >= 0: 顶替精灵号 (测试用, --teach=单位:技能@精灵; 让我方角色放妖怪专属技能的演出, 随战阵存录保存)
 var _path: Array = []
 var _speed := 100.0
 
@@ -185,7 +186,20 @@ func set_npc(on: bool) -> void:
 
 ## 战阵存录: 单位状态快照 / 恢复
 func snapshot() -> Dictionary:
-	return {"dir": dir, "shown": shown, "summon_flag": summon_flag, "st": st.to_dict()}
+	var d := {"dir": dir, "shown": shown, "summon_flag": summon_flag, "st": st.to_dict()}
+	if sprite_override >= 0:
+		d["sprite"] = sprite_override
+	return d
+
+
+## 顶替精灵号 (人物动画、近景、技能演出都按它取文件); info 是内容包里共享的字典, 先复制再改
+func override_sprite(spr: int) -> void:
+	sprite_override = spr
+	info = info.duplicate()
+	info["sprite"] = spr
+	_anim_dir = ThemeAssets.f("unit_anim", [spr, spr])
+	if shown:
+		play_act(Act.STAND, dir)
 
 
 func restore(d: Dictionary) -> void:
@@ -193,6 +207,8 @@ func restore(d: Dictionary) -> void:
 		st = UnitState.new()
 		st.from_dict(d["st"])
 	summon_flag = int(d.get("summon_flag", -1))
+	if d.has("sprite"):
+		override_sprite(int(d["sprite"]))
 	set_cell(cx, cy)
 	if d["shown"] and alive:
 		show_unit(int(d["dir"]))

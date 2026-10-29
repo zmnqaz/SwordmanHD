@@ -45,6 +45,7 @@ var skip_dialog: bool:  # 调试: 跳过对白 (--skip-dialog, 运行时 F3 切�
 
 func _init() -> void:
 	ctx.flow = GameFlow.new(self)
+	ctx.diag_info = Callable(Assets, "diag_report")
 
 
 # ---------------- 设置 (user://settings.json): 音乐/音效音量 0~10, 画质 hd/orig ----------------
@@ -366,6 +367,15 @@ func _failed_to_title(err: String) -> Node:
 var block_quit := false
 
 
+## 每帧记真实帧耗时 (engine/core/frame_stats.gd, 画质诊断页显示)
+func _process(_delta: float) -> void:
+	FrameStats.record(Assets.loads)
+
+
+## Windows 导出版退出时跳过引擎收尾直接结束进程 (见 _fast_quit); 出问题时改 false 退回正常收尾
+const HARD_EXIT := true
+
+
 func quit_game() -> void:
 	if block_quit:
 		print("拦截退出 (block_quit)")
@@ -389,8 +399,19 @@ func _fast_quit() -> void:
 			PlayLog.current.save()
 		OS.kill(OS.get_process_id())
 		return
+	var t0 := Time.get_ticks_msec()
 	if DisplayServer.get_name() != "headless" and OS.has_feature("pc"):
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MINIMIZED)
+	Assets.prepare_exit()   # 后台缓存扫描 / 清理马上停手, 退出不用等它
+	if HARD_EXIT and Platform.is_exported() and DisplayServer.get_name() != "headless" and OS.get_name() == "Windows":
+		# Windows 导出版: 引擎正常收尾要逐个释放上千张 6 倍贴图 / 着色器 / GL 上下文, 实测可达好几秒 (用户 2026-10-29 反馈「退出要很久」, 窗口收起来了进程还挂着)。
+		# 退出时真正要落盘的只有录像 (设定 / 存档都是改动当场写盘), 存完直接结束进程, 操作系统回收资源; 写到一半的缓存临时文件会被缓存扫描清掉
+		if PlayLog.current != null:
+			PlayLog.current.save()
+		print("退出: 存录像 %d ms, 跳过引擎收尾直接结束进程" % (Time.get_ticks_msec() - t0))
+		OS.kill(OS.get_process_id())
+		return
+	print("退出: 收尾前准备 %d ms" % (Time.get_ticks_msec() - t0))
 	get_tree().quit()
 
 

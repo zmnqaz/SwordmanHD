@@ -149,13 +149,15 @@ func res_anim(u: BattleUnit, dir: String, start: int, end: int, wait := true, ti
 
 
 ## 地图演出动画 (法术、招式、施法光效) 在格 at 按约定 conv 播放 [start, end) 帧并等结束 (FxPlace: 格 + 约定偏移)
-func map_anim(dir: String, at: Vector2i, start := 0, end := -1, conv := "fx") -> void:
-	var a := spawn_fx(dir, FxPlace.at_cell(at, conv), start, end, 50)
+## snap_cam: 满屏的动画 (整幅 320x200 画面, 如绝技 SM / S) 摆在实际镜头的屏幕原点而不是格子上: 原版就是「镜头到位后在屏幕 (0,0) 画」,
+## 目标格靠近地图边、镜头被夹在地图内时, 按格摆会和实际画面错开, 框外那圈黑 (FullscreenCover) 就露在一侧 (2026-10-29 用户: 电射星驰左边一块黑)
+func map_anim(dir: String, at: Vector2i, start := 0, end := -1, conv := "fx", snap_cam := false) -> void:
+	var a := spawn_fx(dir, FxPlace.at_cell(at, conv), start, end, 50, true, 0, snap_cam)
 	await a.finished
 
 
 ## 在地图坐标 pos 放一个演出动画并开始播放, 播完自动释放
-func spawn_fx(dir: String, pos: Vector2, start := 0, end := -1, z := 50, sound := true, tick := 0) -> AnimPlayer:
+func spawn_fx(dir: String, pos: Vector2, start := 0, end := -1, z := 50, sound := true, tick := 0, snap_cam := false) -> AnimPlayer:
 	var a := AnimPlayer.new()
 	a.play_sound = sound
 	a.tick_override = tick
@@ -164,7 +166,8 @@ func spawn_fx(dir: String, pos: Vector2, start := 0, end := -1, z := 50, sound :
 	bs.units_node.add_child(a)
 	a.play(dir, start, end, false)
 	a.finished.connect(a.queue_free)
-	FullscreenCover.attach(a)   # 满屏的演出动画: 宽屏/全屏下框外盖黑
+	if FullscreenCover.attach(a) and snap_cam:   # 满屏的演出动画: 宽屏/全屏下框外盖黑; 要求贴镜头的就摆到实际镜头的屏幕原点
+		a.position = bs.orig_cam()
 	return a
 
 
@@ -215,10 +218,14 @@ func cast_fx(fx: Dictionary, caster: BattleUnit, target: Vector2i) -> void:
 		await Cutscene.play_file(self, movie, fx.get("movie_skip", ["cancel"]))
 	if not has_anim:
 		return
-	var hide := bool(fx.get("hide_caster", false))
+	# hide_caster_on_self: 落点就是施放者自己的格 (射程 0, 如旋刃卷岚 / 日轮神剑) 时才藏: 这类演出文件 (NNN-nS) 自己把施放者画在画面中央的原位,
+	# 不藏地图上的人会重影; 落点在别处时演出画在落点, 施放者留在原地, 不能藏 (②, 文件内容为证, 未实机核对)
+	var hide := bool(fx.get("hide_caster", false)) or (bool(fx.get("hide_caster_on_self", false)) and at == Vector2i(caster.cx, caster.cy))
 	if hide:
 		caster.visible = false
-	await map_anim(dir, at, 0, -1, String(fx.get("convention", "fx")))
+	var own := {BattleUnit.Dir.SOUTH: 2, BattleUnit.Dir.WEST: 3, BattleUnit.Dir.NORTH: 0, BattleUnit.Dir.EAST: 1}.get(caster.dir, 2) as int
+	var seg := CastFx.direction_segment(Assets.anim(dir), CastFx.direction_variant(Vector2i(caster.cx, caster.cy), target, own))   # 按方向分 4 段的动画只放一段
+	await map_anim(dir, at, seg.x, seg.y, String(fx.get("convention", "fx")), String(fx.get("convention", "fx")) == "fx")
 	if hide:
 		caster.visible = true
 
@@ -227,8 +234,11 @@ func cast_fx(fx: Dictionary, caster: BattleUnit, target: Vector2i) -> void:
 ## 与 map.cast_banner.text (flags=5 主色 + 光边, x = 46 - 字节数*3, y = 5)。动作按演出表 banner 段。
 ## host: 挂到这个节点下 (近景战斗的 _ui, 原版坐标) 而不是战场界面层; 近景里放物理绝技也有同一块横幅 (FIG_MISC 第 2 帧 =
 ## MAG_MISC 第 0 帧同图, 位置 (113,22) 同, 滑入/保持 37 tick/滑出同), 播完自己释放
-func cast_banner(skill_name: String, host: Node2D = null) -> Node2D:
+func cast_banner(skill_name: String, host: Node2D = null, hold_ticks := -1) -> Node2D:
 	var bc := CastFx.section("banner")
+	if hold_ticks >= 0:   # 近景回来后的第二次横幅: 滑入就滑出, 不停留 (原版 连拍, 电射星驰 9.0~9.3 s)
+		bc = bc.duplicate()
+		bc["hold_ticks"] = hold_ticks
 	var id := String(bc.get("element", "map.cast_banner"))
 	var panel := UiLayout.panel(id)  # 位置按帧外框公式 ((320-w)/2, (200-h)>>3)
 	var pos := panel.position
@@ -278,14 +288,25 @@ func _banner_step(root: Node2D, dy: float, a16: float) -> void:
 const SCREEN_W := 320
 const SCREEN_H := 200
 
-## 收掉横幅与压暗, 施法者回到站立
+## 收掉横幅, 施法者回到站立; 压暗 (nodes 里的 ColorRect) 留着, 由 cast_fade_out 在结果动画之后渐亮 (原版 连拍: 压暗一直保持到结果动画结束, 之后约 0.6 秒渐亮, 再出经验框)
 func cast_end(nodes: Array) -> void:
 	for n in nodes:
 		if n is BattleUnit:
 			if n.alive and n.shown:
 				n.play_act(BattleUnit.Act.STAND, n.dir)
-		elif is_instance_valid(n):
+		elif is_instance_valid(n) and not n is ColorRect:
 			n.queue_free()
+
+
+## 压暗渐亮并收掉 (阶梯式, 同原版)
+func cast_fade_out(nodes: Array, sec := 0.6) -> void:
+	for n in nodes:
+		if is_instance_valid(n) and n is ColorRect:   # 先判有效: cast_end 已把横幅等节点 queue_free, 对已释放的实例做 is 会报脚本错误并中断整个施放流程
+			var rect: ColorRect = n
+			var tw: Tween = rect.create_tween()
+			tw.tween_property(rect, "color:a", 0.0, sec)
+			tw.tween_callback(rect.queue_free)
+	await bs.get_tree().create_timer(sec).timeout
 
 
 # ---------------- 回合横幅 ----------------

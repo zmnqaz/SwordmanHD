@@ -3,7 +3,7 @@ class_name CastFx
 extends RefCounted
 ## 地图施法演出表 (内容包 fx/cast.json): 镜头、压暗、施法光效、法术名横幅动作、各类技能的演出动画与放置约定。
 ## 放置规则统一由 FxPlace 处理; 这里只把「哪段动画、按哪个约定、锚在谁身上」从数据里解析出来。
-## 技能记录可带 "fx": {anim, convention, anchor, hide_caster} 覆盖 skill 段 (新技能只加数据, 不改脚本)。
+## 技能记录可带 "fx": {anim, convention, anchor, hide_caster, hide_caster_on_self} 覆盖 skill 段 (新技能只加数据, 不改脚本)。
 
 const DEFAULT := {
 	"camera": {"center": true, "speed": [750, 600], "return": true, "return_speed": [375, 300]},
@@ -70,3 +70,25 @@ static func fill(tpl: String, sk: Dictionary, spr: int) -> String:
 	var bspr := int(sk.get("battle_sprite", 0))
 	return tpl.replace("{anim3}", "%03d" % anim).replace("{anim}", str(anim)) \
 		.replace("{spr3}", "%03d" % spr).replace("{bspr}", ("-%d" % bspr) if bspr > 0 else "")
+
+
+## 按施放方向分 4 段的演出动画 (原版仅 004-2SM / 005-1sm / 007-1sm: 帧数 = 4 x action_counts[0], 如韩千秀双环映月月牙) 只放对应那一段 [起, 止);
+## 其它动画 (0, -1) = 整段。实测 (2026-10-29, 韩千秀双环映月向上/右/下/左各放一遍, 与 007-1sm 各段按亮部形状比对, 相似度 0.97~1.0): 段号 上 0 / 右 1 / 下 2 / 左 3
+static func direction_segment(anim_data: Dictionary, variant: int) -> Vector2i:
+	if anim_data.is_empty() or variant < 0 or variant > 3:
+		return Vector2i(0, -1)
+	var c0 := int(anim_data.get("action_counts", [0])[0])
+	if c0 > 0 and anim_data["frames"].size() == 4 * c0:
+		return Vector2i(variant * c0, variant * c0 + c0)
+	return Vector2i(0, -1)
+
+
+## 施放方向 (施放者格 c -> 落点格 t) 的段号: 上 0 / 右 1 / 下 2 / 左 3; 同一格 (射程 0) 用 own (施放者当前朝向的段号, 见 variant_of_dir)
+static func direction_variant(c: Vector2i, t: Vector2i, own := 2) -> int:
+	var d := t - c
+	if d == Vector2i.ZERO:
+		return own
+	if absi(d.y) > absi(d.x):
+		return 2 if d.y > 0 else 0
+	return 1 if d.x > 0 else 3
+
