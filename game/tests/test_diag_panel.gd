@@ -37,9 +37,15 @@ func test_lines_show_scale_distribution_and_failure():
 	check(DiagPanel.lines().size() >= 10, "没有贴图信息 (无头 / 没注入) 也不报错")
 
 
+## 测试结束复位全局上下文上的诊断数据源
+func _reset_gc() -> void:
+	GameContext.current().diag_info = Callable()
+
+
 func _open_panel(failed := false) -> DiagPanel:
 	var gc := GameContext.current()
-	gc.diag_info = func(): return _info(failed)
+	var info := _info(failed)
+	gc.diag_info = func(): return info   # 只捕获局部数据, 不能捕获测试对象: 全局 GameContext 退出时才析构这个 lambda, 捕获了已释放的测试对象会让进程退出时堆损坏崩溃 (CI 退出码 -6)
 	var p := DiagPanel.new()
 	p.gc = gc
 	p.router = Router.new()
@@ -68,6 +74,7 @@ func test_close_by_confirm_cancel_and_click_with_guard():
 	check(FileAccess.file_exists(TEST_OUT), "关闭时写出诊断文件")
 	check(FileAccess.get_file_as_string(TEST_OUT).contains("Window"), "文件里是诊断文字")
 	DirAccess.remove_absolute(TEST_OUT)
+	_reset_gc()
 
 
 func test_cancel_closes_too():
@@ -79,6 +86,8 @@ func test_cancel_closes_too():
 	eq(closed, [false], "取消键返回")
 	await _tree().process_frame
 	await _tree().process_frame
+	DirAccess.remove_absolute(TEST_OUT)
+	_reset_gc()
 
 
 func test_settings_has_diag_row_opening_diag_panel():
