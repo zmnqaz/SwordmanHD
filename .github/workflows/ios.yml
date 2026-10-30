@@ -11,20 +11,22 @@ on:
 
 env:
   GODOT_VERSION: "4.7.2"
+  XCODE_VERSION: "27.1"      # iPhone Duo (折叠屏) 的 SDK 从 27.1 起带; 要换版本只改这里
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: xcode-27          # GitHub 的 Xcode 27 镜像 (preview, macOS 27, 装有 Xcode 27.0 / 27.1 / 27.2); 出问题可退回 macos-15 + Xcode 26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: false
 
-      - name: 切到 Xcode 26 (Godot 4.7 的引擎库要 iOS 26 SDK; 默认的 Xcode 16.4 链接会缺 CADynamicRange*/MTLTensorDomain)
+      - name: 切到 Xcode ${{ env.XCODE_VERSION }} (Godot 4.7 的引擎库要 iOS 26 以上的 SDK; 太老的 Xcode 链接会缺 CADynamicRange*/MTLTensorDomain)
         run: |
           set -euo pipefail
-          X=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          X="/Applications/Xcode_${XCODE_VERSION}.app"
+          if [ ! -d "$X" ]; then echo "镜像里没有 $X, 已装的有:"; ls -d /Applications/Xcode*.app; exit 1; fi
           echo "用 $X"
           sudo xcode-select -s "$X/Contents/Developer"
           xcodebuild -version
