@@ -51,7 +51,7 @@ python3 tools/platform/bundle_ipa.py <ipa> --edition classic               # 原
 
 ## 工程设置 (`game/export_presets.cfg` 的 "iOS" 预设)
 
-- 包名 `com.tdj.swordmanhd` (与 Android、代码里一致), 最低 iOS 14.0, arm64, 横屏 (iPhone 与 iPad 都是), 高分屏。
+- 包名 `com.tdj.swordmanhd` (与 Android、代码里一致), 最低 iOS 15.0 (Xcode 27 起不再支持更低的部署目标), arm64, 横屏 (iPhone 与 iPad 都是), 高分屏。
 - `application/export_project_only=true`: Godot 只出工程, 编译由 `build_ios.py --ipa` / Xcode 做 (Linux 上 Godot 也只能出工程)。
 - 文件共享打开 (`UIFileSharingEnabled` + `LSSupportsOpeningDocumentsInPlace`), 资源包靠它拷进去。
 - 应用图标 `game/assets/app_icon.png` (1024x1024, 无透明; `python3 tools/platform/make_app_icon.py` 生成, 不含原版素材)。
