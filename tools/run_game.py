@@ -8,7 +8,6 @@
 (环境变量 TDJ_GODOT / TDJ_ORIGINAL / TDJ_HD6X 或 tools/dev_env.json)。Linux 上自动用本机桌面的 Xwayland (:0)。
 Windows 想看日志用 Godot 的 *_console.exe。未在 Windows 实机验证。
 """
-import glob
 import os
 import subprocess
 import sys
@@ -16,6 +15,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import paths  # noqa: E402
+import xauth  # noqa: E402
 
 
 def main(argv):
@@ -37,10 +37,10 @@ def main(argv):
             env.setdefault("WAYLAND_DISPLAY", "wayland-0")
             cmd = [godot, "--display-driver", "wayland", "--path", game] + args
             return subprocess.call(cmd, env=env)
-        xa = sorted(glob.glob("/run/user/%d/.mutter-Xwaylandauth.*" % os.getuid()))
+        xa = xauth.xauthority()
         if xa and os.path.exists("/tmp/.X11-unix/X0"):
             env["DISPLAY"] = ":0"
-            env["XAUTHORITY"] = xa[0]
+            env["XAUTHORITY"] = xa
     elif args[:1] == ["--wayland"]:
         print("--wayland 只在 Linux 上有意义", file=sys.stderr)
         return 2

@@ -24,6 +24,7 @@ func _joined(ls: Array) -> String:
 func test_lines_show_scale_distribution_and_failure():
 	var ok := _joined(DiagPanel.lines(_info(false)))
 	check("Window" in ok and "Textures" in ok and "VRAM" in ok, "平台 / 贴图 / 显存各行都在")
+	check(ok.contains("Game      " + GameVersion.label()) and GameVersion.number().count(".") == 2, "第一行是游戏版本号 (x.y.z)")
 	check("1x: 30" in ok and "6x: 400" in ok and "placeholders 7" in ok, "清晰度分布: 1 倍 30 张 / 6 倍 400 张 / 占位 7")
 	check("max texture side 4096" in ok, "显示单边贴图上限")
 	check(not ("!! FAILED" in ok), "生成器正常: 没有失败提示")

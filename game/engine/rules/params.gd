@@ -112,7 +112,7 @@ var skill_heal_vit_div := 20            # 技能治疗 ×(100 + Vit/20 + S)/100 
 var heal_vit_div := 20              # 物品回 HP ×(100 + Vit/20)/100 [原版 调用 对照]
 var item_mp_int_div := 20           # 物品回 MP ×(100 + Int/20)/100 [sar 3; 原版 对照 见 HP 项]
 var vampire_div := 3                # 吸血 dmg/3 中高
-## 武器附加 毒/麻/封: skill=-1 越界读技能表 → R 恒 0。
+## 武器附加 毒/麻/封 原版 与原生 Win10 越界字节均为 FF FF: skill=-1 越界读技能表 → R 恒 0。
 ##   "original": 主攻 R(0) < K → 抵抗, 永不生效; 反击路径照样施加, R=K=0 (目标阵营下一阶段开始即解除)
 ##   "custom":   主攻/反击都以 R=time、K=cost 施加 (按 R<K 规则)
 var weapon_status_mode := "original"
@@ -167,6 +167,7 @@ var ai_kill_bonus := 50
 var ai_heal_tiers := [[40, 100], [60, 50], [80, 10]]   # HP% <=40 +100, 40~60 +50, 60~80 +10
 var ai_status_each := 50            # 增益/诅咒 每人 +50, 上限 150
 var ai_status_cap := 150
+var ai_curse_needs_hit := false     # 诅咒 / 地缚估价: 每个目标掷一次命中 (耗随机数), 原版【不看命中结果】: 每个缺该状态的目标照样 +50, 幻影/全禦目标也算 1100+ 例逐例一致。true = 未命中 (含幻影/全禦) 不计分 (复刻旧写法, 比原版弱)
 var ai_buff_enemy_radius := 12      # 攻/防/速/狂暴 类要求目标 12 格内有敌人
 var ai_status_dmg_base := 110       # 带状态/吸术/驱散的绝技 (ot1 oe3~6、ot2 oe12) 主分 110, 末条目击杀 +30 [字段/字段]
 var ai_status_dmg_kill := 30

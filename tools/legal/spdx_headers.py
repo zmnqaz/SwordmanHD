@@ -29,6 +29,7 @@ OVERRIDES = {
     "game/engine/render/hq/xbrz6_alpha.gdshader": "GPL-3.0-only",
 }
 EXCLUDE = ("hd4x/", "data/", "game/content/tdj/", "demo/", "game/.godot/")
+VENDOR_DIR = "/_vendor/"   # 随仓库带的第三方库 (各自带许可证), 任何目录下的 _vendor/ 都不加我们的头
 SPDX_RE = re.compile(r"SPDX-License-Identifier:\s*(\S+)")
 
 
@@ -39,7 +40,7 @@ def tracked(repo):
 
 def expected(path, default):
     ext = os.path.splitext(path)[1]
-    if ext not in COMMENT or path.startswith(EXCLUDE):
+    if ext not in COMMENT or path.startswith(EXCLUDE) or VENDOR_DIR in "/" + path:
         return None
     return OVERRIDES.get(path, default)
 

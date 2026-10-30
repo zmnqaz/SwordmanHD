@@ -453,7 +453,7 @@ func ai_plan(u: BattleUnit) -> Dictionary:
 	if gc.debug.ai_trace:  # 对照: 每个 AI 单位本阶段的决定
 		var a: Dictionary = plan.action
 		print("AI回合%d %s#%d ai%d (%d,%d)->(%d,%d) hp%d/%d mp%d rng=%d %s" % [bs.turn, u.name_text, u.index, u.st.ai, u.cx, u.cy, plan.move_to.x, plan.move_to.y, u.hp, u.hp_max, u.mp, ctx.rng.get_state(),
-			"待命" if a.is_empty() else "%s %s 分 %s/%s" % [a.get("kind", "?"), str(a.get("target", a.get("center", ""))), str(a.get("main")), str(a.get("sub"))]])
+			"待命" if a.is_empty() else ("%s %s 分 %s/%s" % [a.get("kind", "?"), str(a.get("target", a.get("center", ""))), str(a.get("main")), str(a.get("sub"))]) + " sk=" + str(a.get("skill", a.get("item", "")))])
 	return plan
 
 

@@ -42,6 +42,7 @@ func _ready() -> void:
 		var t := UiText.make("title.menu_item", _item(i), i)
 		_menu.add_child(t)
 		_texts.append(t)
+	_add_version_label()
 	_update()
 	InputRouter.push(self)
 	Game.fade_in(0.5)
@@ -51,6 +52,25 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_clock += delta
+
+
+## 右下角的版本号 (玩家报 bug 时对得上哪一版): 屏幕坐标的小字, 半透明, 不挡点按; 画在黑幕 (layer 100) 之下
+func _add_version_label() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 50
+	add_child(layer)
+	var l := Label.new()
+	l.text = GameVersion.label()
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.add_theme_font_override("font", UiText.game_font(false))
+	l.add_theme_font_size_override("font_size", maxi(12, int(0.025 * get_viewport().get_visible_rect().size.y)))
+	l.add_theme_color_override("font_color", Color(1, 0.94, 0.78, 0.7))
+	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	l.add_theme_constant_override("outline_size", 3)
+	l.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, 8)
+	l.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	l.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	layer.add_child(l)
 
 
 func _show_menu() -> void:

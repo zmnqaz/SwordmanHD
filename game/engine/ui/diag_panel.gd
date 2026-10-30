@@ -27,6 +27,7 @@ var _closing := false
 ## 无窗口 / 无头时各项取到什么显示什么
 static func lines(info: Dictionary = {}, frame_ms: Array = []) -> Array:
 	var out: Array = []
+	out.append("Game      %s" % GameVersion.label())
 	var win := DisplayServer.window_get_size()
 	var scr := DisplayServer.screen_get_size()
 	var mobile := Platform.is_mobile()

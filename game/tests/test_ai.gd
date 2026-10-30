@@ -479,7 +479,8 @@ func test_heal_sub_beats_weak_attack_measured():
 	check(int(d.get("sub", 0)) > 0, "副分是回复量, 实际 %s" % str(d.get("sub")))
 
 
-## 诅咒估价对每个目标掷一次命中, 未中不计分 (case 0xb) [对照第 1 关: 随机数消耗与原版一致]
+## 诅咒估价对每个目标掷一次命中 (耗随机数), 但【不看命中结果】: 每个缺该状态的目标照样 +50 (case 0xb)
+## [随机数消耗与原版一致 原版 直接调 逐例对照 1026 例: 封魔神道/夺魄鬼咒/鬼缚之阵, 含目标带幻影/全禦, 位置、落点、随机数全等; 旧版「未中不计分」比原版弱]
 func test_curse_score_rolls_hit_measured():
 	var c = ctx_data()
 	var b = Board.new(12, 12, 0)
@@ -492,11 +493,33 @@ func test_curse_score_rolls_hit_measured():
 		b.add_unit(f)
 	b.add_unit(me)
 	Movement.begin_phase(c, me)
-	c.rng = ScriptedRng.new([], 99)
-	check(AI.decide(c, b, me).is_empty(), "全未中: 0 分, 不放")
+	c.rng = ScriptedRng.new([], 99)   # 每次掷骰都 99: 按命中率全未中
+	var d_miss := AI.decide(c, b, me)
+	eq(d_miss.get("kind"), "skill", "全未中也照样: 两人各 50 = 100 分, 放")
+	eq(d_miss.get("main"), 100)
+	check(c.rng.used > 0, "估价仍然耗随机数 (每个目标掷一次)")
+	var used_miss: int = c.rng.used
+	c.rng = ScriptedRng.new([], 0)   # 全命中: 结果与随机数消耗都和未中时一样
+	var d_hit := AI.decide(c, b, me)
+	eq(d_hit.get("kind"), "skill")
+	eq(d_hit.get("main"), 100)
+	eq(d_hit.get("center"), d_miss.get("center"), "命中与否不改变落点")
+	eq(c.rng.used, used_miss, "命中与否不改变随机数消耗")
+	# 目标已带该状态 (封咒 0x400) 的不计分, 两人都带则不放
+	for f in b.units:
+		if f.side == 0:
+			f.status |= 0x400
+			f.status_r[0x400] = 30000
+			f.status_k[0x400] = 1
 	c.rng = ScriptedRng.new([], 0)
-	var d := AI.decide(c, b, me)
-	eq(d.get("kind"), "skill", "全命中: 两人各 50 = 100 分")
+	check(AI.decide(c, b, me).is_empty(), "目标已封咒: 不计分")
+	# 参数 ai_curse_needs_hit = true 是旧写法 (未中不计分, 比原版弱)
+	for f in b.units:
+		if f.side == 0:
+			f.status = 0
+	c.params.ai_curse_needs_hit = true
+	c.rng = ScriptedRng.new([], 99)
+	check(AI.decide(c, b, me).is_empty(), "旧写法: 全未中 0 分")
 
 
 ## 返召之咒 (rt5 eff13, 41): 范围内每个本阶段已行动的友军 +40 累加不封顶, 3 个 = 120 才会施放 (2 个 = 80 不够)

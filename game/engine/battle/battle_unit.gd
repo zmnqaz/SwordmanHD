@@ -118,6 +118,8 @@ static func create(i: int, m: Dictionary, x: int, y: int, rules_ctx) -> BattleUn
 func _init_stats() -> void:
 	var uid := int(man["unit_id"])
 	var side := 1 if int(info["camp"]) == 1 else 0
+	var hp_sub := 0
+	var mp_sub := 0
 	if Content.is_hero(uid) and not gc.state.party_of(uid).is_empty():  # 我方主角: 继承之前关卡的成长
 		var g: Dictionary = gc.state.party_of(uid)
 		st = UnitState.new()
@@ -141,7 +143,9 @@ func _init_stats() -> void:
 		st = UnitState.from_party_init(p)
 		gc.state.seeded[uid] = true  # 初始随身物品 (含装备) 就在本人 10 格里 (原版 KMAN_STA 初始物品; 旧存档此处曾把消耗品放进行囊)
 	else:  # 敌方/NPC: 模板 + 成长 x 等级 + 关卡加值
-		var plus := {"hp": int(man["hp_add"]) - int(man["hp_sub"]), "mp": int(man["mp_add"]) - int(man["mp_sub"])}
+		var plus := {"hp": int(man["hp_add"]), "mp": int(man["mp_add"])}
+		hp_sub = int(man["hp_sub"])
+		mp_sub = int(man["mp_sub"])
 		for k in AttrNames.STAT_KEYS:
 			plus[k] = int(man[k])
 		st = Stats.make_enemy(info, int(man["lv"]), plus, side)
@@ -162,8 +166,9 @@ func _init_stats() -> void:
 	st.mag_opp_id = int(info["attribute_defence_id"])
 	st.annihilation_exempt = int(info.get("defence_type", 0)) != 0
 	st.kill_event = int(man.get("kill_event", -1))
-	st.hp = st.hp_max
-	st.mp = st.mp_max
+	# hp_sub/mp_sub 只减当前值, 上限不变 [当前 = 上限 - sub]; 至少留 1 点 HP
+	st.hp = maxi(1, st.hp_max - hp_sub)
+	st.mp = maxi(0, st.mp_max - mp_sub)
 	st.alive = true
 	var t: Array = man.get("ai_target", [0, 0])
 	set_ai(int(man["ai"]), int(t[0]), int(t[1]))

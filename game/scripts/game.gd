@@ -183,6 +183,7 @@ func _ready() -> void:
 			OS.alert(boot_error, "SwordmanHD")
 		return  # 桌面的退出放在 boot() 里做 (autoload 的 _ready 阶段调 quit 会被吞掉)
 	get_tree().auto_accept_quit = false   # 点窗口关闭按钮: 自己处理, 先藏窗口再退 (见 _fast_quit)
+	print("SwordmanHD %s" % GameVersion.label())
 	_init_audio()
 	var play_log := PlayLog.start_from_args()   # 通关录像: 默认录制玩家全程操作; --replay-play=<文件> 回放 (engine/core/play_log.gd)
 	if play_log != null:

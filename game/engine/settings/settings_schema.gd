@@ -71,6 +71,8 @@ const ROWS := [
 	{"key": "guide", "kind": "action", "needs": "guide"},
 	# 画质诊断 (复刻新增, 2026-10-29): 屏幕 / 贴图倍数 / 生成器状态 / 显存 / 帧率, 手机上画面发糊时用 (engine/ui/diag_panel.gd)
 	{"key": "diag", "kind": "action", "group": "display"},
+	# 关于 (复刻新增): 版本号 + GitHub 地址 (engine/ui/about_panel.gd), 主菜单最后一行
+	{"key": "about", "kind": "action"},
 ]
 ## 窗口大小档 (宽度, 即 win 的取值; 0 = 自动) 对应的 16:10 窗口像素
 static func win_size(w: int) -> Vector2i:

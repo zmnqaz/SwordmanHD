@@ -209,10 +209,13 @@ static func _score_skill_targets(ctx, board, u, sk: Dictionary, targets: Array) 
 	if bit != 0:
 		var s := 0
 		for t in targets:
-			# 诅咒估价对每个目标掷一次命中 (case 0xb: 命中率 +), 未中不计分 [对照 第 1 关: 随机数消耗];
-			# 地缚 (绝技 ot2 oe8) 同样每个目标掷一次命中 (est 录制 2120 例: 1 目标 1 次, 无幻影/全禦预判)
+			# 诅咒估价对每个目标掷一次命中 (case 0xb: 命中率 +) [对照 第 1 关: 随机数消耗];
+			# 地缚 (绝技 ot2 oe8) 同样每个目标掷一次命中 (est 录制 2120 例: 1 目标 1 次, 无幻影/全禦预判)。
+			# 但原版【不看命中结果】: 掷了骰照样每个缺该状态的目标 +50 (幻影/全禦目标也算), 与命中率无关
+			# [原版 直接调 逐例对照: 封魔神道/夺魄鬼咒/鬼缚之阵 1026 例 (含目标带幻影/全禦/同状态) 位置、落点、随机数全等,]
 			if (not physical and rt == Skills.RT_CURSE) or (physical and ot == 2 and oe == 8):
-				if ctx.rng.mod(100) >= Skills.spell_hit(ctx, u, t, sk):
+				var roll: int = ctx.rng.mod(100)
+				if p.ai_curse_needs_hit and roll >= Skills.spell_hit(ctx, u, t, sk):
 					continue
 			if t.has_status(bit):
 				continue
