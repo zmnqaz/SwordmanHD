@@ -156,17 +156,22 @@ func test_font_row_from_manifest():
 	check(SettingsSchema.desc_of("font", "kai").length() > SettingsSchema.row_desc(SettingsSchema.row("font")).length(), "说明带当前字体的一句话")
 
 
-## 限定语言的字体 (原版点阵 tfont, 只繁体): 设定文件里存了它, 简体下不被当成非法值丢掉 (切回繁体恢复), 显示实际在用的缺省字体
+## 限定语言的字体 (清单里写了 lang, 如只繁体): 设定文件里存了它, 别的语言下不被当成非法值丢掉 (切回该语言恢复), 显示实际在用的缺省字体。
+## 用一条临时塞进清单的假字体测 (原版点阵 / Fusion Pixel 都不分简繁了)
 func test_language_limited_font_is_kept():
-	if UiFonts.find("tfont").is_empty():
-		skip("没生成原版点阵")
-		return
+	var fake := {"id": "zz_hant_only", "name": "仅繁体测试", "file": "res://content/remake/ui_theme/fonts.json", "lang": "hant", "baseline_in_cell": 10.75, "order": 999}
+	var old_list: Array = UiFonts._list.duplicate()
+	var old_loaded: bool = UiFonts._loaded
+	UiFonts._ensure()
+	UiFonts._list = UiFonts._list + [fake]
 	var before: String = Content.lang
 	Content.set_lang("hans")
-	eq(SettingsSchema.sanitize({"font": "tfont"})["font"], "tfont", "简体下也保留已存的选择")
-	eq(SettingsSchema.text_of("font", "tfont"), String(UiFonts.get_or_default("tfont")["name"]), "显示实际在用的字体名")
-	check(not SettingsSchema.options_of(SettingsSchema.row("font")).any(func(o): return o["v"] == "tfont"), "简体下选项里没有")
+	eq(SettingsSchema.sanitize({"font": "zz_hant_only"})["font"], "zz_hant_only", "简体下也保留已存的选择")
+	eq(SettingsSchema.text_of("font", "zz_hant_only"), String(UiFonts.get_or_default("zz_hant_only")["name"]), "显示实际在用的字体名")
+	check(not SettingsSchema.options_of(SettingsSchema.row("font")).any(func(o): return o["v"] == "zz_hant_only"), "简体下选项里没有")
 	Content.set_lang(before)
+	UiFonts._list = old_list
+	UiFonts._loaded = old_loaded
 
 
 ## 键盘按键设置所有平台都列: 安卓掌机的实体按键、外接键盘上报的都是键盘按键 (2026-10-31)

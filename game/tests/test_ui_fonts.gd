@@ -76,36 +76,48 @@ func test_subset_fonts_fall_back_to_the_complete_font():
 	eq(UiFonts.merge_dirs(["res://content/tdj", "res://content/remake"])["list"].filter(func(e): return e.get("full", false)).size(), 1, "清单里恰好一个完整字库")
 
 
-## 原版点阵 (生成工具的脚本 从原版 Tfont.dat 生成, 内容包 tdj 里, 只服务繁体): 没生成时跳过; 简体下不可用, 繁体下能用, 缺字回退思源黑体
+## 原版点阵 (生成工具的脚本 从原版 Tfont.dat 生成, 内容包 tdj 里): 没生成时跳过; 不分简繁, 两种语言下都能用, 缺字回退思源黑体
 func test_tfont_from_original():
 	var e := UiFonts.find("tfont")
 	if e.is_empty():
 		skip("没生成原版点阵 (生成工具的脚本, 需要原版)")
 		return
 	var before: String = Content.lang
-	Content.set_lang("hans")
-	eq(e["lang"], "hant", "限定繁体")
-	eq(UiFonts.get_or_default("tfont")["id"], UiFonts.default_id(), "简体下回退缺省字体")
-	check(not UiFonts.options().any(func(o): return o["v"] == "tfont"), "简体下设定里不列")
-	check(UiFonts.options(true).any(func(o): return o["v"] == "tfont"), "全量选项里有 (设定文件校验用)")
-	Content.set_lang("hant")
-	eq(UiFonts.get_or_default("tfont")["id"], "tfont", "繁体下可用")
-	check(UiFonts.options().any(func(o): return o["v"] == "tfont"), "繁体下设定里列出")
+	check(not e.has("lang"), "原版字体没有简繁之分")
+	for lg in ["hans", "hant"]:
+		Content.set_lang(lg)
+		eq(UiFonts.get_or_default("tfont")["id"], "tfont", "%s 下可用" % lg)
+		check(UiFonts.options().any(func(o): return o["v"] == "tfont"), "%s 下设定里列出" % lg)
 	eq(float(e["baseline_in_cell"]), 12.0, "点阵字基线在字格最后一行下沿")
 	eq(float(e.get("embolden", 0.0)), 0.0, "点阵字不加粗")
 	var f: FontFile = Assets._face("tfont")
-	for ch in "天地劫神魔至尊傳的了一是，。、！？ABab09":
+	for ch in "天地劫神魔至尊傳传的了一是，。、！？ABab09":
 		check(f.has_char(ch.unicode_at(0)), "点阵字有 " + ch)
 	check(f.has_char(0x20), "有空格 (宽度)")
 	var bare := FontFile.new()   # 不挂回退的原字体 (has_char / get_supported_chars 都会把回退字体算进去)
 	bare.load_dynamic_font(String(e["file"]))
 	for ch in "闇鼩蓮祂布錘噁墬喲":   # 原版字模是空的、make_tfont.py 补上的字 (ALIAS / tfont_extra.json / COMPOSE)
 		check(bare.has_char(ch.unicode_at(0)), "补字后字体自己有「%s」" % ch)
-	check(not bare.has_char("气".unicode_at(0)), "不做简体别名 (「气」的字形在繁体码位「氣」上)")
+	for ch in "气术复极":   # 简体字挂在繁体字的字模上 (tfont_hans.json)
+		check(bare.has_char(ch.unicode_at(0)), "简体字「%s」挂到繁体字模" % ch)
 	check(f.fallbacks.size() == 1 and f.fallbacks[0] == Assets._face("sans"), "缺字回退到思源黑体")
 	check(f.get_char_size("天".unicode_at(0), 48).x == 48.0, "全角 1 em")
 	check(f.get_char_size("A".unicode_at(0), 48).x == 24.0, "半角 1/2 em")
 	Content.set_lang(before)
+
+
+## Fusion Pixel (生成工具的脚本, 三方点阵字体, 独立的一项): 简繁都能选, 简繁字都有
+func test_fusion_pixel_font():
+	var e := UiFonts.find("fusionpixel")
+	if e.is_empty():
+		skip("没生成 Fusion Pixel (生成工具的脚本)")
+		return
+	check(not e.has("lang"), "不分简繁")
+	var bare := FontFile.new()
+	bare.load_dynamic_font(String(e["file"]))
+	for ch in "這裡說傳这里说传的了一是，。、！？ABab09":
+		check(bare.has_char(ch.unicode_at(0)), "Fusion Pixel 有「%s」" % ch)
+	eq(float(e["baseline_in_cell"]), 12.0, "基线同原版点阵")
 
 
 ## order: 后加载的包 (tdj) 的字体排到内置字体之后; 同 order 保持加载顺序
