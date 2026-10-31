@@ -95,3 +95,36 @@ func test_settings_has_diag_row_opening_diag_panel():
 	check("diag" in SettingsSchema.shown_rows("display").map(func(r): return r["key"]), "「显示」二级菜单里有「画质诊断」行")
 	check(UiStrings.t("settings.diag.label") != "settings.diag.label", "行名有文案")
 	check(UiStrings.t("diag.title") != "diag.title" and UiStrings.t("diag.hint") != "diag.hint", "标题 / 提示有文案")
+
+
+## 诊断页带「最近按键」: 安卓掌机的实体键有的报手柄键、有的报键盘键, 两个物理键报同一个键号就没法分开绑, 玩家把这块原样发回来 (2026-10-31 RP6 反馈)
+func test_lines_show_pads_and_recent_inputs():
+	var ls: Array = DiagPanel.lines({"pads": ["0: Retroid Pad"], "inputs": ["pad button 4 (Back) device 0", "key Enter (keycode 4194309, physical 4194309) device 0"]})
+	var txt := "\n".join(ls)
+	check(txt.contains("Retroid Pad"), "显示已连接的手柄")
+	check(txt.contains("pad button 4 (Back)") and txt.contains("key Enter"), "逐条显示最近的按键")
+	var empty := "\n".join(DiagPanel.lines({}))
+	check(empty.contains("(none connected)") and empty.contains("no key / pad button pressed yet"), "没有手柄 / 没按过键时的提示")
+
+
+func test_router_records_recent_presses_newest_first():
+	var r = load("res://engine/input/input_router.gd").new()
+	var a := InputEventKey.new()
+	a.keycode = KEY_F
+	a.pressed = true
+	r._note_recent(a)
+	var b := InputEventJoypadButton.new()
+	b.button_index = JOY_BUTTON_BACK
+	b.pressed = true
+	r._note_recent(b)
+	eq(r.recent_inputs.size(), 2, "记了两条")
+	check(String(r.recent_inputs[0]).begins_with("pad button"), "新的在前")
+	var up := InputEventJoypadButton.new()
+	up.button_index = JOY_BUTTON_BACK
+	up.pressed = false
+	r._note_recent(up)
+	eq(r.recent_inputs.size(), 2, "松开不记")
+	for i in 30:
+		r._note_recent(a)
+	eq(r.recent_inputs.size(), r.RECENT_MAX, "最多 RECENT_MAX 条")
+	r.free()

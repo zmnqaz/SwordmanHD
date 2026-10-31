@@ -78,6 +78,12 @@ static func lines(info: Dictionary = {}, frame_ms: Array = []) -> Array:
 	var fr := FrameStats.report()
 	if int(fr["frames"]) > 0:
 		out.append("Gameplay  %s %d frames: avg %.1f ms   p95 %.1f ms   worst %.1f ms   >25 ms: %d (%d on texture-load frames)   >50 ms: %d" % ["(before this menu)" if fr["frozen"] else "(live)", fr["frames"], fr["avg"], fr["p95"], fr["worst"], fr["slow"], fr["slow_loading"], fr["very_slow"]])
+	var pads: Array = info.get("pads", [])
+	out.append("Pads      %s" % ("   ".join(pads) if not pads.is_empty() else "(none connected)"))
+	var rec: Array = info.get("inputs", [])
+	out.append("Input     last key / pad button presses, newest first (press the buttons first, then open this page)" if not rec.is_empty() else "Input     (no key / pad button pressed yet)")
+	for r in rec:
+		out.append("          " + String(r))
 	return out
 
 
@@ -101,6 +107,11 @@ func current_lines() -> Array:
 	var info: Dictionary = gc.diag_info.call() if gc != null and gc.diag_info.is_valid() else {}
 	info["gfx"] = gc.settings.get("gfx", "-") if gc != null else "-"
 	info["viewport"] = _viewport_info()
+	var pads: Array = []
+	for d in Input.get_connected_joypads():
+		pads.append("%d: %s" % [d, Input.get_joy_name(d)])
+	info["pads"] = pads
+	info["inputs"] = router.recent_inputs if router != null and "recent_inputs" in router else []
 	return lines(info, _frame_ms)
 
 

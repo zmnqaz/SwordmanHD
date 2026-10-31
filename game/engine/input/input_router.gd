@@ -77,6 +77,10 @@ var _pad_table := PadMap.resolve(PadMap.DEFAULT_PRESET, {})   # 手柄键 -> [�
 var _key_table := KeyMap.resolve({})   # 键盘键 (可带 Shift) -> [动作名]
 var _trig := {PadMap.TRIGGER_L: false, PadMap.TRIGGER_R: false}   # 扳机虚拟键是否按下
 ## 设定面板「手柄按键设置」捕获新键时设置: 有效时手柄键 (含扳机) 不当游戏动作, 只把可绑定键的键号交给它
+## 最近收到的按键 / 手柄键原始事件 (新的在前, 至多 RECENT_MAX 条), 诊断页显示: 安卓掌机 (RP6 等) 的实体键有的报手柄键、有的报键盘键,
+## 两个物理键报同一个键号就没法分开绑 —— 让玩家把「按了什么键、系统报了什么」原样发回来
+const RECENT_MAX := 12
+var recent_inputs: Array = []
 var pad_capture := Callable()
 ## 设定面板「键盘按键设置」捕获新键时设置: 有效时键盘键 (除 Esc) 不当游戏动作, 只把可绑定键的键值交给它
 var key_capture := Callable()
@@ -306,6 +310,7 @@ func _input(e: InputEvent) -> void:
 
 ## 处理一个原始事件, 返回是否吃掉
 func _handle(e: InputEvent) -> bool:
+	_note_recent(e)
 	if replay_lock and not overlay_open() and not _replay_passes(e):
 		return true   # 回放中: 吞掉真实输入
 	if e is InputEventKey:
@@ -349,6 +354,20 @@ func _handle(e: InputEvent) -> bool:
 			_stick = s
 		return true
 	return false
+
+
+## 记一条原始按键事件 (只记按下, 不记连发 / 摇杆 / 触摸)
+func _note_recent(e: InputEvent) -> void:
+	var t := ""
+	if e is InputEventKey and e.pressed and not e.echo:
+		t = "key %s (keycode %d, physical %d) device %d" % [OS.get_keycode_string(e.keycode), e.keycode, e.physical_keycode, e.device]
+	elif e is InputEventJoypadButton and e.pressed:
+		t = "pad button %d (%s) device %d \"%s\"" % [e.button_index, PadMap.NAMES.get(e.button_index, "?"), e.device, Input.get_joy_name(e.device)]
+	if t == "":
+		return
+	recent_inputs.push_front(t)
+	if recent_inputs.size() > RECENT_MAX:
+		recent_inputs.resize(RECENT_MAX)
 
 
 ## 回放锁开着时放行的真实输入: 只有能打开设定面板的那几个

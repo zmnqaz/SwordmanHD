@@ -67,7 +67,7 @@
  "settings.guide.label": "遊戲攻略",
  "settings.guide.desc": "各幕攻略 (隨時可按 F4)。",
  "settings.diag.label": "畫質診斷",
- "settings.diag.desc": "顯示本機屏幕、貼圖倍數、顯存和幀率。畫面發糊時截圖給開發者。",
+ "settings.diag.desc": "顯示本機屏幕、貼圖倍數、顯存和幀率, 以及最近按過的手柄鍵 / 鍵盤鍵 (先按幾下再打開)。畫面發糊或實體按鍵對不上時截圖給開發者。",
  "settings.about.label": "關於",
  "settings.about.desc": "版本號和項目主頁 (GitHub)。報告問題時請寫上版本號。",
  "about.title": "關於",

@@ -109,7 +109,7 @@
 	"settings.guide.desc": "各幕攻略 (随时可按 F4)。",
 	"settings.diag.label": "画质诊断",
 	"settings.diag.value": "查看",
-	"settings.diag.desc": "显示本机屏幕、贴图倍数、显存和帧率。画面发糊时截图给开发者。",
+	"settings.diag.desc": "显示本机屏幕、贴图倍数、显存和帧率, 以及最近按过的手柄键 / 键盘键 (先按几下再打开)。画面发糊或实体按键对不上时截图给开发者。",
 	"settings.about.label": "关于",
 	"settings.about.value": "查看",
 	"settings.about.desc": "版本号和项目主页 (GitHub)。报告问题时请写上版本号。",
