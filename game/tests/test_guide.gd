@@ -87,9 +87,6 @@ func test_markdown_to_bbcode():
 
 ## 仓库里的攻略内容包 (game/content/remake/guide, 生成工具的脚本 生成): 目录完整、关卡章对得上、繁体叠加层生效
 func test_pack_guide_loads_with_locale():
-	if not DirAccess.dir_exists_absolute("res://content/remake/guide"):
-		skip("本仓库不带攻略内容包")
-		return
 	var db := ContentDB.new()
 	db.load_packs(["remake"])   # 缺原版内容包 tdj 时 base 报错, remake 自己的文件照样能读
 	var info := ContentInfo.new()

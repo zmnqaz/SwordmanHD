@@ -29,7 +29,8 @@ var _cam_moving := false
 var _cam_ease := false         # true: 光标跟随的缓动 (按距离追赶, 见 ease_step); false: 剧情 / 演出的匀速平移 (原版实测速度, 不能改)
 var objs0 := {}                # L0 下标 -> 节点
 var objs1 := {}                # L1 下标 -> AnimPlayer
-var layer_size := {}           # 图层 id -> 地图尺寸
+var layer_size := {}           # 图层 id -> 地图尺寸 (同一场景的几张主图记在基准图层上, 取并集)
+var layer_base := {}           # 图层 id -> 所在场景的基准图层 id: draw_layer 相同的主图叠在同一个场景里 (如第 34 幕崖顶草地 + 云海)
 var _parallax: Array = []      # 远景图 (L0 尺寸参数不是 10x8): 跟随镜头视差滚动, 画在当前场景后面
 var anims := {}                # 事件动画 (0x18) id -> AnimPlayer
 var last_unit_id := -1         # 事件动画跟随的单位 (原 0x3C 的重制版语义; 0x3C 实为取坐标, 现无人设置)
@@ -268,12 +269,23 @@ func save_party() -> void:
 func show_layer(id: int) -> void:
 	# 只含远景图的图层 (如第零幕的云海 map00-3) 不是独立场景, 叠在当前场景后面
 	var only_bg := not layer_list.is_empty()
+	var grp := -1
 	for l in st.layers0:
 		if int(l["id"]) == id and _is_main_map(l):
 			only_bg = false
+			grp = int(l["layer"])
+	# 绘制层号 (draw_layer) 相同的几张主图是同一个场景的前后景 (原版按 z 叠放), 不是各自独立的场景: 共用基准图层的纵向位置,
+	# 否则后加载的那张把场景挤到另一个 y, 前景图 (草地) 整个看不到、人物站在后景 (云海) 上
+	var base := id
+	if grp >= 0:
+		for pid in layer_list:
+			for l in st.layers0:
+				if int(l["id"]) == pid and _is_main_map(l) and int(l["layer"]) == grp:
+					base = int(layer_base.get(pid, pid))
+	layer_base[id] = base
 	layer_list.append(id)
 	if not only_bg:
-		layer_y = id * BattleStage.LAYER_GAP
+		layer_y = base * BattleStage.LAYER_GAP
 	print("  图层 %d 加载, 仅远景=%s, 当前 y=%d" % [id, only_bg, layer_y])
 	if layer_list.size() == 1:
 		move_camera_to_cell(0, 0)
@@ -305,14 +317,19 @@ func show_layer(id: int) -> void:
 			spr.texture_filter = TextureSource.filter_for(t["hd"])
 			spr.position = Vector2(0, layer_y)
 			spr.z_index = -10
+			if base != id and _is_main_map(l):   # 同场景的多张主图按 z 叠放: z 小的在后
+				for k in objs0:
+					var o: Dictionary = st.layers0[k]
+					if int(layer_base.get(int(o["id"]), -1)) == base and _is_main_map(o):
+						spr.z_index = -11 if int(l["z"]) < int(o["z"]) else -9
 			world.add_child(spr)
 			objs0[j] = spr
 			if not _is_main_map(l):
 				spr.z_index = -20
 				spr.set_meta("size", Vector2(t["texture"].get_size()) * float(t["scale"]))
 				_parallax.append(spr)
-			elif not layer_size.has(id):
-				layer_size[id] = Vector2(t["texture"].get_size()) * float(t["scale"])
+			else:
+				layer_size[base] = Vector2(layer_size.get(base, Vector2.ZERO)).max(Vector2(t["texture"].get_size()) * float(t["scale"]))
 	for j in st.layers1.size():
 		var o: Dictionary = st.layers1[j]
 		if int(o["id"]) != id:
@@ -337,6 +354,7 @@ func show_layer(id: int) -> void:
 
 func unshow_layer(id: int) -> void:
 	layer_list.erase(id)
+	layer_base.erase(id)
 	for j in st.layers0.size():
 		if int(st.layers0[j]["id"]) == id and objs0.has(j):
 			objs0[j].queue_free()

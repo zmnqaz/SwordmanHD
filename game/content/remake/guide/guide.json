@@ -1,0 +1,234 @@
+{
+ "format": "tdj-guide/1",
+ "_note": "游戏内攻略 (F4 / 设定面板「攻略」) 的目录, 由 生成工具的脚本 从 生成, 不要手改。格式见 docs/内容格式.md §16",
+ "chapters": [
+  {
+   "id": "ending",
+   "file": "guide/ending.json"
+  },
+  {
+   "id": "skills",
+   "file": "guide/skills.json"
+  },
+  {
+   "id": "spirit",
+   "file": "guide/spirit.json"
+  },
+  {
+   "id": "spirit_0",
+   "file": "guide/spirit_0.json"
+  },
+  {
+   "id": "spirit_1",
+   "file": "guide/spirit_1.json"
+  },
+  {
+   "id": "spirit_2",
+   "file": "guide/spirit_2.json"
+  },
+  {
+   "id": "spirit_3",
+   "file": "guide/spirit_3.json"
+  },
+  {
+   "id": "spirit_4",
+   "file": "guide/spirit_4.json"
+  },
+  {
+   "id": "spirit_5",
+   "file": "guide/spirit_5.json"
+  },
+  {
+   "id": "spirit_6",
+   "file": "guide/spirit_6.json"
+  },
+  {
+   "id": "spirit_7",
+   "file": "guide/spirit_7.json"
+  },
+  {
+   "id": "spirit_8",
+   "file": "guide/spirit_8.json"
+  },
+  {
+   "id": "stage_00",
+   "file": "guide/stage_00.json",
+   "stage": 0
+  },
+  {
+   "id": "stage_01",
+   "file": "guide/stage_01.json",
+   "stage": 1
+  },
+  {
+   "id": "stage_02",
+   "file": "guide/stage_02.json",
+   "stage": 2
+  },
+  {
+   "id": "stage_03",
+   "file": "guide/stage_03.json",
+   "stage": 3
+  },
+  {
+   "id": "stage_04",
+   "file": "guide/stage_04.json",
+   "stage": 4
+  },
+  {
+   "id": "stage_05",
+   "file": "guide/stage_05.json",
+   "stage": 5
+  },
+  {
+   "id": "stage_06",
+   "file": "guide/stage_06.json",
+   "stage": 6
+  },
+  {
+   "id": "stage_07",
+   "file": "guide/stage_07.json",
+   "stage": 7
+  },
+  {
+   "id": "stage_08",
+   "file": "guide/stage_08.json",
+   "stage": 8
+  },
+  {
+   "id": "stage_09",
+   "file": "guide/stage_09.json",
+   "stage": 9
+  },
+  {
+   "id": "stage_10",
+   "file": "guide/stage_10.json",
+   "stage": 10
+  },
+  {
+   "id": "stage_11",
+   "file": "guide/stage_11.json",
+   "stage": 11
+  },
+  {
+   "id": "stage_12",
+   "file": "guide/stage_12.json",
+   "stage": 12
+  },
+  {
+   "id": "stage_13",
+   "file": "guide/stage_13.json",
+   "stage": 13
+  },
+  {
+   "id": "stage_14",
+   "file": "guide/stage_14.json",
+   "stage": 14
+  },
+  {
+   "id": "stage_15",
+   "file": "guide/stage_15.json",
+   "stage": 15
+  },
+  {
+   "id": "stage_16",
+   "file": "guide/stage_16.json",
+   "stage": 16
+  },
+  {
+   "id": "stage_17",
+   "file": "guide/stage_17.json",
+   "stage": 17
+  },
+  {
+   "id": "stage_18",
+   "file": "guide/stage_18.json",
+   "stage": 18
+  },
+  {
+   "id": "stage_19",
+   "file": "guide/stage_19.json",
+   "stage": 19
+  },
+  {
+   "id": "stage_20",
+   "file": "guide/stage_20.json",
+   "stage": 20
+  },
+  {
+   "id": "stage_21",
+   "file": "guide/stage_21.json",
+   "stage": 21
+  },
+  {
+   "id": "stage_22",
+   "file": "guide/stage_22.json",
+   "stage": 22
+  },
+  {
+   "id": "stage_23",
+   "file": "guide/stage_23.json",
+   "stage": 23
+  },
+  {
+   "id": "stage_24",
+   "file": "guide/stage_24.json",
+   "stage": 24
+  },
+  {
+   "id": "stage_25",
+   "file": "guide/stage_25.json",
+   "stage": 25
+  },
+  {
+   "id": "stage_26",
+   "file": "guide/stage_26.json",
+   "stage": 26
+  },
+  {
+   "id": "stage_27",
+   "file": "guide/stage_27.json",
+   "stage": 27
+  },
+  {
+   "id": "stage_28",
+   "file": "guide/stage_28.json",
+   "stage": 28
+  },
+  {
+   "id": "stage_29",
+   "file": "guide/stage_29.json",
+   "stage": 29
+  },
+  {
+   "id": "stage_30",
+   "file": "guide/stage_30.json",
+   "stage": 30
+  },
+  {
+   "id": "stage_31",
+   "file": "guide/stage_31.json",
+   "stage": 31
+  },
+  {
+   "id": "stage_32",
+   "file": "guide/stage_32.json",
+   "stage": 32
+  },
+  {
+   "id": "stage_33",
+   "file": "guide/stage_33.json",
+   "stage": 33
+  },
+  {
+   "id": "stage_34",
+   "file": "guide/stage_34.json",
+   "stage": 34
+  },
+  {
+   "id": "stage_35",
+   "file": "guide/stage_35.json",
+   "stage": 35
+  }
+ ]
+}
