@@ -17,6 +17,9 @@ const CACHE_VERSION := 1
 const MAGIC := 0x434A4454   # "TDJC"
 const FORMATS := ["bptc", "astc"]          # 自动选择的优先顺序 (画质 / 通用性)
 const EXPLICIT_ONLY := ["etc2"]            # 只在命令行显式指定时才用 (没验证过)
+## 「不压缩, 只写磁盘缓存」: 手机官方模板没有压缩器 (见 runtime_compress_available), 以前就既不压缩也没有缓存, 每次进城镇都要把上千张重新烘焙
+## (天玑 720 实测第 1 镇烘焙 3036 张, 读回在 Mali 上很慢, 一路顿帧)。RAW 把读回的 RGBA8 直接 zstd 写进缓存, 下次读缓存不再烘焙; 显存占用不变 (RGBA8)
+const RAW := "raw"
 
 ## 缓存目录 (user:// 下); 测试里可改
 static var cache_dir := "user://hq_cache"
@@ -35,6 +38,8 @@ static func mode_of(fmt: String) -> Array:
 
 ## 显卡支持这个压缩格式吗 (无头模式没有渲染, 一律不支持)
 static func supported(fmt: String) -> bool:
+	if fmt == RAW:
+		return DisplayServer.get_name() != "headless"
 	if DisplayServer.get_name() == "headless" or not (FORMATS.has(fmt) or EXPLICIT_ONLY.has(fmt)):
 		return false
 	return RenderingServer.has_os_feature(fmt)
@@ -55,7 +60,7 @@ static func pick(pref: String) -> String:
 	if pref != "auto":
 		return pref if supported(pref) else ""
 	if not runtime_compress_available():
-		return ""
+		return RAW if OS.has_feature("mobile") and supported(RAW) else ""   # 手机没有压缩器: 不压缩但留缓存; 桌面官方模板维持不缓存
 	for f in FORMATS:
 		if supported(f):
 			return f
@@ -77,9 +82,10 @@ static func cache_path(md5: String, sig: String, fmt: String) -> String:
 	return "%s/%s/%s/%s_%s.tcb" % [cache_dir, fmt, md5.substr(0, 2), md5, sig]
 
 
-## 写缓存 (压缩后的图): 头 = MAGIC, 版本, 宽, 高, Image.Format, 原始字节数; 体 = zstd。先写临时文件再改名, 半截文件不会被读到。可在线程里调
-static func cache_write(path: String, img: Image) -> bool:
-	if not img.is_compressed():
+## 写缓存 (压缩后的图; raw = true 写不压缩的 RGBA8, 给 RAW 格式用): 头 = MAGIC, 版本, 宽, 高, Image.Format, 原始字节数; 体 = zstd。
+## 先写临时文件再改名, 半截文件不会被读到。可在线程里调
+static func cache_write(path: String, img: Image, raw := false) -> bool:
+	if img.is_compressed() == raw:
 		return false
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var data := img.get_data()

@@ -20,6 +20,7 @@ func test_pick_choices() -> void:
 	if DisplayServer.get_name() == "headless":
 		check(TexCodec.pick("auto") == "", "无头没有渲染, 自动选择也不压缩")
 		check(TexCodec.pick("bptc") == "", "无头不支持 bptc")
+		check(TexCodec.pick("raw") == "", "无头没有烘焙, raw (只写缓存) 也不选")
 
 
 func test_compress_formats_shrink_and_keep_shape() -> void:
@@ -87,6 +88,28 @@ func test_cache_roundtrip_trim_and_corruption() -> void:
 	check(removed >= 1 and int(TexCodec.cache_scan()["total"]) < int(scan["total"]), "超上限删了 %d 个文件" % removed)
 	check(TexCodec.cache_trim(0) == 0 and TexCodec.cache_trim(1 << 40) == 0, "上限 0 = 不清理; 没超上限不删")
 	# 收尾: 删测试目录 (文件 + 空目录; 以前只删文件, user:// 下留了一堆空的 hq_cache_test_*)
+	for e in TexCodec.cache_scan()["files"]:
+		DirAccess.remove_absolute(e["path"])
+	_remove_tree(TexCodec.cache_dir)
+	TexCodec.cache_dir = old
+
+
+## RAW: 手机官方模板没有压缩器, 不压缩但把烘焙结果 (RGBA8) 写进磁盘缓存, 下次直接读 (见 TexCodec.RAW)
+func test_raw_cache_roundtrip() -> void:
+	var old := TexCodec.cache_dir
+	TexCodec.cache_dir = "user://hq_cache_test_%d" % Time.get_ticks_usec()
+	var img := _sprite(96, 64)
+	var data0 := img.get_data()
+	var p := TexCodec.cache_path("ab" + "0".repeat(30), "sig", TexCodec.RAW)
+	check(p.contains("/raw/ab/"), "raw 单独一个目录: " + p)
+	check(not TexCodec.cache_write(p, img), "压缩格式的写法不收没压缩的图")
+	check(TexCodec.cache_write(p, img, true), "raw 写缓存成功")
+	var back := TexCodec.cache_read(p)
+	check(back != null and back.get_width() == 96 and back.get_height() == 64 and back.get_format() == Image.FORMAT_RGBA8, "读回尺寸与格式 (RGBA8) 一致")
+	check(back != null and back.get_data() == data0, "读回的像素与写入完全一致")
+	var packed := _sprite(16, 16)
+	TexCodec.compress(packed, "bptc")
+	check(not TexCodec.cache_write(TexCodec.cache_path("cd" + "0".repeat(30), "sig", TexCodec.RAW), packed, true), "raw 不收压缩过的图")
 	for e in TexCodec.cache_scan()["files"]:
 		DirAccess.remove_absolute(e["path"])
 	_remove_tree(TexCodec.cache_dir)

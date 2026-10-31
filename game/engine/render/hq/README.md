@@ -44,6 +44,7 @@ xBRZ 按 C++ 1.8 的 ARGB 规则（alpha 感知距离、图外透明）。
   `tools/platform/build_template_windows.sh` 一条命令编出 Windows 模板（约 5 分钟，llvm-mingw），放在 `.work/templates/`，`tools/build_windows.py` 导出时自动用并给预设加功能标签
   `tex_compress`（`TexCodec.runtime_compress_available`）；没有自制模板 / 官方模板（如 CI、手机）自动不压缩，压缩连续失败 3 次也会自关，不刷报错。Linux 模板同法
   （`scons platform=linuxbsd target=template_release cvtt_export_templates=yes`，导出版实测 993/993 张压缩成功）。**手机的 ASTC 压缩器 (astcenc) 在模板里也只在编辑器构建注册，手机官方包不压缩**，靠降倍数 (3x/4x) 省显存。
+  **手机的磁盘缓存 (2026-10-31, RAW 格式)**：以前手机既不压缩也没有缓存，每次进城镇都重新烘焙（天玑 720 / Mali-G57 实测第 1 镇烘焙 3036 张，读回很慢，平均帧 29.7ms、>50ms 66 帧）。现在自动选择在「没有压缩器的手机构建」里选 `raw`：不压缩（显存不变），读回的 RGBA8 在后台线程直接 zstd 写进 `user://hq_cache/raw/`，下次读缓存、不再烘焙。桌面官方模板维持不缓存；`--hq-codec=raw` 可在电脑上强制（本机实测第 1 镇两次进入：烘焙 585 -> 0 张，缓存 15MB@3x）。第一次进城镇仍要烘焙。
 - **显存**：每张 1 字节/像素，约为 RGBA8 的 1/4；`Assets` 的缓存记账改按压缩后的真实字节（`_on_final`），预算（768MB）装得下整个城镇，自适应放大基本不再触发。
 - **磁盘缓存**：`user://hq_cache/<格式>/<md5 前两位>/<md5>_<签名>.tcb`（zstd，约为压缩数据的 53%，解压约 0.5ms/张）。键 = 原图**文件内容**的 MD5，所以内容相同的图（五个客栈共用的物件）只烘焙一次；
   签名 = 倍数 + 填色次数 + 三个着色器源码 + 缓存版本，改了算法旧缓存自动作废。上限桌面 3GB / 手机 1GB（`--hq-cache-mb=N`，0 = 不用磁盘缓存），启动时后台清掉最旧的。

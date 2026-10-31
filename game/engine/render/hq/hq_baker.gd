@@ -49,7 +49,7 @@ var _deadline_ms := 0       # 看门狗: 正在进行的自检/批次必须在�
 var out_scale := SCALE   # 输出倍数: 6 (默认, 电脑) / 4 / 3 (低分辨率屏; 流水线仍按 6 倍烘焙, 最后一道 GPU 缩小再读回), Assets 按屏幕注入
 var max_comp_pending := MAX_COMP_PENDING   # 手机 CPU 弱: 少排几张, 压缩跟不上就自动暂停读回
 var low_gap_frames := LOW_GAP_FRAMES
-var codec := ""           # 压缩格式 (TexCodec: bptc/astc/etc2), "" = 不压缩 (Assets 按显卡能力注入)
+var codec := ""           # 压缩格式 (TexCodec: bptc/astc/etc2), "" = 不压缩 (Assets 按显卡能力注入); "raw" = 不压缩但写磁盘缓存 (手机)
 var cache_on := false    # 磁盘缓存开关 (只在 codec 非空时有意义)
 var compressed := 0      # 已压缩换入的张数 (perf-log 用)
 var comp_failed := 0     # 压缩失败的张数
@@ -274,7 +274,10 @@ func _run() -> void:
 func _start_compress(job: Dictionary, out: Image) -> void:
 	if codec == "":
 		return
-	var slot := {"img": out, "tex": job["tex"], "cb": job["cb"], "ok": false,
+	var raw := codec == TexCodec.RAW
+	if raw and (not cache_on or String(job["md5"]) == ""):
+		return   # 不压缩也不写缓存: 没有后台活要做
+	var slot := {"img": out, "tex": job["tex"], "cb": job["cb"], "ok": false, "raw": raw,
 		"path": _cache_file(String(job["md5"])) if cache_on and String(job["md5"]) != "" else "", "wrote": false}
 	slot["id"] = WorkerThreadPool.add_task(_compress_job.bind(slot), false, "hq compress")
 	_comp.append(slot)
@@ -285,7 +288,9 @@ func _compress_job(slot: Dictionary) -> void:   # 工作线程
 	if _stop:
 		return
 	var img: Image = slot["img"]
-	if TexCodec.compress(img, codec):
+	if slot["raw"]:   # 只写缓存, 纹理里已经是烘焙好的 RGBA8, 不用换入
+		slot["wrote"] = TexCodec.cache_write(slot["path"], img, true)
+	elif TexCodec.compress(img, codec):
 		slot["ok"] = true
 		if slot["path"] != "":
 			slot["wrote"] = TexCodec.cache_write(slot["path"], img)
@@ -304,6 +309,10 @@ func _drain_comp() -> void:
 		var img: Image = slot["img"]
 		var raw_bytes := (slot["tex"] as ImageTexture).get_width() * (slot["tex"] as ImageTexture).get_height() * 4
 		_comp_bytes = maxi(0, _comp_bytes - raw_bytes)
+		if slot["raw"]:
+			if slot["wrote"]:
+				cache_writes += 1
+			continue
 		if not slot["ok"]:
 			# 压缩失败: 保留已换入的 RGBA8。一张都没成功过就连续失败 (引擎没带压缩器等) -> 关掉压缩, 不再白烧 CPU 刷报错
 			comp_failed += 1

@@ -27,6 +27,7 @@ var hd4_dir := ""       # hd4x 目录 (默认 <root>/hd4x, 可由 TDJ_HD4X / too
 var gfx := "hd"         # "hd" 或 "orig"
 var _index := {}        # 小写相对路径 -> 真实相对路径 (原版文件名大小写不统一)
 var _texsrc := TextureSource.new()  # 贴图档位源: 档位清单 + 选档/回退 (见 texture_source.gd)
+var _preload := ImagePreloader.new()  # 大图后台解码 (preload_images)
 var tex_mult := 0       # 命令行 --tex-mult 强制的贴图倍数, 0 = 自动
 var no_hq := false      # 命令行 --no-hq: 不做运行时 6 倍生成 (显卡/驱动跑不了着色器时的退路), 像素画类用 1 倍原图
 var hd6x_gen := false   # 像素画类 6 倍运行时生成中 (默认; 无头模式时 false)
@@ -343,6 +344,20 @@ func prefetch_list(rels: Array) -> void:
 	_pf_i = 0
 
 
+## 预读一批大图 (城镇大地图等 AI 类 4 倍图): 放工作线程解码, 切场景淡出的那一秒里做完, 新场景 _ready 里 tex() 直接拿。
+## 只管 AI 类 (像素画类要运行时烘焙, 本来就小); 已在缓存里的不做。预读的图没人取, 下一次换场景会丢掉
+func preload_images(rels: Array) -> void:
+	for rel in rels:
+		if _pack_file(rel) != "":
+			continue
+		var r := resolve(rel)
+		if r == "" or _texs.has(r):
+			continue
+		var t := _texsrc.pick(r)
+		if not bool(t["gen"]):
+			_preload.start(String(t["file"]))
+
+
 ## 退出前调: 让后台的缓存扫描 / 清理马上停手 (TexCodec.cancel), 之后 _exit_tree 里的等待几乎是瞬间。没起过的清理任务也取消
 func prepare_exit() -> void:
 	_trim_cap_mb = 0
@@ -351,6 +366,7 @@ func prepare_exit() -> void:
 
 func _exit_tree() -> void:
 	TexCodec.cancel = true
+	_preload.wait_all()
 	if _trim_task >= 0:   # 线程池任务必须等待完成, 否则退出时释放回调崩溃
 		WorkerThreadPool.wait_for_task_completion(_trim_task)
 		_trim_task = -1
@@ -436,7 +452,9 @@ func _tex_load(rel_in: String, low: bool) -> Dictionary:
 			if ctx != null and fit_dim(Vector2i(ctx.get_width(), ctx.get_height()), max_tex) >= 1.0:
 				_store(rel, {"texture": ctx, "scale": float(t["scale"]), "hd": t["hd"], "bytes": _baker.last_bytes})
 				return _touch(_texs[rel])
-		var img := Image.load_from_file(t["file"])
+		var img := _preload.take(t["file"])   # 淡出期间后台解码好的 (preload_images); 没有就现读
+		if img == null:
+			img = Image.load_from_file(t["file"])
 		if img == null:
 			push_error("贴图读取失败: " + String(t["file"]))
 			_store(rel, {"texture": _missing_tex(), "scale": 1.0, "hd": false})
@@ -615,6 +633,7 @@ func clear_cache() -> void:
 ## 换场景: 开新一代。之后新场景用到的缓存项 (命中旧项也算) 记新代数, 旧场景释放后调 sweep() 只清没被新场景用到的。
 ## 不能在 goto 里直接 clear_cache (它推迟到旧场景释放后执行, 那时新场景 _ready 已载入的贴图会被一并清掉, 之后同一张图被重复载入/重复生成)。
 func begin_scene() -> void:
+	_preload.next_scene()
 	_gen += 1
 	_pf_queue = []
 

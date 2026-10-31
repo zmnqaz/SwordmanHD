@@ -584,8 +584,11 @@ func load_game(slot := 0) -> bool:
 func goto_rpg(n: int, entry: int) -> void:
 	prev_rpg = cur_rpg
 	cur_rpg = n
+	var scene := _rpg_scene(n, entry)   # 先建 (还没进场景树), 淡出那一秒里让工作线程把大地图解码好, 进场景不再冻住 (手机上第 1 镇大地图解码要 2 秒)
+	if scene.has_method("preload_rels"):
+		Assets.preload_images(scene.preload_rels())
 	await fade_out(1.0)
-	goto(_rpg_scene(n, entry))
+	goto(scene)
 	await fade_in(0.8)
 
 

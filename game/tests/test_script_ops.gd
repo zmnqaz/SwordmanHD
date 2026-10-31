@@ -17,8 +17,14 @@ class FakeUnit extends RefCounted:
 	var man := {"unit_id": 0}
 
 
+class FakeStage extends RefCounted:
+	var width := 24
+	var height := 16
+
+
 class FakeScene extends RefCounted:
 	var gc := GameContext.new()
+	var st := FakeStage.new()
 	var units: Array = []
 	var cam := Vector2(100, 50)
 	var shake := Vector2.ZERO
@@ -90,6 +96,34 @@ func test_var_and_position_ops():
 	a.alive = false
 	_run(vm, 0x41, [0, 12])
 	eq(sc.gc.state.get_data(12), 1, "0x41 只看 hp != hpmax, 不查存活")
+	vm.free()
+	a.free()
+
+
+func test_unit_walking_off_the_map_leaves():
+	# 第 0 幕结尾小师妹走下山: 脚本只让她向东走到地图外 (24 格宽的图走到第 27 格), 没有退场指令; 走到那里就不再画, 回到地图里恢复
+	var sc := FakeScene.new()
+	var a := BattleUnit.new()
+	a.st = preload("res://engine/rules/unit_state.gd").new()
+	a.shown = true
+	a.visible = true
+	sc.units = [a]
+	var vm := EventVM.new(sc)
+	vm.log_enabled = false
+	vm.gc = sc.gc
+	a.set_cell(22, 9)
+	vm._pending_moves = [a]
+	vm._moved = 1
+	vm._move_count = 1
+	await vm._after_move()
+	check(a.visible, "还在地图里照常画")
+	a.set_cell(27, 9)
+	vm._pending_moves = [a]
+	await vm._after_move()
+	check(not a.visible, "走到地图外就不画")
+	eq([a.shown, a.cx], [true, 27], "只改画面, 在场标志和坐标不动")
+	vm._start_move(a, [Vector2i(26, 9)])
+	check(a.visible, "再走动就恢复")
 	vm.free()
 	a.free()
 

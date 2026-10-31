@@ -294,6 +294,7 @@ func _unit_place(_t: int, d: PackedByteArray) -> void:
 	if u:  # 只设 x、y、朝向, 不让单位出场 (已在场的就地转向)
 		u.set_cell(_s(d, 2), _s(d, 4))
 		if u.shown:
+			u.visible = true  # 走出地图离场的单位 (_leave_if_off_map) 再放回来就显示
 			u.play_act(BattleUnit.Act.STAND, _s(d, 6))
 		else:
 			u.dir = _s(d, 6)
@@ -748,6 +749,13 @@ func _start_move(u: BattleUnit, path: Array) -> void:
 	_move_follow = 0
 
 
+## 剧情让单位走出地图 (如第 0 幕结尾小师妹走下山) 算离场: 原版走到画面外就看不见, 脚本里没有退场指令;
+## 复刻的镜头跟着走 / 宽屏看得见画面外, 她会站在边上不退场。走到地图格子之外就不再画 (在场标志和坐标不动), 再 place / 走动就恢复
+func _leave_if_off_map(u: BattleUnit) -> void:
+	if u.shown and (u.cx < 0 or u.cy < 0 or u.cx >= bs.st.width or u.cy >= bs.st.height):
+		u.visible = false
+
+
 ## 一批移动 (0x0E/0x10 声明的数量) 全部下达后, 等所有单位走完才继续
 func _after_move() -> void:
 	if _moved < _move_count:
@@ -755,4 +763,5 @@ func _after_move() -> void:
 	for u in _pending_moves:
 		if not u._path.is_empty():
 			await u.move_finished
+		_leave_if_off_map(u)
 	_pending_moves.clear()

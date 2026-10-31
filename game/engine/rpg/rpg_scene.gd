@@ -54,6 +54,11 @@ static func create(n: int, entry_pos: int) -> Node2D:
 	return s
 
 
+## 进场景前值得后台预读的大图 (Game.goto_rpg 在淡出期间交给 Assets.preload_images, _ready 里 Assets.tex 直接拿)
+func preload_rels() -> Array:
+	return [st.map_rel]
+
+
 func _ready() -> void:
 	scale = Vector2.ONE * Assets.SCALE
 	# 宽屏扩展视野 (docs/架构设计.md 6.5): 地图从屏幕左上角起画, 视口 = 逻辑画面 (view()); 16:10 下 view = 320x200, 与原版逐像素相同。
