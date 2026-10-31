@@ -29,6 +29,7 @@ static var _shader: Shader
 
 func _init(is_save: bool) -> void:
 	saving = is_save
+	GameSaves.sync_mirror()   # Android: 玩家往镜像目录换进来的存档在打开读档窗时导入
 	_slots = int(UiLayout.val("camp.save.slot", "repeat", {}).get("count", _slots))
 	add_child(UiLayout.panel("camp.save.bg"))
 	add_child(UiLayout.panel("camp.save.title_box"))

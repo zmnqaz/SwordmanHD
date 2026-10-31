@@ -18,7 +18,7 @@
   "battle.map_view": "Misc/MAP_VIE",
   "battle.closeup_misc": "Misc/Fig_misc",
   "camp.equip_preview": "Misc/EE_PRO",
-  "camp.menu": "Misc/",
+  "camp.menu": "Misc/CAMP_MEN",
   "camp.item_money": "Misc/ITEM_PRO",
   "battle.turn_banner": "Misc/Cha_tur",
   "camp.man": "Misc/Camp_man",

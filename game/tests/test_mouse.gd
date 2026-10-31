@@ -413,7 +413,7 @@ func test_touch_pad_keys_and_hits():
 		eq(pad.hit(k["c"]), int(k["kind"]), "键 %d 的中心命中它自己" % int(k["kind"]))
 		kinds.append(int(k["kind"]))
 	kinds.sort()
-	var want := [UiAction.CONFIRM, UiAction.CANCEL, pad.TOGGLE, pad.SETTINGS]
+	var want := [UiAction.CONFIRM, UiAction.CANCEL, pad.TOGGLE, pad.SETTINGS, pad.SPEED]
 	want.sort()
 	eq(kinds, want, "虚拟键集合 (方向由摇杆给; 翻页没有键, 靠左右快滑; 没有菜单键和查看键)")
 	var rs := []
@@ -431,9 +431,36 @@ func test_touch_pad_keys_and_hits():
 	pad.shown = false
 	var any_hit := false
 	for k in pad.keys():
-		if int(k["kind"]) != pad.TOGGLE and int(k["kind"]) != pad.SETTINGS and pad.hit(k["c"]) != UiAction.NONE:
+		if not int(k["kind"]) in [pad.TOGGLE, pad.SETTINGS, pad.SPEED] and pad.hit(k["c"]) != UiAction.NONE:
 			any_hit = true
-	check(not any_hit and pad.hit(pad._stick_c) == UiAction.NONE, "整套键隐藏后只有开关钮和设置钮有效 (摇杆也不响应)")
+	check(not any_hit and pad.hit(pad._stick_c) == UiAction.NONE, "整套键隐藏后只有开关钮、设置钮和加速钮有效 (摇杆也不响应)")
+	for k in pad.keys():
+		if int(k["kind"]) in [pad.TOGGLE, pad.SETTINGS, pad.SPEED]:
+			eq(pad.hit(k["c"]), int(k["kind"]), "隐藏时小钮 %d 仍能点" % int(k["kind"]))
+	var cs := {}
+	for k in pad.keys():
+		cs[int(k["kind"])] = k["c"]
+	check(cs[pad.SPEED].x < cs[pad.SETTINGS].x and cs[pad.SETTINGS].x < cs[pad.TOGGLE].x and is_equal_approx(cs[pad.SPEED].y, cs[pad.SETTINGS].y), "加速钮在设置钮左边, 同一排")
+
+
+## 虚拟键按窗口边缘排: 窗口范围 (视口单位) 与安全区内缩只算窗口真正被占到的部分
+func test_touch_pad_uses_window_edges():
+	var TP = load("res://engine/input/touch_pad.gd")
+	var vp := Rect2(0, 0, 1280, 800)
+	eq(TP.window_bounds(vp, Vector2(2560, 1600)), vp, "窗口与画面同比例: 范围 = 视口")
+	var wide: Rect2 = TP.window_bounds(vp, Vector2(2560, 1200))   # 窗口比画面扁 (留左右黑边): 缩放按高, 范围向左右多出
+	check(is_equal_approx(wide.size.y, 800.0) and wide.size.x > 1280.0 and is_equal_approx(wide.get_center().x, 640.0), "留黑边: 范围比视口宽, 居中")
+	var tall: Rect2 = TP.window_bounds(vp, Vector2(1600, 1600))   # 4:3 以下 (留上下黑边): 范围向上下多出
+	check(is_equal_approx(tall.size.x, 1280.0) and tall.size.y > 800.0 and is_equal_approx(tall.get_center().y, 400.0), "留上下黑边: 范围比视口高, 居中")
+	# 全屏 2400x1080, 刘海在左占 100 像素, 系统栏在底占 0: 窗口 = 整屏, 左内缩 100/s
+	var sa := Rect2(100, 0, 2300, 1080)
+	var full: Array = TP.window_insets(sa, Vector2.ZERO, Vector2(2400, 1080), 1.5)
+	check(is_equal_approx(full[0], 100.0 / 1.5) and full[1] == 0.0 and full[2] == 0.0 and full[3] == 0.0, "全屏: 刘海那一边内缩")
+	# 窗口模式: 右边的三键已在窗口之外 (窗口宽 2280), 安全区右边缘 2280 -> 右边不再多扣
+	var win_sa := Rect2(100, 0, 2180, 1080)
+	var win: Array = TP.window_insets(win_sa, Vector2.ZERO, Vector2(2280, 1080), 1.5)
+	check(is_equal_approx(win[0], 100.0 / 1.5) and win[2] == 0.0, "窗口模式: 系统栏在窗口外, 右边不重复扣")
+	eq(TP.window_insets(Rect2(), Vector2.ZERO, Vector2(100, 100), 1.0), [0.0, 0.0, 0.0, 0.0], "取不到安全区: 全 0")
 
 
 ## 摇杆: 取主方向 (四向), 死区内无方向, 斜推粘滞, 圆钮限幅, 松手回中

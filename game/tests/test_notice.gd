@@ -74,3 +74,28 @@ func test_mouse_click_hits_buttons_only():
 	eq(got, ["decline", "agree"], "点「同意」= 同意")
 	t.queue_free()
 	await _tree().process_frame
+
+
+## 小屏 / 长文案放不下时正文要能卷: 输入层把触摸拖动、滚轮、方向键都转成动作, 滚动容器自己收不到, 声明页自己处理
+## (回归: 2026-10-31 网友反馈声明窗口往下拉没用)
+func test_body_scrolls_by_drag_wheel_and_keys():
+	var s := NoticeScene.create(func(): pass, func(): pass)
+	_tree().root.add_child(s)
+	var body: Label = s._scroll.get_child(0)
+	body.text += "\n".repeat(120)   # 撑到比窗口高
+	await _tree().process_frame
+	await _tree().process_frame
+	eq(s._scroll.scroll_vertical, 0, "一开始在最上面")
+	var d := UiAction.new(UiAction.DRAG, "touch", Vector2(100, 300))
+	d.delta = Vector2(0, -120)   # 手指往上拖 = 看后面的字
+	s.ui_action(d)
+	check(s._scroll.scroll_vertical > 0, "触摸往上拖: 往下卷")
+	var after_drag: int = s._scroll.scroll_vertical
+	s.ui_action(UiAction.new(UiAction.DOWN, "wheel", Vector2(100, 300)))
+	check(s._scroll.scroll_vertical > after_drag, "滚轮往下: 再往下卷")
+	s.ui_action(UiAction.new(UiAction.UP, "key"))
+	s.ui_action(UiAction.new(UiAction.UP, "key"))
+	s.ui_action(UiAction.new(UiAction.UP, "key"))
+	eq(s._scroll.scroll_vertical, 0, "↑ 卷回最上面, 不会卷成负数")
+	eq(s._sel, 0, "上下卷动不改按钮选择")
+	s.free()

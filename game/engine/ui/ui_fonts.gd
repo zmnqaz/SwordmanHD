@@ -5,6 +5,8 @@ extends RefCounted
 ## 新增字体只需加一条数据 + 一个字体文件 (生成工具的脚本 裁子集并量基线)。
 ## 条目: id、name (设定里显示)、desc (一句话)、file (res:// 字体文件)、baseline_in_cell (12 号字格内基线, 原版像素)、
 ##   embolden (粗体变体的加粗量)、license / license_file (见 docs/字体许可.md)、full (可选, true = 完整字库: 其余裁过的子集字体缺字时回退到它, 见 complete_id)。
+##   hinting (可选, "none" = 关闭自动微调, 点阵风字体用)、order (可选, 整数缺省 0: 选项按 order 升序排, 同值保持加载顺序; 让后加载的包的字体排到内置的后面)、
+##   lang (可选, 如 "hant": 只在该语言下可选可用; 其他语言下设定里不列出, 已存的选择保留, 实际用缺省字体, 切回该语言自动恢复)。字体文件在内容包里的 (由原版生成, 如 tdj 包的「原版点阵」tfont) license_file 可省。
 ## 叠加: 按包加载顺序 (基础包在前) 合并, 同 id 后者覆盖, 新 id 追加在后; default 取最后一个写了的包。
 ## 缺失/损坏的清单退回内置思源黑体一项, 所以任何情况下都至少有一个可用字体。
 
@@ -38,18 +40,30 @@ static func merge_dirs(dirs: Array) -> Dictionary:
 			if not by_id.has(e["id"]):
 				order.append(e["id"])
 			by_id[e["id"]] = by_id[e["id"]].merged(e, true) if by_id.has(e["id"]) else e
-	var list: Array = []
+	var keys: Array = []   # 按 order 升序分组, 组内保持加载顺序 (Array.sort_custom 不稳定, 所以不直接排序)
 	for id in order:
-		list.append(by_id[id])
+		var o := int(by_id[id].get("order", 0))
+		if not keys.has(o):
+			keys.append(o)
+	keys.sort()
+	var list: Array = []
+	for o in keys:
+		for id in order:
+			if int(by_id[id].get("order", 0)) == o:
+				list.append(by_id[id])
 	return {"list": list, "default": def}
+
+
+static func _content() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("Content") if tree else null
 
 
 static func _ensure() -> void:
 	if _loaded:
 		return
 	var dirs: Array = []
-	var tree := Engine.get_main_loop() as SceneTree
-	var c: Node = tree.root.get_node_or_null("Content") if tree else null
+	var c := _content()
 	if c != null:
 		dirs = c.pack_dirs()
 		if not c.reloaded.is_connected(reload):
@@ -85,6 +99,19 @@ static func complete_id() -> String:
 	return b if not find(b).is_empty() else _default
 
 
+## 当前语言 (Content.lang, 空 = 简体 hans)
+static func lang() -> String:
+	var c := _content()
+	var l := String(c.lang) if c != null else ""
+	return "hans" if l == "" else l
+
+
+## 字体在当前语言下可用 (没写 lang = 任何语言)
+static func available(e: Dictionary) -> bool:
+	var l := String(e.get("lang", ""))
+	return l == "" or l == lang()
+
+
 static func find(id: String) -> Dictionary:
 	for e in _list:
 		if e["id"] == id:
@@ -92,19 +119,26 @@ static func find(id: String) -> Dictionary:
 	return {}
 
 
-## 未知/缺失的 id 回退缺省字体
+## 未知/缺失的 id、当前语言下不可用的字体回退缺省字体
 static func get_or_default(id: String) -> Dictionary:
 	_ensure()
 	var e := find(id)
-	return e if not e.is_empty() else find(_default)
+	return e if (not e.is_empty() and available(e)) else find(_default)
 
 
-## 设定选项 [{v, t, d}]
-static func options() -> Array:
+## 设定选项 [{v, t, d}]: 只列当前语言下可用的字体; every = true 列清单里全部 (设定文件校验用: 别的语言下选的字体不能被当成非法值丢掉)
+static func options(every := false) -> Array:
 	var out: Array = []
 	for e in all():
+		if not every and not available(e):
+			continue
 		out.append({"v": e["id"], "t": String(e.get("name", e["id"])), "d": String(e.get("desc", ""))})
 	return out
+
+
+## 点阵风字体 (清单里 hinting = none, 如「原版点阵」): 1 像素笔画, 样式里的光边要保留 (UiLayout.style 的 pixel_draws)
+static func is_pixel(id: String) -> bool:
+	return String(get_or_default(id).get("hinting", "")) == "none"
 
 
 ## 12 号字格内的基线 (原版像素)

@@ -105,5 +105,5 @@ python3 tools/platform/bundle_apk.py SwordmanHD.apk --pkgs <资源包目录>    
 
 - 已验证: 导出的 debug APK 包信息/签名/arm64 库齐全 (`aapt2 dump badging`、`apksigner verify`); 桌面 `--touch` 模式下操作盘截图核对。
 - 手机上的帧率、内存 (贴图缓存预算 `--tex-budget` 缺省 768MB, 手机可能要降)、运行时 6 倍人物贴图着色器的速度、高清视频解码、触控手感, 欢迎带着机型反馈。
-- 应用图标 `game/assets/app_icon.png` (`python3 tools/platform/make_app_icon.py` 生成, 与 iOS 共用)。
+- 应用图标 `game/assets/app_icon.png` (`python3 tools/platform/make_app_icon.py --art <图片>` 生成, 与 iOS 共用; 桌面用的是另一个 `icon_pc.png`)。  Android 自适应图标两层 `game/assets/android/adaptive_fg.png` / `adaptive_bg.png` 由 `--adaptive` 生成 (前景把图缩到约 66% 放中间, 否则被系统裁成圆 / 圆角方时「天地劫」三字被切)。
 - Google Play 的资源分发 (Play Asset Delivery) 没做。

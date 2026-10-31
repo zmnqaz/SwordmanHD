@@ -46,7 +46,7 @@ func test_hidden_rows_ignore_saved_values():
 	for k in ["tex", "aspect", "gfx"]:
 		check(not keys.has(k), "面板不显示 %s" % k)
 	keys = keys.filter(func(k): return k != "face_style")   # 头像风格只有装了港漫 mod (mod/face_hk.pck) 才列, 带资源包跑测试时会出现
-	eq(keys, ["lang", "font", "sound", "display", "controls", "show_hidden", "coord", "bag_sort", "replay", "about"], "主菜单项与顺序 (内容包带攻略时, 「关于」前再多一行游戏攻略): 语言 字体 [头像风格] 声音 图像显示 控制器设置 隐藏宝箱设置 战场坐标显示 整理行囊 录像回放 游戏攻略 [2026-10-30 加] 关于; 没有画质项")
+	eq(keys, ["lang", "font", "game_speed", "sound", "display", "controls", "show_hidden", "coord", "bag_sort", "replay", "about"], "主菜单项与顺序 (内容包带攻略时, 「关于」前再多一行游戏攻略): 语言 字体 [游戏速度, 2026-10-31 加] [头像风格] 声音 图像显示 控制器设置 隐藏宝箱设置 战场坐标显示 整理行囊 录像回放 游戏攻略 [2026-10-30 加] 关于; 没有画质项")
 	eq(SettingsSchema.shown_rows("sound").map(func(r): return r["key"]), ["music", "sfx"], "「声音」二级菜单: 音乐 / 音效")
 	eq(SettingsSchema.shown_rows("display").map(func(r): return r["key"]), ["fullscreen", "win", "hq", "diag"], "「显示」二级菜单: 窗口模式 / 分辨率 / 贴图精度 / 画质诊断")
 	eq(SettingsSchema.shown_rows("controls").map(func(r): return r["key"]), ["key_edit", "pad_preset", "pad_edit"], "「控制器」二级菜单: 键盘按键 / 手柄预设 / 手柄按键")
@@ -154,6 +154,25 @@ func test_font_row_from_manifest():
 	eq(SettingsSchema.step("font", "sans", 1), opts[1]["v"], "字体选项循环")
 	eq(SettingsSchema.step("font", opts[opts.size() - 1]["v"], 1), "sans", "循环回头")
 	check(SettingsSchema.desc_of("font", "kai").length() > SettingsSchema.row_desc(SettingsSchema.row("font")).length(), "说明带当前字体的一句话")
+
+
+## 限定语言的字体 (原版点阵 tfont, 只繁体): 设定文件里存了它, 简体下不被当成非法值丢掉 (切回繁体恢复), 显示实际在用的缺省字体
+func test_language_limited_font_is_kept():
+	if UiFonts.find("tfont").is_empty():
+		skip("没生成原版点阵")
+		return
+	var before: String = Content.lang
+	Content.set_lang("hans")
+	eq(SettingsSchema.sanitize({"font": "tfont"})["font"], "tfont", "简体下也保留已存的选择")
+	eq(SettingsSchema.text_of("font", "tfont"), String(UiFonts.get_or_default("tfont")["name"]), "显示实际在用的字体名")
+	check(not SettingsSchema.options_of(SettingsSchema.row("font")).any(func(o): return o["v"] == "tfont"), "简体下选项里没有")
+	Content.set_lang(before)
+
+
+## 键盘按键设置所有平台都列: 安卓掌机的实体按键、外接键盘上报的都是键盘按键 (2026-10-31)
+func test_key_edit_row_listed_on_every_platform():
+	check(not SettingsSchema.row("key_edit").has("needs"), "key_edit 没有平台条件")
+	check(SettingsSchema.shown_rows("controls").any(func(r): return r["key"] == "key_edit"), "控制器设置里有键盘按键设置")
 
 
 func test_aspect_mode_widens_only_wide_windows():
@@ -469,3 +488,40 @@ func test_reset_group_sound_only_touches_volumes():
 	var gc := _gc({"music": 2, "sfx": 3, "coord": 1})
 	SettingsSchema.reset_group(gc, "sound")
 	eq([gc.settings["music"], gc.settings["sfx"], gc.settings["coord"]], [10, 10, 1], "音量复位, 别的设定不动")
+
+
+## 加速菜单 (手机加速钮): 档位行都是 game_speed 的合法选项, 文案齐, 选一档 = 设成这档并关闭, 「还原预设」回原速
+func test_speed_menu_rows_and_pick():
+	var gc := _gc({"game_speed": 20})
+	var sp := SettingsPanel.speed_menu(gc, null)
+	var rows := sp._srows()
+	eq(rows.map(func(r): return r["key"]), SettingsSchema.SPEED_PRESETS.map(func(v): return "speed_%d" % v), "加速菜单只列档位行")
+	var legal := SettingsSchema.options_of(SettingsSchema.row("game_speed")).map(func(o): return int(o["v"]))
+	for v in SettingsSchema.SPEED_PRESETS:
+		check(legal.has(v), "档位 %d 是 game_speed 的合法选项" % v)
+	for r in rows:
+		check(SettingsSchema.label_of(r) != "" and SettingsSchema.row_desc(r) != "", "%s 有名称和说明" % r["key"])
+	check(not sp._srows().any(func(r): return r["key"] == "game_speed"), "档位行之外没有别的")
+	check(not SettingsSchema.shown_rows().any(func(r): return String(r["key"]).begins_with("speed_")), "档位行不在设定主菜单里")
+	eq(sp._action_value("speed_20"), UiStrings.t("settings.speed.current"), "当前档标「当前」")
+	eq(sp._action_value("speed_30"), "", "其它档不标")
+	var closed := []
+	sp.closed.connect(func(save): closed.append(save))
+	sp._activate("speed_40")
+	eq(gc.settings["game_speed"], 40, "选 ×4.0 = game_speed 设成 40")
+	eq(gc.settings_saved["game_speed"], 40, "存进持久层")
+	check(gc.flow.saved > 0 and gc.flow.applied > 0, "生效并存盘")
+	eq(closed, [true], "选定后关闭菜单")
+	SettingsSchema.reset_group(gc, SettingsSchema.SPEED_GROUP)
+	eq(gc.settings["game_speed"], 10, "还原预设 = 回原速")
+	sp.free()
+
+
+## 手机没有窗口大小可选: 「分辨率」行只在桌面列 (needs desktop); 窗口模式仍列
+func test_window_size_row_is_desktop_only():
+	var rows: Array = SettingsSchema.ROWS.filter(func(r): return r["key"] == "win")
+	eq(rows.size(), 1, "有 win 行")
+	eq(String(rows[0].get("needs", "")), "desktop", "win 行只在电脑上列")
+	eq(SettingsSchema._need_ok("desktop", false, false), not Platform.is_mobile(), "desktop 条件跟平台走")
+	var keys := SettingsSchema.shown_rows("display").map(func(r): return r["key"])
+	check(keys.has("fullscreen"), "窗口模式 / 全屏行手机上也在")

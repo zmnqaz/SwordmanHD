@@ -32,6 +32,15 @@ var _sort_msg := ""          # 「整理行囊」的结果提示, 临时换掉�
 var _sort_flash := 0         # 提示的代号 (旧提示的复位计时不能盖掉新提示)
 
 
+## 加速菜单 (手机加速钮): 只列档位行的二级菜单, 选定即生效并关闭
+static func speed_menu(ctx: GameContext, input_router) -> SettingsPanel:
+	var sp := SettingsPanel.new()
+	sp._group = SettingsSchema.SPEED_GROUP
+	sp.gc = ctx
+	sp.router = input_router
+	return sp
+
+
 ## 一屏能放几行 (布局表 settings.row 的重复数)
 static func visible_rows() -> int:
 	var rep = UiLayout.val("settings.row", "repeat", {})
@@ -144,7 +153,7 @@ func _update() -> void:
 			_values[s].color = c
 			match r["kind"]:
 				"volume": _values[s].text = ""
-				"action": _values[s].text = _sort_msg if (r["key"] == "bag_sort" and _sort_msg != "") else UiStrings.t("settings.%s.value" % r["key"])
+				"action": _values[s].text = _action_value(String(r["key"]))
 				"live": _values[s].text = SettingsSchema.text_of(r["key"], SettingsSchema.live_value(r["key"]))
 				_: _values[s].text = SettingsSchema.text_of(r["key"], gc.settings[r["key"]])
 	if _sel < _n:
@@ -155,6 +164,15 @@ func _update() -> void:
 	else:
 		_desc.text = UiStrings.t("settings.desc.reset" if _sel == _n else "settings.desc.done")
 	_body.queue_redraw()
+
+
+## 动作行右边的字: 整理行囊的结果提示; 加速档位行标出当前档; 其余是文案表的 settings.<键>.value
+func _action_value(key: String) -> String:
+	if key == "bag_sort" and _sort_msg != "":
+		return _sort_msg
+	if key.begins_with("speed_"):
+		return UiStrings.t("settings.speed.current") if int(gc.settings["game_speed"]) == int(key.trim_prefix("speed_")) else ""
+	return UiStrings.t("settings.%s.value" % key)
 
 
 ## 「贴图精度」要重启才生效: 选的倍数 (自动取当前自动值) 与正在跑的倍数不同时, 说明后面补一句当前实际倍数 (数据取自 GameContext.diag_info, 没有就不提示)
@@ -268,6 +286,10 @@ func _sort_bag() -> void:
 ## replay = 录像列表 (engine/ui/replay_panel.gd): 选定后关掉本面板, 下一帧经 SceneFlow.start_replay 切到回放;
 ## replay_stop = 结束回放 (关掉本面板, 经 SceneFlow.stop_replay 回标题)
 func _activate(key: String) -> void:
+	if key.begins_with("speed_"):   # 加速档位: 设成这一档 (存盘) 并关闭菜单
+		SettingsSchema.set_value(gc, "game_speed", int(key.trim_prefix("speed_")))
+		closed.emit(true)
+		return
 	if key == "bag_sort":
 		_sort_bag()
 		return

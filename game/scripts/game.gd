@@ -90,6 +90,7 @@ func apply_settings() -> void:
 		Assets.clear_cache()
 	Content.set_lang(String(settings["lang"]))  # 简体/繁体: 数据表、对白、界面文案按语言叠加层重建, 下个画面生效
 	Assets.set_font(String(settings["font"]))  # 未知/缺失的字体 id 已在 sanitize 回退缺省
+	GameSpeed.set_tenths(int(settings["game_speed"]))  # 游戏速度即时生效 (回放中只记下, 回放结束还原)
 	InputRouter.set_pad(String(settings["pad_preset"]), settings["pad_map"])  # 手柄预设与逐键覆盖即时生效
 	InputRouter.set_keys(settings["key_map"])  # 键盘逐键覆盖即时生效
 	ctx.settings_applied.emit()
@@ -101,7 +102,9 @@ func apply_settings() -> void:
 func _apply_window() -> void:
 	var full := int(settings["fullscreen"]) == 1
 	var w := int(settings["win"])
-	if w == 0:   # 自动: 屏幕可用区域放得下的最大档
+	if Platform.is_mobile():   # 手机只有全屏 / 窗口两种, 窗口大小档不起作用 (启动时也不能因为「自动」档变了就去动窗口)
+		w = _applied_win
+	elif w == 0:   # 自动: 屏幕可用区域放得下的最大档
 		w = SettingsSchema.auto_win(DisplayServer.screen_get_usable_rect().size)
 	if full == _applied_full and (full or w == _applied_win):
 		return
@@ -127,6 +130,17 @@ func _open_settings() -> void:
 	_settings_open = true
 	var sp := SettingsPanel.new()
 	add_child(sp)  # 挂在 Game 下而不是当前场景: 打开期间场景被切走也不会连面板一起释放 (否则 open() 永远等不到 closed, F10 就死了)
+	await sp.open()
+	_settings_open = false
+
+
+## 手机加速钮: 弹出加速档位菜单 (设定面板的二级菜单样式, 选一档即生效并存盘)。回放中不开 (回放有自己的速度, 在设定面板里调)
+func _open_speed_menu() -> void:
+	if _settings_open or GuidePanel.is_open() or PlayLog.replaying():
+		return
+	_settings_open = true
+	var sp := SettingsPanel.speed_menu(ctx, InputRouter)
+	add_child(sp)
 	await sp.open()
 	_settings_open = false
 
@@ -189,6 +203,7 @@ func _ready() -> void:
 	if play_log != null:
 		_attach_play_log(play_log)
 	InputRouter.settings_requested.connect(_open_settings)
+	InputRouter.speed_requested.connect(_open_speed_menu)
 	InputRouter.skip_dialog_toggled.connect(_toggle_skip_dialog)
 	InputRouter.guide_requested.connect(func(): GuidePanel.toggle(self, ctx, InputRouter))   # F4 攻略 (挂在 Game 下, 切场景不连带释放)
 	var layer := CanvasLayer.new()
@@ -233,6 +248,9 @@ func boot() -> void:
 	if ctx.debug.replay_switch != "":   # 测试: 正常启动 1 秒后经菜单回放同一入口切到回放 (headless 验证 start_replay)
 		get_tree().create_timer(1.0).timeout.connect(func(): start_replay(ctx.debug.replay_switch, ctx.debug.replay_speed))
 	GameSaves.stage_limit = Content.stage_count()
+	if Platform.is_android():   # 真存档在应用私有目录 (没 root 看不到), 另存一份到资源包旁的公开目录, 见 SaveMirror
+		GameSaves.enable_mirror("user://", ResPacks.android_pack_dir().path_join(SaveMirror.SUBDIR))
+	GameSaves.sync_mirror()
 	for n in ctx.debug.load_slots:  # 测试: --load=N 先读入第 N 个存档位的数据 (不切换场景)
 		GameSaves.load_slot(state, int(n) - 1)
 	if _enter_replay_base():   # 通关录像回放: 录像从某个存档开始 (与菜单回放共用)

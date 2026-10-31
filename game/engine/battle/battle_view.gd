@@ -148,6 +148,15 @@ func res_anim(u: BattleUnit, dir: String, start: int, end: int, wait := true, ti
 		await a.finished
 
 
+## 单位在大地图上升级: 镜头到该单位, 在它身上放 Misc/Maplup 第 2~14 帧 (升级光旋, 帧 2 / 3 各响一声) 并等放完 (原版 载入 MAPLUP.SAF, ①)
+func level_up_fx(u: BattleUnit) -> void:
+	await cast_camera(Vector2i(u.cx, u.cy))
+	u.play_act(BattleUnit.Act.WIN, u.dir)   # 人物摆升级姿势 (地图人物的「胜利」动作, 握拳举臂)
+	await res_anim(u, ThemeAssets.p("battle.levelup"), 2, -1, true, 0, true)
+	if u.alive and u.shown:
+		u.play_act(BattleUnit.Act.STAND, u.dir)
+
+
 ## 地图演出动画 (法术、招式、施法光效) 在格 at 按约定 conv 播放 [start, end) 帧并等结束 (FxPlace: 格 + 约定偏移)
 ## snap_cam: 满屏的动画 (整幅 320x200 画面, 如绝技 SM / S) 摆在实际镜头的屏幕原点而不是格子上: 原版就是「镜头到位后在屏幕 (0,0) 画」,
 ## 目标格靠近地图边、镜头被夹在地图内时, 按格摆会和实际画面错开, 框外那圈黑 (FullscreenCover) 就露在一侧 (2026-10-29 用户: 电射星驰左边一块黑)

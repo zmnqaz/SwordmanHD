@@ -449,10 +449,14 @@ static func face(name: String) -> Dictionary:
 
 
 ## 文字样式 text_styles[flags] 的绘制列表 [[dx, dy, 颜色名或 "color"], ...]
-static func style(flags) -> Array:
+## pixel: 当前是点阵风字体 (UiFonts.is_pixel), 样式有 pixel_draws 就用它 (原版左右光边: 矢量字笔画瘦光边成残影, 点阵字没这问题且没光边笔画太淡)
+static func style(flags, pixel := false) -> Array:
 	var s = data().get("text_styles", {}).get(style_key(flags))
-	if s is Dictionary and s.get("draws") is Array:
-		return s["draws"]
+	if s is Dictionary:
+		if pixel and s.get("pixel_draws") is Array:
+			return s["pixel_draws"]
+		if s.get("draws") is Array:
+			return s["draws"]
 	return [[0, 0, "color"]]
 
 

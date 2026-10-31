@@ -466,6 +466,23 @@ func test_speed_text() -> void:
 	eq(PlayLog.speed_text(0.5), "×0.5")
 
 
+## 游戏速度 (设定) 与回放: 回放中 time_scale 归回放自己管, 设定里的倍数只记下, 回放结束 / 被停掉后还原
+func test_replay_restores_game_speed() -> void:
+	var p := _write_replay([{"t": 100.0, "k": UiAction.UP}])
+	GameSpeed.set_tenths(15)
+	eq(Engine.time_scale, 1.5, "平时按游戏速度")
+	var l := PlayLog.open_replay(p, 2.0)
+	l._ready()
+	eq(Engine.time_scale, 2.0, "回放用回放自己的速度, 不叠加游戏速度")
+	GameSpeed.set_tenths(20)
+	eq(Engine.time_scale, 2.0, "回放中改游戏速度只记下, 不动 time_scale")
+	PlayLog.stop_current()
+	eq(Engine.time_scale, 2.0, "回放结束还原成设定的游戏速度 (2.0)")
+	GameSpeed.set_tenths(10)
+	eq(Engine.time_scale, 1.0)
+	_rm(p)
+
+
 func test_set_speed_only_while_replaying_and_clamps() -> void:
 	var p := _write_replay([{"t": 100.0, "k": UiAction.UP}])
 	PlayLog.set_speed(4.0)

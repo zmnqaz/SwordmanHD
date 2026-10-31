@@ -4,7 +4,8 @@ extends CanvasLayer
 ##   左下: 圆形摇杆 (底盘 + 随手指的圆钮, 取主方向四向; 方向键语义同键盘, 按住连发由 InputRouter 处理)
 ##   右下: 两个一样大的圆键「确认 / 取消」, 确认在右下角, 取消在它左边 (拇指不用挪位置就够得到; 2026-10-25 去掉了没用的「菜单」键和「查看」键 — 查看用长按, 见 TouchGestures)
 ##   (翻页没有键: 营地列表等左右快滑翻页, 见 TouchGestures)
-##   右上角: 小圆「隐/显」钮 (缺省隐藏整套键), 点一下隐藏/显示整套键 (隐藏后只剩它和左边的「设置」钮, 看地图不挡), 两钮一样大; 「设置」钮打开设定面板 (分辨率/简繁体/画质等)
+##   右上角: 小圆「隐/显」钮 (缺省隐藏整套键), 点一下隐藏/显示整套键 (隐藏后只剩它和左边的「设置」「加速」钮, 看地图不挡), 三钮一样大; 「设置」钮打开设定面板 (分辨率/简繁体/画质等);
+##     「加速」钮 (快进图标) 弹出加速档位菜单, 选一档即生效 (游戏速度, 见 GameSpeed)
 ## 样式: 半透明深色圆底 + 金色描边, 各键描边色不同 (确认金 / 取消红), 字用游戏字体、米色加深色描边; 按下变亮并缩小一点。
 ##   不透明度 ALPHA, 闲置 IDLE_SEC 秒后降到 IDLE_ALPHA, 一碰就恢复。尺寸全按画面高度的比例算, 手机/平板/桌面 --touch 通用。
 ##   刘海屏: 取系统给的安全区边距 (DisplayServer.get_display_safe_area), 键组往里缩。
@@ -16,6 +17,8 @@ extends CanvasLayer
 const TOGGLE := -100
 ## 设置钮的动作 (不是 UiAction): 打开设定面板 (桌面是 F10; 触屏没有键盘, 分辨率/简繁体/画质等只能从这里进), 操作盘隐藏时也能点
 const SETTINGS := -102
+## 加速钮的动作 (不是 UiAction): 弹出加速档位菜单 (手机没有键盘, 游戏速度原来只能在设定面板里调), 和设置钮一样操作盘隐藏时也能点
+const SPEED := -103
 ## 摇杆的「键」(命中摇杆底盘): 不是 UiAction, 方向由 stick_dir 给
 const STICK := -101
 
@@ -43,7 +46,7 @@ const CREAM := Color(1.0, 0.94, 0.78)
 const DARK := Color(0.05, 0.03, 0.02)
 const COLORS := {
 	UiAction.CONFIRM: Color(0.96, 0.76, 0.30), UiAction.CANCEL: Color(0.90, 0.38, 0.32),
-	TOGGLE: Color(0.94, 0.88, 0.70), SETTINGS: Color(0.62, 0.84, 0.52),
+	TOGGLE: Color(0.94, 0.88, 0.70), SETTINGS: Color(0.62, 0.84, 0.52), SPEED: Color(0.55, 0.78, 0.92),
 }
 
 var shown := DEFAULT_SHOWN   # 整套键是否显示; 缺省隐藏, 靠点按/手势操作, 要用点「显」
@@ -54,6 +57,7 @@ var _stick_c := Vector2.ZERO
 var _stick_r := 0.0
 var _knob := Vector2.ZERO      # 圆钮相对底盘中心的偏移
 var _stick_dir := UiAction.NONE
+var _fast := false             # 上次画加速钮时是否在加速 (变了就重画)
 var _idle := 0.0
 var _tw: Tween
 
@@ -86,27 +90,44 @@ func _ready() -> void:
 
 # ---------------------------------------------------------------- 布局
 
-## 系统安全区 (刘海/圆角) 的四边内缩 (视口坐标): [左, 上, 右, 下]; 桌面和取不到时全 0
-func _insets(vp: Vector2) -> Array:
+## 窗口边缘在视口坐标里的范围: 视口 (逻辑画面) 按 min(窗宽/视口宽, 窗高/视口高) 缩放后居中放进窗口, 比窗口窄的方向留黑边;
+## 虚拟键按窗口边缘排 (键贴窗口边而不是贴逻辑画面边, 窗口模式 / 平板 4:3 留黑边时也在拇指够得到的位置)。画面比窗口窄时范围比视口大, 键画在黑边里
+static func window_bounds(vp: Rect2, win: Vector2) -> Rect2:
+	if vp.size.x <= 0.0 or vp.size.y <= 0.0 or win.x <= 0.0 or win.y <= 0.0:
+		return vp
+	var sz := win / minf(win.x / vp.size.x, win.y / vp.size.y)
+	return Rect2(vp.get_center() - sz / 2.0, sz)
+
+
+## 系统安全区 (刘海 / 圆角 / 系统栏, 屏幕像素坐标) 落进窗口 (屏幕坐标里 win_pos / win_size) 的四边内缩, 视口单位: [左, 上, 右, 下]。
+## 只算窗口真正被占到的部分: 窗口模式下系统栏已在窗口之外, 不能再扣一次 (旧算法按整屏比例换算, 窗口比屏幕小时键组偏)。s = 窗口像素 / 视口单位
+static func window_insets(sa: Rect2, win_pos: Vector2, win_size: Vector2, s: float) -> Array:
+	if sa.size.x <= 0.0 or sa.size.y <= 0.0 or s <= 0.0:
+		return [0.0, 0.0, 0.0, 0.0]
+	return [maxf(sa.position.x - win_pos.x, 0.0) / s, maxf(sa.position.y - win_pos.y, 0.0) / s,
+		maxf(win_pos.x + win_size.x - sa.end.x, 0.0) / s, maxf(win_pos.y + win_size.y - sa.end.y, 0.0) / s]
+
+
+## 当前窗口里的安全区内缩 (视口单位); 桌面和取不到时全 0
+func _insets(bounds: Rect2) -> Array:
 	if not Platform.is_mobile():
 		return [0.0, 0.0, 0.0, 0.0]
-	var sa := Rect2(DisplayServer.get_display_safe_area())
-	var scr := Vector2(DisplayServer.screen_get_size())
-	if scr.x <= 0.0 or scr.y <= 0.0 or sa.size.x <= 0.0:
+	var win := get_window()
+	var ws := Vector2(win.size)
+	if ws.x <= 0.0 or bounds.size.x <= 0.0:
 		return [0.0, 0.0, 0.0, 0.0]
-	var kx := vp.x / scr.x
-	var ky := vp.y / scr.y
-	return [sa.position.x * kx, sa.position.y * ky, (scr.x - sa.end.x) * kx, (scr.y - sa.end.y) * ky]
+	return window_insets(Rect2(DisplayServer.get_display_safe_area()), Vector2(win.position), ws, ws.x / bounds.size.x)
 
 
 func _layout() -> void:
-	var vp := get_viewport().get_visible_rect().size
-	var h := vp.y
-	var ins := _insets(vp)
+	var vr := get_viewport().get_visible_rect()
+	var h := vr.size.y
+	var bounds := window_bounds(vr, Vector2(get_window().size)) if Platform.is_mobile() else vr
+	var ins := _insets(bounds)
 	var m := (EDGE if Platform.is_mobile() else MARGIN) * h
-	var left: float = float(ins[0]) + m
-	var right: float = vp.x - float(ins[2]) - m
-	var bottom: float = vp.y - float(ins[3]) - m
+	var left: float = bounds.position.x + float(ins[0]) + m
+	var right: float = bounds.end.x - float(ins[2]) - m
+	var bottom: float = bounds.end.y - float(ins[3]) - m
 	_keys.clear()
 	# 摇杆
 	_stick_r = STICK_R * h
@@ -119,10 +140,12 @@ func _layout() -> void:
 	_keys.append({"kind": UiAction.CANCEL, "c": a_c + Vector2(-d, 0.0), "r": rb})
 	# 右上角两个小钮 (大小一样, 都按「显」钮的半径): 最右「显/隐」, 左边「设置」; 不占摇杆和确认键的拇指区, 操作盘隐藏时仍在
 	var rt := TOGGLE_R * h
-	var top: float = float(ins[1]) + m
+	var top: float = bounds.position.y + float(ins[1]) + m
 	var tc := Vector2(right - rt, top + rt)
 	_keys.append({"kind": TOGGLE, "c": tc, "r": rt})
-	_keys.append({"kind": SETTINGS, "c": tc - Vector2(rt * 2.0 + GAP * h, 0.0), "r": rt})
+	var step := Vector2(rt * 2.0 + GAP * h, 0.0)
+	_keys.append({"kind": SETTINGS, "c": tc - step, "r": rt})
+	_keys.append({"kind": SPEED, "c": tc - step * 2.0, "r": rt})   # 加速钮放在设置钮左边
 	_pad.queue_redraw()
 
 
@@ -139,7 +162,7 @@ func _paint(cv: Node2D) -> void:
 		_paint_stick(cv)
 	for k in _keys:
 		var kind: int = k["kind"]
-		if not shown and kind != TOGGLE and kind != SETTINGS:
+		if not shown and not _always(kind):
 			continue
 		_paint_button(cv, font, kind, k["c"], k["r"])
 
@@ -173,6 +196,8 @@ func _paint_button(cv: Node2D, font: Font, kind: int, c: Vector2, r: float) -> v
 	cv.draw_arc(c, rr * 0.82, 0.0, TAU, 40, Color(col, 0.28), maxf(1.0, r * 0.03), true)
 	if kind == SETTINGS:
 		_icon_gear(cv, c, rr * 0.62)
+	elif kind == SPEED:
+		_icon_fast(cv, c, rr * 0.62, GameSpeed.factor > 1.0)
 	elif kind == TOGGLE:
 		_icon_pad(cv, c, rr * 0.62, shown)
 	else:
@@ -188,6 +213,13 @@ func _icon_gear(cv: Node2D, c: Vector2, r: float) -> void:
 			pts.append(c + Vector2.from_angle(a + da[0]) * r * da[1])
 	cv.draw_colored_polygon(pts, CREAM)
 	cv.draw_circle(c, r * 0.38, Color(DARK, 0.92))
+
+
+## 加速图标 (加速钮): 两个并排朝右的三角 (快进); 当前已在加速 (倍数 > 1) 时染成亮色提醒
+func _icon_fast(cv: Node2D, c: Vector2, r: float, on: bool) -> void:
+	var col := Color(COLORS[SPEED].lerp(Color.WHITE, 0.35), 1.0) if on else CREAM
+	for dx in [-0.5, 0.45]:
+		cv.draw_colored_polygon(_triangle(c + Vector2(r * dx, 0.0), Vector2.RIGHT, r * 0.62), col)
 
 
 ## 手柄图标 (显/隐钮): 机身 + 左十字键 + 右两个按键; 整套键正显示时加一道斜线 (点一下隐藏)
@@ -207,6 +239,11 @@ func _icon_pad(cv: Node2D, c: Vector2, r: float, slashed: bool) -> void:
 	if slashed:
 		cv.draw_line(c + Vector2(-w, h * 1.4), c + Vector2(w, -h * 1.4), Color(DARK, 0.95), maxf(3.0, r * 0.26))
 		cv.draw_line(c + Vector2(-w, h * 1.4), c + Vector2(w, -h * 1.4), Color(COLORS[TOGGLE], 1.0), maxf(1.5, r * 0.13))
+
+## 操作盘隐藏时仍显示、仍能点的小钮: 显/隐、设置、加速
+static func _always(kind: int) -> bool:
+	return kind == TOGGLE or kind == SETTINGS or kind == SPEED
+
 
 ## 键上的字: 确认/取消两字, 开关钮一字 (隐藏时显示「显」)
 func _text_of(kind: int) -> String:
@@ -234,6 +271,10 @@ static func _triangle(c: Vector2, dir: Vector2, s: float) -> PackedVector2Array:
 
 
 func _process(delta: float) -> void:
+	var fast := GameSpeed.factor > 1.0
+	if fast != _fast:   # 加速钮的图标随当前是否在加速换色
+		_fast = fast
+		_pad.queue_redraw()
 	if not visible or not shown:
 		return
 	_idle += delta
@@ -279,7 +320,7 @@ func hit(p: Vector2) -> int:
 	if not visible:
 		return UiAction.NONE
 	for k in _keys:
-		if not shown and int(k["kind"]) != TOGGLE and int(k["kind"]) != SETTINGS:
+		if not shown and not _always(int(k["kind"])):
 			continue
 		if p.distance_to(k["c"]) <= float(k["r"]) * HIT_SCALE:
 			return int(k["kind"])

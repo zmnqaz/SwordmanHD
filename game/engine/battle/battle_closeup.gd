@@ -284,6 +284,39 @@ func _vampire(asd: Dictionary, amount: int) -> void:
 	n.queue_free()
 
 
+## 升级演出 (原版近景状态 0x12 / 0x13, 起): u 升级了, 主攻和反击都演完之后 u 做「握拳升级」动作 + 身上放升级光环 Misc/Ftlup_r,
+##   两样同时开始, 都放完才往下 (经验框):
+##   - 握拳 = u 自己 NNNmisc 动画的「动作 0」: 第 6 帧起共 action_counts[0] 帧 (主角 10 帧、第 13 帧响音效; 待机在它后面, 见 idle_frame; 没有这段的单位不做动作);
+##   - 光环 = Ftlup_r (13 帧 x 3 tick, 屏幕坐标, 第 0 / 1 帧各响一个音效)。
+##   先后顺序: 玩家指出升级排在最后 (反击之后); 动作 / 光环的具体帧时间没有 实测
+func level_up_fx(u = null) -> void:
+	var cfg: Dictionary = UiLayout.el("closeup.levelup")
+	var side: Dictionary = _sides.get("right" if u == null else _side_of(u), {})
+	if side.is_empty():
+		return
+	if float(cfg.get("delay", 0.0)) > 0.0:
+		await create_tween().tween_interval(float(cfg["delay"])).finished
+	var m = side["misc"]
+	var md: String = side["dir"]
+	var pose := 0
+	if anim_exists(md):
+		pose = int(m.data["action_counts"][0])   # misc 播放器 open() 时已载入这份动画
+	if pose > 0:
+		m.play_sound = true   # 握拳动作自带的声音 (主角第 13 帧)
+		m.play(md, 6, 6 + pose, false)
+	var ring = m.get_script().new()   # 同 _vampire: 用攻方 misc 的播放器类
+	_stage.add_child(ring)
+	ring.play(ThemeAssets.p(String(cfg.get("anim", "battle.levelup_fx"))), 0, -1, false)
+	await ring.finished
+	ring.queue_free()
+	if pose > 0:
+		if m.playing:
+			await m.finished   # 握拳比光环长就等它放完
+		m.play_sound = false
+		var r := idle_frame(m.data)
+		m.play(md, r.x, r.y)
+
+
 func _flash() -> void:
 	_white.visible = true
 	await SceneGuard.wait(self, UiLayout.num("closeup.flash.white", "sec", 0.05))

@@ -43,6 +43,12 @@ def pack_lists_from_dir(d):
     return found
 
 
+FREE_NOTICE = """SwordmanHD is free (GPL-3.0) and is an unofficial fan-made reimplementation.
+If you paid for it (purchase, paid download, paid installation ...), please report the seller and ask for a refund.
+本游戏免费，采用 GPL-3.0 协议，属于同人复刻；如有收费获得，请举报退款。
+
+"""
+
 NOTE = """SwordmanHD (Windows)
 
 Run SwordmanHD.exe (SwordmanHD.console.exe shows the log). Keep the whole folder together: the resource packs next to the
@@ -208,11 +214,11 @@ def main(argv):
     if not os.path.isdir(td):
         die("缺少 export templates: %s" % td)
 
-    # 图标: 用自制的应用图标 game/assets/app_icon.png (tools/platform/make_app_icon.py 生成); icon.ico 不入库, 导出预设引用 res://assets/icon.ico,
+    # 图标: 用自制的桌面图标 game/assets/icon_pc.png (tools/platform/make_app_icon.py --plain 生成); icon.ico 不入库, 导出预设引用 res://assets/icon.ico,
     # 缺了 Godot 导出直接报「图标路径无效」。
     ico = os.path.join(REPO, "game", "assets", "icon.ico")
     if not os.path.isfile(ico):
-        subprocess.run([sys.executable, os.path.join(HERE, "platform", "make_ico.py"), os.path.join(REPO, "game", "assets", "app_icon.png"), ico], check=True)
+        subprocess.run([sys.executable, os.path.join(HERE, "platform", "make_ico.py"), os.path.join(REPO, "game", "assets", "icon_pc.png"), ico], check=True)
 
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(OUT)
@@ -287,7 +293,7 @@ def main(argv):
             lf = os.path.join(REPO, "game", ft["license_file"].replace("res://", ""))
             shutil.copy2(lf, os.path.join(OUT, "licenses", os.path.basename(lf)))
     with open(os.path.join(OUT, "README.txt"), "w", encoding="utf-8", newline="\n") as f:
-        f.write(pf["note"] + (NOTE_ENGINE if engine_only else ""))
+        f.write(FREE_NOTICE + pf["note"] + (NOTE_ENGINE if engine_only else ""))
 
     # 必带清单校验: 包外文件 + 各资源包里运行时直接读的关键文件, 漏带时在这里报错, 而不是玩到才发现
     need = [pf["exe"]] + pf["extra"] + list(lists) + ["README.txt", "licenses/LICENSE-GPL-3.0.txt", "licenses/LICENSE-LGPL-2.1.txt",

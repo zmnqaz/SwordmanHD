@@ -39,6 +39,8 @@ engine/core/res_packs.gd|无
 engine/core/res_packs.gd|目录: 
 engine/core/res_packs.gd|缺少画面资源包。请在 resource 文件夹里再放入 hd_images.pck (AI 高清, 推荐) 或 classic_images.pck (原版画质) 之一, 它们由 资源生成工具 从你自己的原版游戏生成。
 engine/core/res_packs.gd|读不开
+engine/core/save_mirror.gd|不是有效的存档文件
+engine/core/save_mirror.gd|无法写入本地存档
 engine/rpg/rpg_scene.gd|%s事件%d %s 意外离开了场景
 engine/rpg/rpg_scene.gd|%s事件%d %s 离开场景的事件走不到
 engine/rpg/rpg_scene.gd|%s事件%d %s 走/执行超时 (主角在 %s, 行走中=%s 事件中=%s)

@@ -53,6 +53,7 @@ var choose: Array = []      # --choose=1,0,...: 剧情选择框依次的答案 (
 var replay_play := ""       # --replay-play=<文件>
 var record_play := ""       # --record-play=<文件>
 var replay_speed := 1.0     # --replay-speed=N (>= 0.1)
+var exp_mult := 1.0         # --exp-mult=N: 战斗经验乘 N (测试用: 直接触发升级看升级演出; 缺省 1 = 原版)
 var replay_switch := ""     # --replay-switch=<文件>: 测试, 启动 1 秒后经菜单回放同一入口 (Game.start_replay) 切到回放
 var no_record_play := false # --no-record-play
 var test_run := false       # 自动测试/代打/回归运行 (默认不录像)
@@ -182,6 +183,7 @@ func _parse_value(a: String) -> void:
 		"--replay-play=": replay_play = v
 		"--record-play=": record_play = v
 		"--replay-speed=": replay_speed = maxf(0.1, float(v))
+		"--exp-mult=": exp_mult = maxf(1.0, float(v))
 		"--replay-switch=": replay_switch = v
 		"--seed=":
 			if v.is_valid_int():

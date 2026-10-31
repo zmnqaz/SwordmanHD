@@ -438,6 +438,7 @@ func units_to_tick(phase: String) -> Array:
 
 ## 获得经验 (500 升一级, 99 级封顶), 返回每次升级的结果 [{gains, learned}]
 func gain_exp(u: BattleUnit, amount: int) -> Array:
+	amount = int(round(amount * gc.debug.exp_mult))   # 测试开关 --exp-mult (缺省 1.0 不变)
 	return Growth.gain_exp(ctx, u.st, amount, ctx.levelup.get(u.st.unit_id, {}))
 
 

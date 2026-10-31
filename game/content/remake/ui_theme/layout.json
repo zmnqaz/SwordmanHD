@@ -9,11 +9,11 @@
  ],
  "scale": 4,
  "stats": {
-  "elements": 261,
+  "elements": 262,
   "verified": 199,
   "screenshot": 12,
-  "unknown": 50,
-  "migrated": 245
+  "unknown": 51,
+  "migrated": 246
  },
  "fonts": {
   "body": {
@@ -258,6 +258,23 @@
   "5": {
    "desc": "单色 (复刻调整 2026-10-06: 原版为左右 1 像素光边, 但矢量字笔画瘦, 光边分离成残影感, 用户拍板全改单色; 覆盖营地/问句/法术名横幅/对白等 23 处)",
    "draws": [
+    [
+     0,
+     0,
+     "color"
+    ]
+   ],
+   "pixel_draws": [
+    [
+     -1,
+     0,
+     "text.halo"
+    ],
+    [
+     1,
+     0,
+     "text.halo"
+    ],
     [
      0,
      0,
@@ -2746,6 +2763,14 @@
    "delay": 0.08,
    "digit_delay": 0.04,
    "anim_left": "battle.vampire_fx_left"
+  },
+  "closeup.levelup": {
+   "type": "param",
+   "status": "unknown",
+   "code": "engine/battle/battle_closeup.gd BattleCloseup.level_up_fx, engine/battle/battle_actions.gd _level_fx",
+   "anim": "battle.levelup_fx",
+   "delay": 0.0,
+   "migrated": true
   },
   "closeup.damage.bounce": {
    "type": "motion",

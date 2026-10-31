@@ -8,6 +8,7 @@ extends CanvasLayer
 var _on_agree: Callable
 var _on_decline: Callable
 var _buttons: Array[Button] = []
+var _scroll: ScrollContainer
 var _sel := 0
 var _done := false
 
@@ -47,6 +48,7 @@ func _ready() -> void:
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(sc)
+	_scroll = sc
 	var body := _label(UiStrings.t("notice.body"), font, size, Color(1.0, 0.94, 0.78))
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(body)
@@ -111,6 +113,14 @@ func ui_select(i) -> void:
 
 ## 统一输入层 (InputRouter): 指针点按命中按钮时由输入层先 ui_select 再交一个不带坐标的确认
 func ui_action(a: UiAction) -> bool:
+	# 输入层把触摸拖动 / 滚轮 / 方向键都转成动作, 滚动容器自己收不到: 正文放不下时 (小屏) 在这里卷动。
+	# 拖动 (手指往下拖 = 内容下移) 与滚轮 / ↑↓ (往下 = 看后面的字)
+	if a.kind == UiAction.DRAG:
+		_scroll_by(-a.delta.y)
+		return true
+	if a.kind == UiAction.UP or a.kind == UiAction.DOWN:
+		_scroll_by((-1 if a.kind == UiAction.UP else 1) * _scroll_step())
+		return true
 	if a.echo or a.has_pos():   # 带坐标 = 没经命中区的原始点按 (命中区还没布局好等), 不能当确认
 		return true
 	if a.is_dir():
@@ -119,3 +129,14 @@ func ui_action(a: UiAction) -> bool:
 	elif a.is_confirm():
 		_pick(_sel)
 	return true
+
+
+func _scroll_step() -> float:
+	return maxf(_scroll.size.y * 0.3, 24.0) if _scroll != null else 0.0
+
+
+func _scroll_by(dy: float) -> void:
+	if _scroll == null:
+		return
+	var bar := _scroll.get_v_scroll_bar()
+	_scroll.scroll_vertical = clampi(_scroll.scroll_vertical + int(round(dy)), 0, maxi(int(bar.max_value - bar.page), 0))

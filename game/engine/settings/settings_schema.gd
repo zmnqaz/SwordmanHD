@@ -11,7 +11,7 @@ extends RefCounted
 ##
 ## kind: volume 0~10 整数 (左右 ±1, 到头停住) / choice 在 options 间循环 / action 没有值, 确认键打开子界面 (不进设定文件) /
 ##   live 值不在设定里、直接读写运行中的东西 (回放速度, 见 live_value / set_live, 不进设定文件)。
-## needs: keyboard = 不是手机才列 (键盘改键); guide = 内容包带攻略才列; replaying = 回放中才列; idle_replay = 没在回放时才列; face_hk = 装了港漫头像 mod 才列。
+## needs: desktop = 只在电脑上列 (手机没有窗口大小可选); guide = 内容包带攻略才列; replaying = 回放中才列; idle_replay = 没在回放时才列; face_hk = 装了港漫头像 mod 才列。
 ## 非行的设定键: pad_map (手柄覆盖项 {动作名: 键号}, 稀疏, 由 PadMap.sanitize 校验); key_map (键盘覆盖项 {动作名: 键值}, 稀疏, 由 KeyMap.sanitize 校验)。
 ## options: [{v: 存储值}], 显示文字 t 取自文案表 (UiStrings, 内容包 text/ui.json): 行名 settings.<key>.label、行说明 settings.<key>.desc (面板下方, 选中项)、
 ##   选项文字 settings.<key>.opt.<v>; options_of 返回的选项带 t。options_from "fonts" 的选项 (t/d) 与缺省值来自字体清单 (UiFonts)。
@@ -21,6 +21,9 @@ const ROWS := [
 	{"key": "lang", "kind": "choice", "def": "hans",
 		"options": [{"v": "hans"}, {"v": "hant"}]},
 	{"key": "font", "kind": "choice", "def": "", "options_from": "fonts"},
+	# 游戏速度 (复刻新增): 整个游戏的节奏 1.0~5.0 倍, 1.0~2.0 每 0.1 一档、2.0 以上每 0.5 一档; 值是十分之一倍的整数 (10 = 原速), 实现见 engine/core/game_speed.gd
+	{"key": "game_speed", "kind": "choice", "def": 10,
+		"options": [{"v": 10}, {"v": 11}, {"v": 12}, {"v": 13}, {"v": 14}, {"v": 15}, {"v": 16}, {"v": 17}, {"v": 18}, {"v": 19}, {"v": 20}, {"v": 25}, {"v": 30}, {"v": 35}, {"v": 40}, {"v": 45}, {"v": 50}]},
 	# 头像风格: 经典 (hd4x 里的 GenV3 放大) / 港漫 (可选 mod mod/face_hk.pck, 没有这个包不列这一行; 缺省港漫, 没装包时 Assets 自动回退经典)
 	{"key": "face_style", "kind": "choice", "def": "hk", "needs": "face_hk",
 		"options": [{"v": "classic"}, {"v": "hk"}]},
@@ -28,6 +31,12 @@ const ROWS := [
 	{"key": "sound", "kind": "action"},
 	{"key": "music", "kind": "volume", "def": 10, "group": "sound"},
 	{"key": "sfx", "kind": "volume", "def": 10, "group": "sound"},
+	{"key": "speed_10", "kind": "action", "group": "speed"},
+	{"key": "speed_15", "kind": "action", "group": "speed"},
+	{"key": "speed_20", "kind": "action", "group": "speed"},
+	{"key": "speed_30", "kind": "action", "group": "speed"},
+	{"key": "speed_40", "kind": "action", "group": "speed"},
+	{"key": "speed_50", "kind": "action", "group": "speed"},
 	{"key": "gfx", "kind": "choice", "def": "hd", "hidden": true,
 		"options": [{"v": "hd"}, {"v": "orig"}]},
 	# hidden = 不在设定面板里显示 (2026-10-07 用户嫌菜单太多): 数据与命令行参数仍保留, 值一律取缺省 (旧设定文件里存的也作废)。
@@ -41,7 +50,8 @@ const ROWS := [
 	{"key": "aspect", "kind": "choice", "def": "auto", "hidden": true,
 		"options": [{"v": "auto"}, {"v": "keep"}]},
 	# 分辨率 (窗口模式的窗口大小, 16:10): 0 = 自动 (缺省, 按屏幕可用区域挑最大的合适档, auto_win), 或手选 1280/1600/1920
-	{"key": "win", "kind": "choice", "def": 0, "group": "display",
+	#   手机没有可摆放的窗口 (窗口大小 / 位置交给系统), 这行只在桌面列 (needs desktop)
+	{"key": "win", "kind": "choice", "def": 0, "group": "display", "needs": "desktop",
 		"options": [{"v": 0}, {"v": 1280}, {"v": 1600}, {"v": 1920}]},
 	# 贴图精度: 像素画类贴图 (人物 / 物件 / 特效, 约 6.9 万张) 运行时生成的倍数, 0 自动 (电脑 6, 手机按屏幕选 3/4/6) / 6 高 / 4 中 / 3 低; 与窗口分辨率无关。
 	#   生成器启动时就定倍数 (Assets.saved_hq_scale 读这个键), 改了要重启生效; 命令行 --hq-scale 优先。AI 类大图 (地图 / 头像) 固定用包里的 4 倍图, 不受它影响
@@ -50,7 +60,7 @@ const ROWS := [
 	# 控制器 (2026-10-29 用户嫌设定菜单项太多): 键盘 / 手柄的设置收进二级菜单, 主菜单只留这一行 (动作行 controls 打开同一个 SettingsPanel, 只列 group = controls 的行)
 	{"key": "controls", "kind": "action"},
 	# 键盘: 逐动作改主键 (动作行 key_edit 打开子面板, 覆盖项存 key_map, 见 engine/input/key_map.gd)
-	{"key": "key_edit", "kind": "action", "needs": "keyboard", "group": "controls"},
+	{"key": "key_edit", "kind": "action", "group": "controls"},   # 手机 / 平板上也列: 安卓掌机的实体按键、蓝牙键盘上报的都是键盘按键 (2026-10-31)
 	# 手柄: 预设 + 逐动作改键 (动作行 pad_edit 打开子面板, 覆盖项存 pad_map, 见 engine/input/pad_map.gd)
 	{"key": "pad_preset", "kind": "choice", "def": "std", "group": "controls",
 		"options": [{"v": "std"}, {"v": "swap"}]},
@@ -89,6 +99,10 @@ static func auto_win(usable: Vector2i) -> int:
 
 
 ## 二级菜单里非行的设定键 (随该组「还原预设」一起复位): 组 -> [键]
+## 「加速」菜单 (手机右上角加速钮, 见 TouchPad.SPEED): 一个只有档位行的二级菜单, 选一档 = 把 game_speed 设成它并关闭。
+## 档位行不是主菜单入口, 也不算设定项 (action 行不存盘), 所以不进 GROUPS / all_shown_rows; 档位值必须是 game_speed 的合法选项。
+const SPEED_GROUP := "speed"
+const SPEED_PRESETS := [10, 15, 20, 30, 40, 50]
 const GROUPS := ["sound", "display", "controls"]   # 二级菜单 (组名 = 主菜单入口行的键)
 const GROUP_EXTRA := {"controls": ["pad_map", "key_map"], "display": [], "sound": []}
 
@@ -115,7 +129,7 @@ static func _need_ok(need: String, has_guide: bool, replaying: bool, has_face_hk
 		"guide": return has_guide
 		"replaying": return replaying
 		"idle_replay": return not replaying
-		"keyboard": return not Platform.is_mobile()   # 手机上没有键盘, 不列键盘改键
+		"desktop": return not Platform.is_mobile()
 	return true
 
 
@@ -203,7 +217,7 @@ static func clean_value(key: String, v, preset = null):
 		return null
 	if r["kind"] == "volume":
 		return clampi(int(v), 0, 10) if (v is int or v is float) else null
-	for o in options_of(r):
+	for o in (UiFonts.options(true) if r.get("options_from") == "fonts" else options_of(r)):   # 字体: 按清单全部校验 (限定语言的字体在别的语言下也保留已存的选择)
 		if _same(o["v"], v):
 			return o["v"]
 	return null
@@ -270,6 +284,8 @@ static func reset_all(gc) -> void:
 ## 二级菜单的「还原预设」: 只把该组的设定项 (和 GROUP_EXTRA 里的覆盖项) 恢复缺省, 不动别的
 static func reset_group(gc, group: String) -> void:
 	var d := defaults()
+	if group == SPEED_GROUP:   # 加速菜单的「还原预设」= 回原速
+		_put(gc, "game_speed", d["game_speed"])
 	for r in ROWS:
 		if String(r.get("group", "")) == group and not _valueless(r):
 			_put(gc, String(r["key"]), d[r["key"]])
@@ -312,6 +328,8 @@ static func text_of(key: String, v) -> String:
 	for o in options_of(r):
 		if _same(o["v"], v):
 			return o["t"]
+	if r.get("options_from") == "fonts":   # 存的是当前语言下不可用的字体: 显示实际在用的缺省字体
+		return String(UiFonts.get_or_default(str(v)).get("name", v))
 	return str(v)
 
 

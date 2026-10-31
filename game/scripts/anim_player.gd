@@ -3,7 +3,7 @@ class_name AnimPlayer
 extends Node2D
 ## 播放一段 anim.json 动画 (原版 SAF)。坐标为原版像素, 由父节点统一放大。
 ## 帧时长 = 0.04 * (1 + time) 秒 (与重制版一致)。部件按 type 选混合方式:
-##   0 普通; 1 半透明 (影子等: 不透明度 = p8/16, p10=16 时按重制版 p8*0.05); 2~6 发光 (type=2 且 p10=0 按普通); 7 暗部遮罩。
+##   0 普通; 1 半透明 (影子等: 不透明度 = p8/16, p10=16 时按重制版 p8*0.05); 2~6 发光 = 饱和相加 底*p10/16 + 源*p8/16 (type=2 且 p10=0 按普通); 7 暗部遮罩。
 
 signal finished
 var _missing := false
@@ -218,11 +218,30 @@ func _setup(s: Sprite2D, p: Dictionary) -> void:
 		s.modulate.a = k
 	elif type == 7:
 		s.material = _material(DARK_MASK, 1.0)
-	else:
-		s.material = _material(SCREEN_BLEND, k, recolor_red)
+	else:   # 发光 (type 2~6): 饱和相加, 源 p8/16、底保留 p10/16 (shaders/screen_blend.gdshader)
+		var w := glow_weights(int(p["p8"]), int(p["p10"]))
+		s.material = _glow_material(w[0], w[1], recolor_red)
 
 
 static var _mats := {}
+
+## 发光部件的混合权重 [源权重, 底保留] = [p8/16, p10/16] (夹在 0~1): 结果 = 底*底保留 + 源*源权重 (饱和相加), 见 shaders/screen_blend.gdshader
+static func glow_weights(p8: int, p10: int) -> Array:
+	return [clampf(p8 / 16.0, 0.0, 1.0), clampf(p10 / 16.0, 0.0, 1.0)]
+
+
+static func _glow_material(src_k: float, dst_keep: float, red := false) -> ShaderMaterial:
+	var key := "glow:%.3f:%.3f:%s" % [src_k, dst_keep, red]
+	if not _mats.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = SCREEN_BLEND
+		m.set_shader_parameter("strength", src_k)
+		m.set_shader_parameter("dst_keep", dst_keep)
+		if red:
+			m.set_shader_parameter("red", true)
+		_mats[key] = m
+	return _mats[key]
+
 
 static func _material(shader: Shader, k: float, red := false) -> ShaderMaterial:
 	var key := "%s:%.2f:%s" % [shader.resource_path, k, red]

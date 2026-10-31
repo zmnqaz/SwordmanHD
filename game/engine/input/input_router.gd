@@ -25,6 +25,7 @@ extends Node
 
 signal dispatched(a: UiAction)
 signal settings_requested
+signal speed_requested   # 手机加速钮: 弹出加速档位菜单
 signal skip_dialog_toggled
 signal guide_requested   # F4: 打开/关闭攻略面板 (组装层接, engine/ui/guide_panel.gd)
 
@@ -616,6 +617,8 @@ func _hit_button(pos: Vector2) -> int:
 		_buttons.toggle()
 	elif k == _buttons.SETTINGS:
 		settings_requested.emit()
+	elif k == _buttons.SPEED:
+		speed_requested.emit()
 	elif k == _buttons.STICK:
 		_stick_update(pos)
 	else:

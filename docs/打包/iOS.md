@@ -54,7 +54,7 @@ python3 tools/platform/bundle_ipa.py <ipa> --edition classic               # 原
 - 包名 `com.tdj.swordmanhd` (与 Android、代码里一致), 最低 iOS 15.0 (Xcode 27 起不再支持更低的部署目标), arm64, 横屏 (iPhone 与 iPad 都是), 高分屏。
 - `application/export_project_only=true`: Godot 只出工程, 编译由 `build_ios.py --ipa` / Xcode 做 (Linux 上 Godot 也只能出工程)。
 - 文件共享打开 (`UIFileSharingEnabled` + `LSSupportsOpeningDocumentsInPlace`), 资源包靠它拷进去。
-- 应用图标 `game/assets/app_icon.png` (1024x1024, 无透明; `python3 tools/platform/make_app_icon.py` 生成, 不含原版素材)。
+- 应用图标 `game/assets/app_icon.png` (1024x1024, 无透明; 《天地劫》封面图, `python3 tools/platform/make_app_icon.py --art <图片>` 生成, `--plain` 可生成不含原作素材的自制图标); 桌面 (Windows / Linux / macOS) 用另一个自制的 `game/assets/icon_pc.png`, 窗口图标由 `ScreenLayout` 启动时设置, 不跟手游图标变。
 - 触屏操作盘 (摇杆 + 确认/取消/查看/菜单) 与 Android 通用,。
 
 ## 已知的待办

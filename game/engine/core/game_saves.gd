@@ -8,8 +8,39 @@ extends RefCounted
 const SLOTS := 5
 ## 存档目录 (测试改成临时目录, 免得碰玩家的真存档)
 static var base_dir := "user://"
+## 存档镜像 (见 SaveMirror): 组装层在 Android 上调 enable_mirror 登记「本地存档目录 -> 镜像目录」;
+## 只有 base_dir 正是登记的本地目录时才镜像 (回放沙盒、测试把 base_dir 换走后自动不镜像, 不会往真镜像目录写)
+static var _mirror_local := ""
+static var _mirror_remote := ""
 ## 内容包的关卡数 (组装层 Game.boot 设; 0 = 未知, 不检查关卡编号范围)
 static var stage_limit := 0
+
+
+## 登记镜像 (local_dir 空 = 关闭)
+static func enable_mirror(local_dir: String, mirror_dir: String) -> void:
+	_mirror_local = local_dir
+	_mirror_remote = mirror_dir
+
+
+static func mirror_dir() -> String:
+	return _mirror_remote if _mirror_local != "" and base_dir == _mirror_local else ""
+
+
+static func _mirror_push(path: String) -> void:
+	var m := mirror_dir()
+	if m != "":
+		SaveMirror.push(base_dir, m, path.get_file())
+
+
+## 导入镜像目录里被外部换过的存档, 并给还没镜像的存档补镜像 (非 Android 什么也不做); 返回 SaveMirror.pull 的结果
+static func sync_mirror() -> Dictionary:
+	var m := mirror_dir()
+	if m == "":
+		return {"imported": [], "rejected": {}}
+	var r := SaveMirror.sync(base_dir, m, func(_name, d): return range_error(d["game"] if d.get("game") is Dictionary else d))
+	if not r.imported.is_empty():
+		print("已从镜像目录导入存档: ", r.imported)
+	return r
 
 
 static func battle_path() -> String:
@@ -50,6 +81,7 @@ static func save_slot(st: GameState, slot: int) -> bool:
 	var ok := SaveFile.write_json(slot_path(slot), _snapshot(st))
 	if ok:
 		PlayLog.note_save("slot", slot, slot_path(slot))   # 通关录像: 记下存档点 (读档时剪回这里), 并存录像历史
+		_mirror_push(slot_path(slot))
 	return ok
 
 
@@ -91,6 +123,7 @@ static func save_battle(st: GameState, snapshot: Dictionary) -> bool:
 	var ok := SaveFile.write_json(battle_path(), SaveFile.stamp({"game": game, "battle": snapshot}, "battle", game["content"]))
 	if ok:
 		PlayLog.note_save("battle", 0, battle_path())
+		_mirror_push(battle_path())
 	return ok
 
 

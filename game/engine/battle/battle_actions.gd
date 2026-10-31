@@ -18,6 +18,7 @@ var ui: BattleUi
 var closeup: BattleCloseup
 var flow  # BattleFlow (死亡处理、击杀者登记)
 var _exp_events: Array = []     # 本次行动的经验与升级 (近景里依次显示)
+var _pending_exp: Array = []    # 本次战斗各次出手挣到的经验 [[单位, 经验]], 战斗即将结束时统一结算 (_settle_exp)
 
 
 func _init(scene, battle_rules: BattleRules, battle_view: BattleView, battle_ui: BattleUi, battle_closeup: BattleCloseup) -> void:
@@ -38,6 +39,7 @@ func attack(a: BattleUnit, t: BattleUnit) -> void:
 	view.face(a, t)
 	view.face(t, a)
 	view.hide_info()
+	_pending_exp = []   # 上一场没结算完 (中途被打断) 的残留不带进这一场
 	await closeup.open(a, t)
 	var rec := rules.exchange(a, t)
 	await closeup.strike(a, t, _kinds(rec.main), "", "", _vampire_of(rec.main_apply))
@@ -46,6 +48,10 @@ func attack(a: BattleUnit, t: BattleUnit) -> void:
 		await SceneGuard.wait(self, 0.2)
 		await closeup.strike(t, a, _kinds(rec.counter), "", "", _vampire_of(rec.counter_apply))
 		_after_strike(t, a, rec.counter, rec.counter_apply, int(rec.exp_defender))
+	_settle_exp()   # 战斗即将结束: 先结算经验 (死了的拿不到), 才知道有没有升级 -> 升级演出 -> 经验框 (玩家反馈)
+	await _level_fx(a)
+	if rec.counter != null:
+		await _level_fx(t)
 	await show_exp()
 	await closeup.close()
 	view.retint()
@@ -76,10 +82,19 @@ func _after_strike(a: BattleUnit, d: BattleUnit, r: Dictionary, ap: Dictionary, 
 		flow.note_killer(d, a)  # kill_get: 普攻 (含反击) 的击杀者
 	flow.stats.strike(a, d, r, ap, e)
 	if e > 0:
-		gain_exp(a, e)
+		_pending_exp.append([a, e])   # 不立刻加: 战斗结束时 (_settle_exp) 还活着才给, 升级也在那时才发现
 
 
 # ================= 经验与升级 (08) =================
+
+## 战斗即将结束时结算本次战斗挣到的经验: 只给还活着的单位 (主攻挣了经验却被反击打死的拿不到, 没有经验框也没有升级); 加完才知道升没升级
+func _settle_exp() -> void:
+	var pend := _pending_exp
+	_pending_exp = []
+	for p in pend:
+		if p[0].hp > 0:
+			gain_exp(p[0], int(p[1]))
+
 
 ## 加经验 (500 升一级, 成长 / 五魂点 / 习得都在 engine/rules/growth.gd), 记下升级前后的数值供「位階上升」窗显示
 func gain_exp(u: BattleUnit, e: int) -> void:
@@ -93,6 +108,28 @@ func gain_exp(u: BattleUnit, e: int) -> void:
 			learned.append(String(rules.skill(int(sid))["name"]))
 	flow.stats.exp_gain(u, e, nlv, learned)
 	_exp_events.append({"unit": u, "exp": e, "levels": nlv, "before": before, "after": growth_snapshot(u), "learned": learned})
+
+
+## u 这次出手升级了: 全部出手演完之后 (经验框之前) 在近景里放升级演出 (握拳 + 光环 + 音效) (原版近景状态 0x12, 见 BattleCloseup.level_up_fx); 每个升级事件只放一次, 只对玩家操作的单位 (我方在近景右侧)
+func _level_fx(u) -> void:   # u: BattleUnit (无类型: 测试里换桩)
+	if not u.controllable or u.hp <= 0:   # 还活着才有升级演出 (主攻升了级却被反击打死: 不演; 玩家反馈)
+		return
+	for ev in _exp_events:
+		if ev.unit == u and int(ev.levels) > 0 and not bool(ev.get("fx", false)):
+			ev["fx"] = true
+			await closeup.level_up_fx(u)
+			return
+
+
+## 地图上放法术升级了: 在大地图上放升级光旋 (Misc/Maplup 第 2~14 帧, 帧 2/3 带声音, 见 BattleView.level_up_fx), 随后才弹经验框 (玩家反馈: 法术升级要在大地图上显示, 不进近景)
+func _map_level_fx(u) -> void:   # u: BattleUnit (无类型: 测试里换桩)
+	if not u.controllable or u.hp <= 0:
+		return
+	for ev in _exp_events:
+		if ev.unit == u and int(ev.levels) > 0 and not bool(ev.get("fx", false)):
+			ev["fx"] = true
+			await view.level_up_fx(u)
+			return
 
 
 static func growth_snapshot(u: BattleUnit) -> Dictionary:
@@ -174,6 +211,7 @@ func cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id := -1) -> void:
 		await closeup.strike(u, t, [{"kind": kind, "damage": maxi(0, int(r.damage))}], atk, String(sk["name"]), -1, Skills.closeup_digits(sk, r), int(sk.get("battle_ranged", 0)) == 1)
 		if int(res.exp) > 0:
 			gain_exp(u, int(res.exp))
+			await _level_fx(u)
 		await show_exp()
 		await closeup.close()
 		await _cast_results(u, sk, res, false)   # 近景关闭后目标身上仍按结果码放地图结果动画, 不弹数字 (静态)
@@ -198,6 +236,7 @@ func cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id := -1) -> void:
 		await view.cast_fade_out(intro)   # 压暗保持到结果动画之后, 再渐亮 (④)
 		if int(res.exp) > 0:
 			gain_exp(u, int(res.exp))
+			await _map_level_fx(u)
 		print("演出到经验 %d 帧" % (Engine.get_process_frames() - t0))   # 演出对照用 (tools/qa 的耗时表读它)
 		await show_exp()
 	await SceneGuard.wait(self, 0.6)

@@ -207,7 +207,11 @@ static func wrap_chars(s: String, n: int) -> PackedStringArray:
 
 ## 基线在字格里的位置 (原版像素, 字格顶 = 0)。sz 号字按 12 号的比例缩放
 static func baseline(sz := 12.0) -> float:
-	return UiFonts.baseline(Assets.font_id) * sz / 12.0
+	return UiFonts.baseline(_font_id()) * sz / 12.0
+
+
+static func _font_id() -> String:
+	return Assets.font_id
 
 
 # ---------------------------------------------------------------- 绘制
@@ -223,7 +227,7 @@ func _draws() -> Array:
 	var out: Array = []
 	if edge_color.a > 0.0:
 		return [[-1, 0, edge_color], [1, 0, edge_color], [0, 0, color]]
-	for d in UiLayout.style(flags):
+	for d in UiLayout.style(flags, UiFonts.is_pixel(_font_id())):
 		var cname := String(d[2]) if d.size() > 2 else "color"
 		out.append([int(d[0]), int(d[1]), color if cname == "color" else UiLayout.color(cname, color)])
 	return out

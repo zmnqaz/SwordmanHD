@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 class_name CampMenu
 extends Node2D
-## 营地主菜单 CCampMenu (素材 Misc/):
+## 营地主菜单 CCampMenu (素材 Misc/CAMP_MEN):
 ##   面板第 0 帧, 缓冲区坐标 (0x36,0x2c) = 屏幕 (24,20);
 ##   7 项文字, 每项在面板内 (15, 10+12i), flags=5 (主色 + 左右光边);
 ##   选中项左侧箭头: 第 1/2 帧每 4 tick 交替, 在 (3, 10+12i);

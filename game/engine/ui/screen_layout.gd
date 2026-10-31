@@ -48,8 +48,27 @@ var aspect_mode := "auto"
 const MIN_WINDOW := Vector2i(1280, 800)
 
 
+## 桌面 (Windows / Linux / macOS) 窗口与任务栏图标: 用自制的 icon_pc.png。project.godot 的 config/icon 是手游美术图标 (app_icon.png),
+## Godot 会拿它当窗口图标, 所以桌面启动时换回 icon_pc.png (2026-10-31 玩家: PC 版图标不该跟着手游图标变)
+const DESKTOP_ICON := "res://assets/icon_pc.png"
+
+
+static func desktop_icon_image() -> Image:
+	var t = load(DESKTOP_ICON)
+	if not (t is Texture2D):
+		return null
+	var img: Image = (t as Texture2D).get_image()
+	if img != null and img.is_compressed():
+		img.decompress()
+	return img
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	if not Platform.is_mobile():
+		var icon := desktop_icon_image()
+		if icon != null:
+			DisplayServer.set_icon(icon)
 	if DebugArgs.current().aspect > 0:   # --aspect=W:H
 		aspect = DebugArgs.current().aspect
 	var win := get_window()
@@ -148,6 +167,8 @@ func apply_window(full: bool, base: Vector2i) -> void:
 		return
 	if win.mode != Window.MODE_WINDOWED:
 		win.mode = Window.MODE_WINDOWED
+	if Platform.is_mobile():   # 手机的「窗口模式」只是显示系统栏: 窗口大小 / 位置归系统管, 不能设成 1280x800 (会缩在屏幕一角, 画面偏) (2026-10-31 网友反馈)
+		return
 	var usable := DisplayServer.screen_get_usable_rect(DisplayServer.window_get_current_screen())
 	var sz := fit_size(window_size_for(base), usable.size)
 	sz = Vector2i(maxi(sz.x, MIN_WINDOW.x), maxi(sz.y, MIN_WINDOW.y))  # 屏幕太小也不低于最小窗口

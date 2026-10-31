@@ -783,6 +783,8 @@ func _face(id: String) -> Font:
 		var f := FontFile.new()
 		var path := String(UiFonts.get_or_default(id)["file"])
 		f.load_dynamic_font(path)  # 字体文件不导入 (.import 为 keep), 原样进主 pck, 开发版/导出版都按 res:// 读
+		if String(UiFonts.get_or_default(id).get("hinting", "")) == "none":   # 点阵风字体 (原版点阵): 自动微调会把对齐像素格的方块笔画拉歪
+			f.hinting = TextServer.HINTING_NONE
 		var full := UiFonts.complete_id()
 		if id != full:   # 文楷/宋体是裁过的子集 (缺省的文楷也是), 缺的字 (繁体字等) 先回退到自带的完整字库 (清单里 full 标记的, 缺省思源黑体), 再到系统字体
 			f.fallbacks = [_face(full)]

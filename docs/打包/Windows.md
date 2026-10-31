@@ -17,7 +17,7 @@ tools/build_windows.sh --linux            # Linux 版 dist/linux/SwordmanHD/
 - `tools/godot/godot` 4.7.2 与同版本 export templates, 装在 `~/.local/share/godot/export_templates/4.7.2.stable/`
   (官方 `Godot_v4.7.2-stable_export_templates.tpz`, GitHub releases 下载后解压 templates/ 到该目录)。想要导出包里也有图片压缩（BC7），再编自制模板，见下。
 - 资源包 (可选): 放进 `dist/packs/` (`resource/`、`mod/`); 没有就加 `--engine-only` 只出引擎。
-- 图标: 自制的 `game/assets/app_icon.png` 会被转成多尺寸 `game/assets/icon.ico` (不入库)。
+- 图标: 自制的 `game/assets/icon_pc.png` 会被转成多尺寸 `game/assets/icon.ico` (不入库)。
 
 导出预设在 `game/export_presets.cfg` 的「Windows Desktop」: x86_64, 主 pck 嵌入 exe, 附带 `SwordmanHD.console.exe` (看日志)。
 脚本末尾有「必带清单校验」: 按 fonts.json 逐个检查字体文件与许可文本、各资源包是否齐全, 缺了直接报错; 以后加字体只改 fonts.json 即可自动纳入校验。
