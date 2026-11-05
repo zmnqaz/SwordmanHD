@@ -386,3 +386,23 @@ func test_every_act_plays_its_frame_sound():
 	check(u.anim.sfx_count > prev, "胜利帧的声音响了")
 	u.free()
 	_unfake(key)
+
+
+## 剧情走路: 指令头 +2 = 0 不放起步 / 收步 (原版剧情走路对象 [esi] = 0 直接走), 每帧 速度+1 tick (速度 5 = 6 tick)
+func test_script_walk_without_phases_and_slow_frames():
+	if not _fake_ok():
+		check(true, "无资源, 跳过")
+		return
+	_fake_anim("Sprite/test_ms/a")
+	var u := _unit_with("Sprite/test_ms/a", Vector2i(6, 7))
+	var done := [false]
+	u.move_finished.connect(func(): done[0] = true)
+	u.walk([Vector2i(7, 7)], 250.0 / 6.0, false, false, 6)
+	_tick(u, 0.04)
+	eq(u.act, BattleUnit.Act.MOVE, "不放起步, 直接走")
+	eq(u.anim.tick_override, 6, "每帧 6 tick")
+	for i in 30:
+		_tick(u, 0.04)
+	check(done[0], "18 tick 走完一格")
+	eq(u.act, BattleUnit.Act.STAND, "到格直接站立, 不放收步")
+	u.free()

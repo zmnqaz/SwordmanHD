@@ -33,7 +33,7 @@ func ui_pointer_target() -> Object:
 
 
 func ui_action(a: UiAction) -> bool:
-	if list == null or (a.echo and not a.is_dir()):
+	if list == null or (a.echo and not a.is_repeatable()):
 		return true
 	if a.is_dir():
 		list.move(a.dir())

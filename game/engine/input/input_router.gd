@@ -60,6 +60,9 @@ var touch_mode := false
 ## --touch: 鼠标按触摸处理
 var emulate_touch := false
 var repeat := KeyRepeat.new()
+## 翻页键 (PAGE_UP / PAGE_DOWN) 按住连发: 原版输入分发器 按住任何键都每 200 毫秒分发一次 (同一分发器),
+## 营地/商店/战场物品列表按住 PageUp/PageDown 连续翻页。只用慢速: 加速标志只看 4 个方向键
+var page_repeat := KeyRepeat.new()
 var gestures := TouchGestures.new()
 var _stack: Array = []
 var _overlays: Array = []   # _stack 里的模态浮层 (总在栈的上部)
@@ -98,6 +101,7 @@ var replay_lock := false:
 		replay_lock = v
 		if v:   # 锁上之前按着的键/手指不能在回放里继续连发、续上手势
 			repeat.clear()
+			page_repeat.clear()
 			gestures = TouchGestures.new()
 
 
@@ -319,6 +323,11 @@ func fast_held() -> bool:
 	return Input.is_key_pressed(KEY_CTRL)
 
 
+## 虚拟键节点 (engine/input/touch_pad.gd); 不在触屏模式下为 null
+func touch_pad() -> Node:
+	return _buttons
+
+
 func set_touch_mode(on: bool) -> void:
 	touch_mode = on
 	ScreenLayout.keep_side_margins = on  # 左右留边给虚拟键, 贴边的界面改贴安全区
@@ -348,6 +357,7 @@ func _notification(what: int) -> void:
 		go_back()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		repeat.clear()
+		page_repeat.clear()
 		if replay_lock:
 			return
 		for k in RELEASE:  # 失焦后收不到按键松开事件: 补发「松开」, 否则营地按住预览等会一直卡在按下状态
@@ -360,6 +370,8 @@ func _process(delta: float) -> void:
 	_time += real_dt
 	_poll_pointer_target()
 	for k in repeat.tick(real_dt, _repeat_interval()):
+		dispatch(UiAction.new(k, "key", Vector2.INF, true))
+	for k in page_repeat.tick(real_dt):
 		dispatch(UiAction.new(k, "key", Vector2.INF, true))
 	for a in gestures.tick(_time):
 		dispatch(a)
@@ -567,6 +579,13 @@ func _press(k: int, pressed: bool, src: String) -> void:
 		else:
 			repeat.release(k)
 		return
+	if UiAction.PAGES.has(k):
+		if pressed:
+			for d in page_repeat.press(k):
+				dispatch(UiAction.new(d, src))
+		else:
+			page_repeat.release(k)
+		return
 	if pressed:
 		dispatch(UiAction.new(k, src))
 	elif RELEASE.has(k):
@@ -621,6 +640,9 @@ func _touch(e: InputEvent) -> bool:
 
 
 func _touch_event(index: int, pos: Vector2, pressed: bool, moved: bool) -> void:
+	if _buttons and _buttons.editing:   # 虚拟键编辑模式 (TouchLayoutPanel): 触摸全交给它拖动摆放, 不当按键 / 手势
+		_buttons.edit_touch(index, pos, pressed, moved)
+		return
 	if _buttons:
 		_buttons.touched()
 	if _button_touch.has(index):  # 这根手指按在虚拟键上

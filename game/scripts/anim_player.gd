@@ -207,6 +207,7 @@ func _show(f: int) -> void:
 	while _sprites.size() < parts.size():
 		var s := Sprite2D.new()
 		s.centered = false
+		s.use_parent_material = use_parent_material   # 外层给了材质 (如 UiPanel.key_background) 时部件跟着用
 		add_child(s)
 		_sprites.append(s)
 	for i in _sprites.size():

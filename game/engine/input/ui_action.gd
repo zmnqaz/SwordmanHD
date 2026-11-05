@@ -17,6 +17,7 @@ enum { NONE, UP, DOWN, LEFT, RIGHT, CONFIRM, CANCEL, INFO, MENU, PAGE_UP, PAGE_D
 
 const NAMES := ["none", "up", "down", "left", "right", "confirm", "cancel", "info", "menu", "page_up", "page_down",
 	"point", "drag", "switch", "select", "select_up", "info_up"]
+const PAGES := [PAGE_UP, PAGE_DOWN]
 const DIRS := {UP: Vector2i(0, -1), DOWN: Vector2i(0, 1), LEFT: Vector2i(-1, 0), RIGHT: Vector2i(1, 0)}
 
 var kind := NONE
@@ -46,6 +47,11 @@ static func of(k: int, src := "test", p := Vector2.INF) -> UiAction:
 
 func is_dir() -> bool:
 	return DIRS.has(kind)
+
+
+## 列表里按住会连发的键: 方向与翻页 (原版按住 PageUp/PageDown 连续翻页); 确认/取消等不连发
+func is_repeatable() -> bool:
+	return DIRS.has(kind) or PAGES.has(kind)
 
 
 ## 方向 (格): 上 (0,-1) 下 (0,1) 左 (-1,0) 右 (1,0); 非方向为 0

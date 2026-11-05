@@ -33,6 +33,18 @@ func play(dir: String, start: int, end: int, looped := true) -> void:
 	_anim.play(dir, start, end, looped)
 
 
+## 高清画质下抠掉素材自带的羊皮纸底 (GlyphKey); sample = 帧里纯底的一块 (原版像素, 相对贴图左上角)。原版画质不动
+func key_background(sample := Rect2(0, 0, 2, 2)) -> void:
+	var t := frame_texture(anim_dir, frame)
+	if t.is_empty() or not bool(t["hd"]):
+		return
+	material = GlyphKey.material(t["texture"], sample, float(t["scale"]))
+	_anim.use_parent_material = true
+	for c in _anim.get_children():
+		if c is CanvasItem:
+			(c as CanvasItem).use_parent_material = true
+
+
 ## 本帧的大小 (不透明区域, 原版像素)
 func size() -> Vector2:
 	return frame_rect(anim_dir, frame).size

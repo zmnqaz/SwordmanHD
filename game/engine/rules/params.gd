@@ -40,7 +40,7 @@ var move_avg_div := 25              # MOV = move + Avg/25
 var haste_move_num := 3             # 速敏提昇 ×1.5 = ×3/2 后 _ftol 截断 高 (网友数据 45→67)
 var haste_move_den := 2
 var test_move_bonus := 0              # 仅测试 (--god): 我方移动点额外加成, 让代打在限时关里按时赶到; 缺省 0 = 原版, 不进内容包 rules.json
-var bind_move := 1                  # 地縛: 移动点视为 1
+var bind_move := 1                  # 地縛: 算可走范围时移动点视为 1 (字段 不变)
 ## 速敏与保留点: true = int(m×1.5)+R (原版: m=34 → 51, 保留 51 → 上限 102);
 ## false = int((m+R)×1.5)
 var haste_before_reserve := true

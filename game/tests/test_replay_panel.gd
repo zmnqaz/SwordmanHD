@@ -67,7 +67,7 @@ func test_empty_dir_has_only_two_buttons() -> void:
 	_clean()
 	var p := _panel()
 	p.load_files(DIR)
-	eq(p.total(), 2, "没有录像: 只有「速度」「返回」两个按钮条目")
+	eq(p.total(), 3, "没有录像: 只有「速度」「删除全部」「返回」三个按钮条目")
 	_free(p)
 
 
@@ -76,7 +76,7 @@ func test_entries_and_info_text() -> void:
 	_put("play_20261012_100000.json", _good())
 	var p := _panel()
 	p.load_files(DIR)
-	eq(p.total(), 3)
+	eq(p.total(), 4)
 	eq(p.info_text(0), UiStrings.t("replay.info") % ["2:05", 2, UiStrings.t("replay.start.full")], "时长 mm:ss + 操作数 + 起点 (整场从标题开始)")
 	_free(p)
 
@@ -127,7 +127,7 @@ func test_cancel_and_done_button_do_not_choose() -> void:
 	p.closed.connect(func(k): got.append(k))
 	p.ui_action(UiAction.of(UiAction.CANCEL, "key"))
 	eq(got, [false])
-	p._sel = p._n + 1   # 「返回」按钮
+	p._sel = p._n + 2   # 「返回」按钮
 	p.ui_action(UiAction.of(UiAction.CONFIRM, "key"))
 	eq(got, [false, false])
 	eq(p.chosen_path, "")
@@ -152,3 +152,42 @@ func test_info_tells_where_the_recording_starts() -> void:
 	eq(ReplayPanel._start_text({"base": {"game": {}}, "base_kind": "slot"}), UiStrings.t("replay.start.slot"), "读了没有历史的存档位")
 	eq(ReplayPanel._start_text({"base": {"game": {}}, "base_kind": "battle"}), UiStrings.t("replay.start.battle"), "读了没有历史的战阵存录")
 	eq(ReplayPanel._start_text({"kind": "stage", "base": {"a": 1}, "base_kind": "stage_start"}), UiStrings.t("replay.start.stage"), "单幕录像从开战前开始")
+
+
+func test_delete_all_needs_two_confirms_and_keeps_other_files() -> void:
+	_clean()
+	_put("play_20261012_100000.json", _good())
+	_put("stage_01_20261011_100000.json", _good())
+	_put("play_20261013_100000.json.tmp", "x")
+	_put("notes.txt", "x")
+	var p := _panel()
+	p.load_files(DIR)
+	p._sel = p._n + 1   # 「删除全部」按钮
+	p.ui_action(UiAction.of(UiAction.CONFIRM, "key"))
+	eq(ReplayPanel.list_files(DIR).size(), 2, "第一次确认只待命, 不删")
+	check(p._arm_delete)
+	p.ui_action(UiAction.of(UiAction.DOWN, "key"))
+	check(not p._arm_delete, "光标离开: 待命取消")
+	p.ui_action(UiAction.of(UiAction.UP, "key"))
+	p.ui_action(UiAction.of(UiAction.CONFIRM, "key"))
+	p.ui_action(UiAction.of(UiAction.CONFIRM, "key"))
+	eq(ReplayPanel.list_files(DIR).size(), 0, "第二次确认: 全删")
+	check(not FileAccess.file_exists(DIR.path_join("play_20261013_100000.json.tmp")), "写到一半的临时文件也删")
+	check(FileAccess.file_exists(DIR.path_join("notes.txt")), "不是录像的文件不动")
+	eq(p._n, 0, "列表重新扫描")
+	eq(p._sel, p._n + 1, "光标仍在「删除全部」")
+	eq(p._deleted, 2)
+	_free(p)
+
+
+func test_delete_all_skips_the_recording_in_progress() -> void:
+	_clean()
+	_put("play_20261012_100000.json", _good())
+	var l := PlayLog.new()
+	l._begin_record(DIR.path_join("play_20261014_100000.json"))
+	l.save()
+	PlayLog.current = l
+	eq(ReplayPanel.delete_all(DIR), 1)
+	eq(ReplayPanel.list_files(DIR), ["play_20261014_100000.json"], "正在录的那份留着")
+	PlayLog.current = null
+	l.free()

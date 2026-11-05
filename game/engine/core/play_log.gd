@@ -11,7 +11,7 @@ extends Node
 ## 对不上检测: 每回合开头 (战斗) 记一个检查点 (关号/回合/我方总血量), 回放时逐个比对, 对不上打印一次警告 (之后仍继续放)。
 ##
 ## 用法:
-##   录制: 默认开 (有窗口时; 设定 record_play=false 或 --no-record-play 关闭); --record-play=<路径> 指定文件, 缺省
+##   录制: 设定「战场录像」开启时录 (缺省关, 2026-11-04; 有窗口时; --no-record-play 强制不录); --record-play=<路径> 指定文件, 缺省
 ##         user://replays/play_<日期时间>.json (退出时、每 10 秒自动保存; 窗口大小/语言/手柄预设一并记下)。
 ##   回放: --replay-play=<文件> [--replay-speed=N]   (从标题画面开始, 用的是同一套内容, 不要同时手动操作)
 ##         菜单: 设定面板「录像回放」(engine/ui/replay_panel.gd) 选一份录像, 进程内切到回放 (Game.start_replay)。
@@ -69,13 +69,15 @@ static func start_from_args() -> PlayLog:
 	return p2
 
 
-## 这次运行要不要录像: 默认有窗口时录, 自动测试/代打/回归 (--autoplay* / --regress* / --fast / --press / --scene=) 与 --no-record-play 不录,
-## 显式 --record-play=<路径> 一定录。启动与「回放放完 / 结束后继续录」共用
+## 这次运行要不要录像: 设定「战场录像」开启 (缺省关) 且有窗口时录, 自动测试/代打/回归 (--autoplay* / --regress* / --fast / --press / --scene=) 与 --no-record-play 不录,
+## 显式 --record-play=<路径> 一定录。启动、回到标题、「回放放完 / 结束后继续录」共用
 static func recording_wanted() -> bool:
 	var d := DebugArgs.current()
 	if d.no_record_play:
 		return false
-	return d.record_play != "" or (DisplayServer.get_name() != "headless" and not d.test_run)
+	if d.record_play != "":
+		return true
+	return int(GameContext.current().settings.get("record", 0)) == 1 and DisplayServer.get_name() != "headless" and not d.test_run
 
 
 ## 回放放完后接着手动玩: 把放过的整份录像 (操作/战斗种子/检查点/起点/时钟) 当历史, 新开一份录制接着录。

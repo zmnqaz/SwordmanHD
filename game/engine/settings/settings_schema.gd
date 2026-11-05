@@ -12,7 +12,8 @@ extends RefCounted
 ## kind: volume 0~10 整数 (左右 ±1, 到头停住) / choice 在 options 间循环 / action 没有值, 确认键打开子界面 (不进设定文件) /
 ##   live 值不在设定里、直接读写运行中的东西 (回放速度, 见 live_value / set_live, 不进设定文件)。
 ## needs: desktop = 只在电脑上列 (手机没有窗口大小可选); touch = 有虚拟键时才列 (手机 / 平板, 或桌面 --touch); guide = 内容包带攻略才列; replaying = 回放中才列; idle_replay = 没在回放时才列; face_pack = 装了头像包 (mod 里带 Face/ 的包, 见 FacePacks) 才列。
-## 非行的设定键: pad_map (手柄覆盖项 {动作名: 键号}, 稀疏, 由 PadMap.sanitize 校验); key_map (键盘覆盖项 {动作名: 键值}, 稀疏, 由 KeyMap.sanitize 校验)。
+## 非行的设定键: pad_map (手柄覆盖项 {动作名: 键号}, 稀疏, 由 PadMap.sanitize 校验); key_map (键盘覆盖项 {动作名: 键值}, 稀疏, 由 KeyMap.sanitize 校验);
+##   touch_layout (虚拟键的位置 / 透明度 / 大小, 由 TouchLayout.sanitize 校验)。
 ## locked: in_battle = 战斗中这一行照列 (显示当前值) 但灰显、面板里改不了 (SettingsPanel._change 拦住; 成长: 战斗开始时定, 战斗中改了不生效); 选中时下面的说明 (desc) 解释原因。
 ## options: [{v: 存储值}], 显示文字 t 取自文案表 (UiStrings, 内容包 text/ui.json): 行名 settings.<key>.label、行说明 settings.<key>.desc (面板下方, 选中项)、
 ##   选项文字 settings.<key>.opt.<v>; options_of 返回的选项带 t。options_from "fonts" 的选项 (t/d) 与缺省值来自字体清单 (UiFonts);
@@ -71,10 +72,15 @@ const ROWS := [
 	#   只在有虚拟键的时候列 (手机 / 平板, 或桌面 --touch), 见 engine/input/touch_pad.gd
 	{"key": "touch_pad", "kind": "choice", "def": "stick", "group": "controls", "needs": "touch",
 		"options": [{"v": "stick"}, {"v": "dpad"}]},
+	# 触屏键位置 (2026-11-04 用户要求): 进 TouchPad 编辑模式, 每个键单独拖动, 顶上一条调透明度 / 大小、复位、完成; 结果存 touch_layout (见 engine/input/touch_layout.gd)
+	{"key": "touch_edit", "kind": "action", "group": "controls", "needs": "touch"},
 	# 特色功能 (复刻新增, 2026-11-02 用户指定: 把隐藏宝箱 / 成长 / 坐标 / 整理行囊收进一个二级菜单, 主菜单只留这一行; 动作行 feature 打开同一个 SettingsPanel, 只列 group = feature 的行)
 	{"key": "feature", "kind": "action"},
-	# 战场辅助 (默认全关 = 与原版一致): 宝箱显示 (隐藏宝箱图标 + 宝箱内容提示)
+	# 战场辅助 (默认全关 = 与原版一致): 隐藏宝箱 = 地图上画出隐藏宝箱的半透明图标 (BattleFlow.refresh_hidden_treasures)
 	{"key": "show_hidden", "kind": "choice", "def": 0, "group": "feature",
+		"options": [{"v": 0}, {"v": 1}]},
+	# 宝箱内容 (2026-11-05 用户要求与隐藏宝箱分开): 光标停在宝箱上时提示里面是什么 (BattleHiddenTip); 隐藏宝箱的内容要两项都开才提示, 免得单开这项就暴露隐藏宝箱
+	{"key": "chest_tip", "kind": "choice", "def": 0, "group": "feature",
 		"options": [{"v": 0}, {"v": 1}]},
 	# 成长 (复刻新增): 我方升级时五项属性 / HP / MP 的随机项: random = 原版 (0..N 均匀随机), max = 恒取上限 N, min = 恒取 0 (基本成长照加);
 	#   战斗开始时定 (BattleRules.battle_start 取这个设定 -> Params.apply_growth_setting), 所以战斗中这一行照列但灰显锁定 (locked in_battle, 只能在城镇 / 营地 / 标题改, 选中时说明解释原因);
@@ -86,6 +92,10 @@ const ROWS := [
 		"options": [{"v": 0}, {"v": 1}]},
 	# 整理行囊 (原来是攻略面板里的按钮, 2026-10-25 搬到设定, 2026-11-02 收进特色功能): 公共行囊按物品编号排 (CampInventory.resort_bag); 回放中不列 (整理会改行囊, 回放时不能插手)
 	{"key": "bag_sort", "kind": "action", "needs": "idle_replay", "group": "feature"},
+	# 战场录像 (2026-11-04 用户指定: 加开关, 默认关): 开 = 录下全程操作 (整场 + 每幕通关的单幕录像, PlayLog); 关 = 不录, 正在录的存盘后停掉。
+	#   开启在标题画面立即起录, 在游戏中则回到标题后才起录 (录像必须有起点); 命令行 --record-play= 不受它限制, 见 PlayLog.recording_wanted
+	{"key": "record", "kind": "choice", "def": 0, "group": "feature",
+		"options": [{"v": 0}, {"v": 1}]},
 	# 录像回放 (2026-11-03 用户指定收进特色功能): 没在回放时列; 回放中的「结束回放」「回放速度」仍在主菜单 (随时能停 / 调速)
 	{"key": "replay", "kind": "action", "needs": "idle_replay", "group": "feature"},
 	# 录像回放 (复刻新增): 没在回放时列「录像回放」(打开 engine/ui/replay_panel.gd); 回放中改列「结束回放」和「回放速度」
@@ -119,7 +129,7 @@ static func auto_win(usable: Vector2i) -> int:
 const SPEED_GROUP := "speed"
 const SPEED_PRESETS := [10, 15, 20, 30, 40, 50]
 const GROUPS := ["sound", "display", "controls", "feature"]   # 二级菜单 (组名 = 主菜单入口行的键)
-const GROUP_EXTRA := {"controls": ["pad_map", "key_map"], "display": [], "sound": [], "feature": []}
+const GROUP_EXTRA := {"controls": ["pad_map", "key_map", "touch_layout"], "display": [], "sound": [], "feature": []}
 
 
 ## 主菜单 + 全部二级菜单里显示的行 (测试 / 猴子测试用)
@@ -219,6 +229,7 @@ static func defaults() -> Dictionary:
 			d[r["key"]] = def_of(r)
 	d["pad_map"] = {}
 	d["key_map"] = {}
+	d["touch_layout"] = TouchLayout.defaults()
 	return d
 
 
@@ -235,6 +246,7 @@ static func sanitize(src: Dictionary) -> Dictionary:
 			out[k] = v
 	out["pad_map"] = PadMap.sanitize(out["pad_preset"], src.get("pad_map"))["map"]
 	out["key_map"] = KeyMap.sanitize(src.get("key_map"))
+	out["touch_layout"] = TouchLayout.sanitize(src.get("touch_layout"))
 	return out
 
 
@@ -245,6 +257,8 @@ static func clean_value(key: String, v, preset = null):
 		return PadMap.sanitize(preset if preset != null else row("pad_preset")["def"], v)["map"]
 	if key == "key_map":
 		return KeyMap.sanitize(v)
+	if key == "touch_layout":
+		return TouchLayout.sanitize(v)
 	var r := row(key)
 	if r.is_empty() or _valueless(r):
 		return null

@@ -49,10 +49,12 @@ func _scene() -> FakeScene:
 	return s
 
 
-func _tip(s: FakeScene, show_hidden: int) -> BattleHiddenTip:
+## on: 「宝箱内容」与「隐藏宝箱」两个开关都设成它
+func _tip(s: FakeScene, on: int) -> BattleHiddenTip:
 	var t := BattleHiddenTip.new()
 	t.gc = GameContext.new()
-	t.gc.settings["show_hidden"] = show_hidden
+	t.gc.settings["chest_tip"] = on
+	t.gc.settings["show_hidden"] = on
 	t.bs = s
 	return t
 
@@ -74,7 +76,13 @@ func test_setting_off_shows_nothing():
 	s.cur = Vector2i(2, 0)
 	eq(t.current_text(), "", "设定关: 光标在隐藏宝箱格上也不显示 (原版行为)")
 	t.gc.settings["show_hidden"] = 1.0
-	eq(t.current_text(), "隐藏: " + BattleFlow.item_name(5), "设定开 (JSON 读回 1.0): 显示")
+	eq(t.current_text(), "", "只开隐藏宝箱 (图标): 不提示内容")
+	t.gc.settings["chest_tip"] = 1.0
+	eq(t.current_text(), "隐藏: " + BattleFlow.item_name(5), "两项都开 (JSON 读回 1.0): 显示")
+	t.gc.settings["show_hidden"] = 0
+	eq(t.current_text(), "", "只开宝箱内容: 隐藏宝箱不提示 (不暴露)")
+	s.cur = Vector2i(3, 0)
+	eq(t.current_text(), "宝物: 金钱100两", "只开宝箱内容: 看得见的普通宝箱照样提示")
 	t.free()
 	UiStrings.use(null)
 

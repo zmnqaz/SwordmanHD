@@ -298,6 +298,7 @@ func _closes_all(key: String, sub: Object, ok) -> bool:
 
 
 ## 动作行被确认: bag_sort = 整理行囊 (就地执行, 不开子面板); key_edit = 键盘按键设置 (engine/ui/key_map_panel.gd, 同手柄那个); pad_edit = 手柄按键设置 (模态子面板, 压在本面板之上; 每次绑定自己存盘, 取消时它自己还原覆盖项);
+## touch_edit = 触屏键位置 (engine/ui/touch_layout_panel.gd: 虚拟键进编辑模式拖动摆放, 完成时存盘);
 ## SettingsSchema.GROUPS (声音 / 显示 / 控制器 / 特色功能) = 二级菜单 (本类的另一个实例, 只列同组的行); guide = 攻略面板 (engine/ui/guide_panel.gd, 关掉后回到设定面板); diag = 画质诊断页 (engine/ui/diag_panel.gd, 点任意处返回); about = 关于页 (engine/ui/about_panel.gd, 版本号与主页地址);
 ## replay = 录像列表 (engine/ui/replay_panel.gd): 选定后关掉本面板, 下一帧经 SceneFlow.start_replay 切到回放;
 ## replay_stop = 结束回放 (关掉本面板, 经 SceneFlow.stop_replay 回标题)
@@ -324,6 +325,9 @@ func _activate(key: String) -> void:
 			sub = PadMapPanel.new()
 		"key_edit":
 			sub = KeyMapPanel.new()
+		"touch_edit":
+			sub = TouchLayoutPanel.new()
+			sub.router = router
 		"guide":
 			sub = GuidePanel.new()
 			sub.router = router

@@ -51,7 +51,7 @@ func attack(a: BattleUnit, t: BattleUnit) -> void:
 	await closeup.strike(a, t, _kinds(rec.main), "", "", _vampire_of(rec.main_apply), true, _ranged(a))
 	_after_strike(a, t, rec.main, rec.main_apply, int(rec.exp_attacker))
 	if rec.counter != null:
-		await SceneGuard.wait(self, 0.2)
+		await SceneGuard.wait(self, 0.08)   # 原版伤害数字放完约 2 tick 反击方出手 (实测 U4: 攻方回待机 74 → 反击 106, 数字 3+30 tick; 差异), 原先 0.2 秒
 		await closeup.strike(t, a, _kinds(rec.counter), "", "", _vampire_of(rec.counter_apply), true, _ranged(t))
 		_after_strike(t, a, rec.counter, rec.counter_apply, int(rec.exp_defender))
 	_settle_exp()   # 战斗即将结束: 先结算经验 (死了的拿不到), 才知道有没有升级 -> 升级演出 -> 经验框 (玩家反馈)
@@ -128,14 +128,16 @@ func _level_fx(u) -> void:   # u: BattleUnit (无类型: 测试里换桩)
 
 
 ## 地图上放法术升级了: 在大地图上放升级光旋 (Misc/Maplup 第 2~14 帧, 帧 2/3 带声音, 见 BattleView.level_up_fx), 随后才弹经验框 (玩家反馈: 法术升级要在大地图上显示, 不进近景)
-func _map_level_fx(u) -> void:   # u: BattleUnit (无类型: 测试里换桩)
+## 返回摆了升级姿势的单位 (调用方在经验框 / 属性窗之后让它回站立), 没放返回 null
+func _map_level_fx(u):   # u: BattleUnit (无类型: 测试里换桩)
 	if not u.controllable or u.hp <= 0:
-		return
+		return null
 	for ev in _exp_events:
 		if ev.unit == u and int(ev.levels) > 0 and not bool(ev.get("fx", false)):
 			ev["fx"] = true
-			await view.level_up_fx(u)
-			return
+			await view.level_up_fx(u, true)
+			return u
+	return null
 
 
 static func growth_snapshot(u: BattleUnit) -> Dictionary:
@@ -244,20 +246,34 @@ func cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id := -1) -> void:
 			await view.cast_fx(fx, u, c)
 		view.cast_end(intro)
 		if res.summon:
+			if theater:
+				await view.cast_camera_return()
 			view.cast_fade_out(intro, 0.0)
 			await summon(u, sk, c)
 			return
 		await _cast_results(u, sk, res, true)
+		# 原版法术收尾 (静态, 差异): 状态 4 数字放完先让死者同时淡出 (施放者在前, 再按目标表) → 状态 5 撤压暗 →
+		# 状态 6 升级 (光旋 + 胜利姿势, 姿势保持到属性窗收起) + 经验框 → 状态 7 掉落 → 8 kill_event / 胜负
+		var order: Array = [u]
+		for r in res.targets:
+			if r is Dictionary and r.get("unit") != null:
+				order.append(r["unit"])
+		await flow.fade_deaths(order)
+		if theater:   # 施法镜头不夹地图, 撤压暗前回到施法前的镜头 (原版状态 5 -> 演出器状态 8/9, 咒术静态; 绝技未核, 同样回)
+			await view.cast_camera_return()
 		await view.cast_fade_out(intro, 0.6 if theater else 0.0)   # 压暗保持到结果动画之后, 再渐亮 (④)
+		var posed = null
 		if int(res.exp) > 0:
 			gain_exp(u, int(res.exp))
-			await _map_level_fx(u)
+			posed = await _map_level_fx(u)
 		print("演出到经验 %d 帧" % (Engine.get_process_frames() - t0))   # 演出对照用 (tools/qa 的耗时表读它)
 		await show_exp()
+		if posed != null and posed.alive and posed.shown:
+			posed.play_act(BattleUnit.Act.STAND, posed.dir)   # 属性窗收起后才回站立 ((2))
 	await SceneGuard.wait(self, 0.6)
 	view.retint()
 	await flow.flush_releases()
-	await flow.resolve_deaths()
+	await flow.settle_deaths()
 
 
 func _resolve_cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id: int) -> Dictionary:

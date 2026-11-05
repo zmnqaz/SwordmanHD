@@ -81,6 +81,7 @@ var ui_hold := false
 var banner_side := 1        # --banner-side=
 var banner_turn := 1        # --banner-turn=
 var sfx_log := false        # --sfx-log
+var force_strike := ""      # --force-strike=crit|double|critdouble: 测试开关 (不是原版规则), 我方普攻命中时强制带会心 / 连击, 用来看近景演出 (BattleRules._force_strike)
 
 
 ## 本进程的命令行参数 (第一次调用时解析)
@@ -215,3 +216,8 @@ func _parse_value(a: String) -> void:
 		"--ui-page=": ui_page = int(v)
 		"--banner-side=": banner_side = int(v)
 		"--banner-turn=": banner_turn = int(v)
+		"--force-strike=":
+			if v in ["crit", "double", "critdouble"]:
+				force_strike = v
+			else:
+				push_error("--force-strike=%s 不认识 (crit|double|critdouble), 忽略" % v)

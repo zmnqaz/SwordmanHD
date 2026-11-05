@@ -5,7 +5,7 @@ extends "res://tests/test_base.gd"
 func test_defaults_cover_every_row():
 	var d := SettingsSchema.defaults()
 	var valued := SettingsSchema.ROWS.filter(func(r): return r["kind"] != "action" and r["kind"] != "live")
-	eq(d.size(), valued.size() + 2, "每个有值的行都有缺省, 另有 pad_map / key_map (手柄、键盘覆盖项, 不是行)")
+	eq(d.size(), valued.size() + 3, "每个有值的行都有缺省, 另有 pad_map / key_map / touch_layout (手柄、键盘覆盖项与虚拟键布局, 不是行)")
 	eq(d["music"], 10, "音乐缺省 10 (原版音量)")
 	eq(d["gfx"], "hd", "画质缺省高清")
 	eq(d["fullscreen"], 0, "缺省窗口")
@@ -50,7 +50,7 @@ func test_hidden_rows_ignore_saved_values():
 	eq(SettingsSchema.shown_rows("sound").map(func(r): return r["key"]), ["music", "sfx"], "「声音」二级菜单: 音乐 / 音效")
 	eq(SettingsSchema.shown_rows("display").map(func(r): return r["key"]), ["fullscreen", "win", "hq", "diag"], "「显示」二级菜单: 窗口模式 / 分辨率 / 贴图精度 / 画质诊断")
 	eq(SettingsSchema.shown_rows("controls").map(func(r): return r["key"]), ["key_edit", "pad_preset", "pad_edit"], "「控制器」二级菜单: 键盘按键 / 手柄预设 / 手柄按键")
-	eq(SettingsSchema.shown_rows("feature").map(func(r): return r["key"]), ["show_hidden", "growth", "coord", "bag_sort", "replay"], "「特色功能」二级菜单 (用户 2026-11-02 / 11-03 指定): 隐藏宝箱 / 成长 / 坐标 / 整理行囊 / 录像回放")
+	eq(SettingsSchema.shown_rows("feature").map(func(r): return r["key"]), ["show_hidden", "chest_tip", "growth", "coord", "bag_sort", "record", "replay"], "「特色功能」二级菜单 (用户 2026-11-02 / 11-03 / 11-04 / 11-05 指定): 隐藏宝箱 / 宝箱内容 / 成长 / 坐标 / 整理行囊 / 战场录像开关 / 录像回放")
 	eq(SettingsSchema.label_of(SettingsSchema.row("sound")), "声音设置", "主菜单「声音」改叫「声音设置」(用户 2026-11-03 指定, 与控制器设置 / 隐藏宝箱设置一致)")
 
 

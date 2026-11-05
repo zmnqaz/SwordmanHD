@@ -17,6 +17,9 @@ func test_switches():
 	check(d.fast and d.god and d.ai_trace, "开关")
 	check(d.autoplay, "--autoplay 是代打")
 	check(d.test_run and not DebugArgs.parse(["--lang=hant"]).test_run, "自动测试运行 (不录像) 的判定")
+	eq(d.force_strike, "", "--force-strike 缺省关")
+	eq(DebugArgs.parse(["--force-strike=critdouble"]).force_strike, "critdouble")
+	eq(DebugArgs.parse(["--force-strike=bogus"]).force_strike, "", "不认识的值忽略")
 
 
 ## --hp 拆成两个含义明确的参数: --hp-cur (开场注入, 单位下标, 只改当前体力) / --hp-unit (测试回合, unit_id 或 all, 改上限+当前)

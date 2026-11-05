@@ -9,8 +9,10 @@ const DIRS := [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0)]
 
 
 ## 本阶段移动上限
-##   m = move + Avg/25; 速敏 ×1.5 (_ftol); 地縛 m = 1; cap = m + 爆發保留点
+##   m = move + Avg/25; 速敏 ×1.5 (_ftol); cap = m + 爆發保留点
 ##   速敏先乘后加, 保留点不乘
+##   地縛不在这里: 原版阶段开始 不看地縛, 字段/字段 照常 (实测 2026-11-05: 上官远地縛后 字段 = 37),
+##   只在算可走范围时把移动点换成 1 (search_points / view_points)。所以地縛单位的「移」照常显示、绝技耗移动点照常够、可爆發
 static func move_cap(ctx, u) -> int:
 	var p = ctx.params
 	var m: int = Stats.mov_base(ctx, u)
@@ -21,11 +23,20 @@ static func move_cap(ctx, u) -> int:
 		else:
 			m = (m + r) * p.haste_move_num / p.haste_move_den
 			r = 0
-	if u.has_status(U.ST_BIND):
-		m = p.bind_move
 	if p.test_move_bonus > 0 and u.side == 0:  # 仅测试 --god (缺省 0): 代打机器人只会走向最近的敌人, 限时关里常差一两个回合赶不到
 		m += p.test_move_bonus
 	return m + r
+
+
+## 可走范围用的移动点 (已选中单位): 当前移动点 (含保留点); 地縛时为 1 [..: 地縛传 1, 否则 字段 + 字段]
+static func search_points(ctx, u) -> int:
+	return ctx.params.bind_move if u.has_status(U.ST_BIND) else u.move_left
+
+
+## 查看范围用的移动点 (光标悬停 / 查看已行动、友军、敌方单位): 上限现算 (不读 字段); 地縛时为 1
+## 悬停范围随 字段/字段/速敏/字段 变, 改 字段/字段 不变; 地縛只剩原地一格
+static func view_points(ctx, u) -> int:
+	return ctx.params.bind_move if u.has_status(U.ST_BIND) else move_cap(ctx, u)
 
 
 ## 本阵营阶段开始: 当前移动点 = 上限, 清行动标志
@@ -59,7 +70,7 @@ static func in_zoc(board, u, c: Vector2i) -> bool:
 static func search(ctx, board, u, points: int = -1, ignore_units: bool = false) -> Dictionary:
 	var p = ctx.params
 	if points < 0:
-		points = u.move_left
+		points = search_points(ctx, u)
 	var start: Vector2i = u.pos()
 	var phantom: bool = u.has_status(U.ST_PHANTOM) or ignore_units
 	var cost := {start: 0}

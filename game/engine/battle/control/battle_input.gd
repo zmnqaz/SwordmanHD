@@ -332,7 +332,7 @@ func move_selected(to: Vector2i) -> void:
 	view.hide_cursor()   # 原版: 确认目的地起范围清除、光标隐藏, 走完才弹行动菜单 (静态观察 T3; 画面实测 R4 待核, 与实测不符就回退)
 	_path = rules.commit_move(sel, to)
 	if not _path.is_empty():
-		sel.walk(_path, BattleStage.UNIT_WALK_SPEED)
+		sel.walk(_path, BattleStage.UNIT_WALK_SPEED, true)   # 镜头按边缘规则跟着卷
 		await sel.move_finished
 	busy = false
 	push(ActionMenuState.new())

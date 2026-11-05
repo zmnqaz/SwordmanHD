@@ -3,7 +3,7 @@ extends "res://tests/test_base.gd"
 ## 近景升级演出: 我方单位升级了, 主攻和反击都演完之后 (经验框之前) 升级的单位做握拳动作 + 身上放光环 Misc/Ftlup_r + 音效, 放完才往下。
 ## 先后顺序按玩家反馈 (升级排在最后), 没有 实测的逐帧时间; 这里锁: 资源声明、只对我方、每个升级事件只放一次、只在真的升级时放。
 
-const REQUIRES_TEST := {"test_ftlup_has_13_frames_and_two_sounds": ["original"]}
+const REQUIRES_TEST := {"test_ftlup_has_13_frames_and_two_sounds": ["original"], "test_level_up_pose_holds_last_frame": ["original"]}
 
 
 class FakeCloseup:
@@ -32,7 +32,7 @@ class FakeView:
 	func _init() -> void:
 		super(null, null)
 
-	func level_up_fx(_u) -> void:
+	func level_up_fx(_u, _hold := false) -> void:
 		calls += 1
 
 
@@ -184,3 +184,29 @@ func test_after_strike_defers_exp_instead_of_adding_it() -> void:
 	eq(acts._pending_exp.size(), 1, "记在待结算里")
 	a.free()
 	d.free()
+
+
+## 握拳放完定在最后一帧, 不回待机 (原版动作 3 步进 到尾停在 end-1): 经验框 / 升级属性框 / 关近景都保持这个姿势
+func test_level_up_pose_holds_last_frame() -> void:
+	var c := BattleCloseup.new(null)
+	(Engine.get_main_loop() as SceneTree).root.add_child(c)
+	c._stage = Node2D.new()
+	c.add_child(c._stage)
+	var md := "Sprite/man001/001misc"
+	check(BattleCloseup.anim_exists(md), "殷剑平近景动画在")
+	var m := AnimPlayer.new()
+	c._stage.add_child(m)
+	var r := BattleCloseup.idle_frame(Assets.anim(md))
+	m.play(md, r.x, r.y)
+	c._sides["right"] = {"unit": null, "misc": m, "dir": md, "ranged": false}
+	var pose := int(m.data["action_counts"][0])
+	check(pose > 0, "有握拳动作")
+	await c.level_up_fx()
+	if m.playing:
+		await m.finished
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	eq(m.frame, 6 + pose - 1, "握拳最后一帧定住")
+	check(not m.playing, "不循环, 不回待机")
+	check(not m.play_sound, "放完关掉动作声音")
+	c.free()

@@ -643,11 +643,13 @@ func test_key_remap_replaces_primary_keeps_aliases():
 	r.set_keys({"page_up": KEY_N, "info": KEY_G})
 	r._handle(_key(KEY_N))
 	eq(a.log, ["page_up"], "新主键生效")
+	r._handle(_key(KEY_N, false))   # 翻页键按住连发: 松开才算下一次按下
 	a.log.clear()
 	check(not r._handle(_key(KEY_Q)), "旧主键不再是上一页")
 	eq(a.log, [], "旧主键没有动作")
 	r._handle(_key(KEY_PAGEUP))
 	eq(a.log, ["page_up"], "别名 (PageUp) 保留")
+	r._handle(_key(KEY_PAGEUP, false))
 	a.log.clear()
 	r._handle(_key(KEY_G))
 	eq(a.log, ["info"], "info 改绑到 G")
@@ -854,3 +856,26 @@ func test_android_back_request_cancels_once():
 	r._notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
 	eq(rec.log.size(), 2, "回放中不放行")
 	r.free()
+
+
+## 翻页键按住连发 (玩家反馈「原版营地行囊按住 PageUp/PageDown 一直翻页」): 原版分发器按住任何键每 200 毫秒分发一次;
+## 不随方向键加速 (加速标志只看方向键); 营地 / 商店列表收得到翻页 echo, 确认等仍不连发
+func test_router_hold_page_key_repeats():
+	var r = _router()
+	var rec := Rec.new()
+	r.push(rec)
+	r._handle(_key(KEY_PAGEDOWN))
+	for i in 200:   # 真实 2 秒
+		r._process(0.01)
+	eq(rec.log[0], "page_down", "按下立即翻一页")
+	var n := rec.log.size() - 1
+	check(n >= 9 and n <= 10, "按住 2 秒每 0.2 秒一页, 不加速: %d" % n)
+	r._handle(_key(KEY_PAGEDOWN, false))
+	rec.log.clear()
+	for i in 50:
+		r._process(0.01)
+	eq(rec.log.size(), 0, "松开不再翻")
+	r.free()
+	var e := UiAction.new(UiAction.PAGE_UP, "key", Vector2.INF, true)
+	check(e.is_repeatable(), "翻页 echo 列表要收")
+	check(not UiAction.new(UiAction.CONFIRM, "key", Vector2.INF, true).is_repeatable(), "确认不连发")

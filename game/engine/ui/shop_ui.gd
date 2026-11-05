@@ -112,7 +112,7 @@ func ui_action(a: UiAction) -> bool:
 	if not visible or _win == null:
 		return true
 	var k := a.camp_key()
-	if k == "" or (a.echo and not a.is_dir()):
+	if k == "" or (a.echo and not a.is_repeatable()):
 		return true
 	_win.key(k)
 	return true

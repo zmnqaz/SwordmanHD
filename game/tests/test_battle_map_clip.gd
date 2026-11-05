@@ -125,3 +125,31 @@ func test_ai_turn_cursor_slides_then_hides_while_walking() -> void:
 	await bs.ai_cursor_begin(Vector2i(9, 4))
 	check(not cur.plays.is_empty() and cur.plays.all(func(p): return not p[0]), "光标原本隐藏时滑动也不显示")
 	bs.free()
+
+
+## 单位走路镜头跟随: 走向可见区最右列 (不是地图最右列) 的一格时镜头随单位卷 1 格, 摊在走这一格的时间里;
+## 中间的格、地图边的格不卷
+func test_walk_step_into_edge_column_scrolls_one_cell() -> void:
+	var bs := _scene(Vector2(1200, 384))   # 40x16 格, 比可见区宽
+	var u := BattleUnit.new()
+	var n := int(bs.view().x / BattleStage.CELL_W)
+	var col0 := floori(BattleSceneScript.cam_offset().x / BattleStage.CELL_W)   # 镜头 0 时可见区最左列
+	bs.cam = Vector2.ZERO
+	u.cx = col0 + n / 2
+	u.cy = 5
+	bs._walk_edge_scroll(Vector2i(u.cx + 1, 5), 0.12, u)
+	check(not bs._cam_moving, "走向可见区中间的格: 镜头不动")
+	u.cx = col0 + n - 2
+	bs._walk_edge_scroll(Vector2i(u.cx + 1, 5), 0.12, u)
+	check(bs._cam_moving, "走进最右一列: 开始卷")
+	eq(bs._cam_target, Vector2(BattleStage.CELL_W, 0), "目标 = 右移 1 格")
+	bs._process(0.06)
+	check(bs.cam.x > 0.0 and bs.cam.x < BattleStage.CELL_W, "半格时间只卷了一部分 (与单位同速, 不是跳)")
+	bs._process(0.07)
+	eq(bs.cam, Vector2(BattleStage.CELL_W, 0), "走完这一格正好卷 1 格")
+	bs.cam = Vector2((40 - n) * BattleStage.CELL_W, 0)   # 镜头已到地图最右
+	u.cx = 38
+	bs._walk_edge_scroll(Vector2i(39, 5), 0.12, u)
+	check(not bs._cam_moving, "目的格是地图最右列: 不卷")
+	u.free()
+	bs.free()

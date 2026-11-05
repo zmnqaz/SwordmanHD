@@ -246,7 +246,7 @@ func _ai_phase(filter: Callable) -> void:
 		gc.state.set_data(rules.ctx.params.var_actor, u.index)  # 剧情变量 102 = 当前行动单位, AI 决定行动后写
 		# 光标: 从当前格滑到单位 (显示与否不变) → 隐藏 → 走路期间不显示, 光标格改到落点 → 指向目标 / 行动完才在落点重新显示
 		await bs.ai_cursor_begin(Vector2i(u.cx, u.cy))
-		await bs.follow_cell(u.cx, u.cy)   # 复刻走路不卷镜头 (原版走路时 按边缘卷), 开走前保证单位在可见区; slide 已按边缘卷过时这里不动
+		await bs.follow_cell(u.cx, u.cy)   # 开走前保证单位在可见区 (slide 已按边缘卷过时这里不动); 走路中按边缘卷见 walk 的 follow
 		var path: Array = []
 		var start := Vector2i(u.cx, u.cy)
 		var m: Vector2i = plan.move_to
@@ -254,7 +254,7 @@ func _ai_phase(filter: Callable) -> void:
 			path = rules.commit_move(u, m)
 			if not path.is_empty():
 				bs.ai_cursor_dest(m)
-				u.walk(path, BattleStage.UNIT_WALK_SPEED)
+				u.walk(path, BattleStage.UNIT_WALK_SPEED, true)   # 镜头按边缘规则跟着卷
 				await u.move_finished
 		var act: Dictionary = plan.action
 		if act.is_empty() or String(act.kind) == "burst":
@@ -287,7 +287,7 @@ func _ai_phase(filter: Callable) -> void:
 		RegressLog.checkpoint("act", {"stage": bs.st.n, "turn": bs.turn, "unit": u.index})
 		if gc.debug.ai_trace:
 			print("AI单位完 #%d rng=%d at=%d,%d hp: %s" % [u.index, rules.ctx.rng.get_state(), u.cx, u.cy, " ".join(bs.units.filter(func(o): return o.alive).map(func(o): return "%d:%d" % [o.index, o.hp]))])
-		await SceneGuard.wait(self, 0.15)
+		await SceneGuard.wait(self, 1 / 25.0)   # 原版 AI 阶段: 状态 5 等行动完直接回状态 3 选下一个, 中间只隔状态切换的 1 tick; 复刻原先停 0.15 秒 (无出处, 差异)
 	# 光标框留在最后行动的单位上 (原版回合横幅期间仍显示)
 
 
@@ -508,22 +508,46 @@ func note_killer(dead: BattleUnit, killer: BattleUnit) -> void:
 	_killers[dead] = killer
 
 
-## 死亡处理: 掉落 -> kill_event (同一批去重) -> 胜负判定 (状态致死时仅当死者有 kill_event)
+## 死亡处理: 倒下淡出 -> 掉落 -> kill_event (同一批去重) -> 胜负判定 (状态致死时仅当死者有 kill_event)
 func resolve_deaths(trigger := Flow.TRIGGER_ACTION) -> void:
-	var dead: Array = bs.units.filter(func(u): return u.shown and (not u.alive or u.hp <= 0))
-	var killers := _killers
-	_killers = {}
+	await fade_deaths()
+	await settle_deaths(trigger)
+
+
+var _faded: Array = []   # fade_deaths 已淡出、还没 settle_deaths 的死者 (按淡出顺序)
+
+
+## 倒下淡出 (死者表一个循环里全部起淡出, 等全部放完 = **同时**淡出, 差异);
+## order: 死者排序依据 (原版法术 = 施放者在前, 再按目标表顺序; 不在表里的按单位编号排在后面)。可先淡出、等经验 / 升级演完再 settle_deaths (法术, 状态 4 → 6 → 7)
+func fade_deaths(order: Array = []) -> void:
+	var dead: Array = bs.units.filter(func(u): return u.shown and (not u.alive or u.hp <= 0) and not _faded.has(u))
+	if not order.is_empty():
+		var rank := func(u): return order.find(u) if order.has(u) else order.size() + u.index
+		dead.sort_custom(func(a, b): return rank.call(a) < rank.call(b))
 	for u in dead:
 		if u.controllable and u.shown and gc.content.is_hero(int(u.man["unit_id"])):   # 主角阵亡: 统计开着时记一笔
-			var kb: BattleUnit = killers.get(u)
+			var kb: BattleUnit = _killers.get(u)
 			if stats.enabled:
 				stats.death(bs.turn, u.name_text, kb.name_text if kb != null else "")
 		u.alive = false
-		await u.fade_out()
+		u.fade_out()   # 不等: 全部同时淡出
+	if not dead.is_empty():
+		await SceneGuard.wait(self, BattleUnit.FADE_OUT_SECS)
+	for u in dead:
 		u.dump_items_to_bag()
 		if u.summon_flag >= 0:  # 召唤物死亡: 标志清 0, 本关可再召唤
 			gc.state.set_data(u.summon_flag, 0)
 			u.summon_flag = -1
+	_faded.append_array(dead)
+
+
+## 淡出之后: 掉落 -> kill_event -> 胜负判定 (没先 fade_deaths 的死者这里补淡出)
+func settle_deaths(trigger := Flow.TRIGGER_ACTION) -> void:
+	await fade_deaths()
+	var dead := _faded
+	_faded = []
+	var killers := _killers
+	_killers = {}
 	await _kill_get(dead, killers)
 	var dead_st: Array = dead.map(func(u): return u.st)
 	for ke in Flow.kill_events(dead_st):
@@ -545,7 +569,7 @@ func _kill_get(dead: Array, killers: Dictionary) -> void:
 	var t := _text("battle_result", [["得到金钱{0}两.", "得到{0}."], ["是否丢弃其它物品,来存放{0}.", "是,丢弃身上的其它物品.", "否,放弃该物品."]])
 	var gold := 0
 	var gold_to: BattleUnit = null
-	var msgs: Array = []   # [单位, 文字]
+	var drops: Array = []   # [击杀者, 物品号, 死者]
 	for u in dead:
 		var k: BattleUnit = killers.get(u)
 		if k == null or u.camp != 1 or not k.controllable:
@@ -558,19 +582,21 @@ func _kill_get(dead: Array, killers: Dictionary) -> void:
 				stats.drop(k, u.index, "金钱%d两" % parm)
 			1:
 				if parm >= 0 and parm < items.size():
-					# 进击杀者本人 10 格; 满了问是否丢弃其它物品来存放, 否 = 该物品丢失 (Respro.msg)
-					if await receive_item(k, parm, t[1]):
-						print("掉落: %s 得到 %s" % [k.name_text, item_name(parm)])
-						stats.drop(k, u.index, item_name(parm))
-						msgs.append([k, String(t[0][1]).replace("{0}", item_name(parm))])
-					else:
-						print("掉落: %s 放弃 %s" % [k.name_text, item_name(parm)])
+					drops.append([k, parm, u])
+	# 原版掉落: 先一条合计的「得到金錢N兩」(总额 > 0), 再按死者顺序每件「得到X」→ 查击杀者 10 格 → 满了才问丢弃 (否 = 该物品丢失; 差异)
 	if gold > 0:
 		gc.state.gold += gold
 		print("掉落: 金钱 %d" % gold)
-		msgs.push_front([gold_to, String(t[0][0]).replace("{0}", str(gold))])
-	for mm in msgs:
-		await bs.msgbox.show_text(BattleActions.face_of(mm[0]), 0, 0, mm[1])
+		await bs.msgbox.show_text(BattleActions.face_of(gold_to), 0, 0, String(t[0][0]).replace("{0}", str(gold)))
+	for d in drops:
+		var k: BattleUnit = d[0]
+		var parm: int = d[1]
+		await bs.msgbox.show_text(BattleActions.face_of(k), 0, 0, String(t[0][1]).replace("{0}", item_name(parm)))
+		if await receive_item(k, parm, t[1]):
+			print("掉落: %s 得到 %s" % [k.name_text, item_name(parm)])
+			stats.drop(k, (d[2] as BattleUnit).index, item_name(parm))
+		else:
+			print("掉落: %s 放弃 %s" % [k.name_text, item_name(parm)])
 
 
 ## 胜负判定 (JUDGE): 先胜后负 (engine/rules/flow.gd)

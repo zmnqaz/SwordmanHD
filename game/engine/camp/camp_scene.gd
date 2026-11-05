@@ -75,7 +75,7 @@ func ui_action(a: UiAction) -> bool:
 	if _busy or _top == null:
 		return true
 	var k := a.camp_key()
-	if k == "" or (a.echo and not a.is_dir()):
+	if k == "" or (a.echo and not a.is_repeatable()):
 		return true
 	if k == "space_up" and _hold_space:
 		return true

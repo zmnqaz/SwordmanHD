@@ -14,6 +14,10 @@ extends CanvasLayer
 ## 另外保留直接点按选格/点菜单 (TouchGestures), 比重制版只有虚拟手柄更方便。
 ## 本节点不读输入: InputRouter 调 hit(视口坐标) 得到键的动作, 按下/松开当作按键处理; 摇杆是 STICK, 手指在底盘上拖动时
 ## InputRouter 反复调 stick_dir(视口坐标) 得到当前方向 (UiAction.UP/DOWN/LEFT/RIGHT 或 NONE); press()/release() 只管外观。
+## 编辑模式 (begin_edit, 设定「触屏键位置」经 TouchLayoutPanel 进入; 2026-11-04 用户要求, 参考别的移植版的同类界面): 整套键全显示, 每个键 (含摇杆、右上角小钮) 外面画虚线边界,
+##   单独拖到哪就放哪; 可用区域 (安全区) 画虚线框; 一条可拖动的工具条: 提示「拖动…」、透明度滑条、大小滑条、复位、完成。
+##   编辑中 InputRouter 把触摸全交给 edit_touch, 不当按键; 完成 (end_edit) 发 edit_finished(布局), 由面板存进设定 touch_layout。
+##   布局 (位置比例 / 透明度 / 大小) 的数据与校验见 TouchLayout。
 
 ## 开关钮的动作 (不是 UiAction): 切换显示
 const TOGGLE := -100
@@ -23,11 +27,12 @@ const SETTINGS := -102
 const SPEED := -103
 ## 摇杆的「键」(命中摇杆底盘): 不是 UiAction, 方向由 stick_dir 给
 const STICK := -101
+## 键 -> TouchLayout 里的键名 (存位置用)
+const NAME_OF := {STICK: "stick", UiAction.CONFIRM: "confirm", UiAction.CANCEL: "cancel", TOGGLE: "toggle", SETTINGS: "settings", SPEED: "speed"}
 
 ## 缺省不显示整套键 (2026-10-07 用户觉得虚拟键不好用: 点位置/点图标/长按/点菜单外已能操作); 隐藏时只剩「显」与「设置」两个小钮
 const DEFAULT_SHOWN := false
-const ALPHA := 0.9
-const IDLE_ALPHA := 0.38
+const IDLE_ALPHA := 0.38       # 闲置时的不透明度 (设定的不透明度更低时取设定值); 不透明度本身在设定 touch_layout.alpha
 const IDLE_SEC := 3.0
 const FADE := 0.25
 
@@ -53,6 +58,13 @@ const COLORS := {
 	TOGGLE: Color(0.94, 0.88, 0.70), SETTINGS: Color(0.62, 0.84, 0.52), SPEED: Color(0.55, 0.78, 0.92),
 }
 
+## 编辑模式工具条 (占画面高度的比例)
+const BAR_FONT := 0.032         # 字号
+const BAR_SLIDER := 0.2         # 滑条长
+const BAR_Y := 0.3              # 工具条中心在可用区域里的竖直位置 (不挡右上角小钮和下面的拇指区; 挡住了可以拖开)
+
+signal edit_finished(layout: Dictionary)
+
 ## 方向键样式 (设定「触屏键样式」touch_pad 的值)
 const STYLE_STICK := "stick"
 const STYLE_DPAD := "dpad"
@@ -69,23 +81,50 @@ var _style := STYLE_STICK
 var _fast := false             # 上次画加速钮时是否在加速 (变了就重画)
 var _idle := 0.0
 var _tw: Tween
+var _cfg := TouchLayout.defaults()   # 当前布局 (设定 touch_layout; 编辑中是正在改的那份)
+var _bounds := Rect2()         # 窗口边缘 (视口坐标, 见 window_bounds)
+var _area := Rect2()           # 可用区域 = 窗口去掉系统安全区; 键位置按它的比例存
+
+## 编辑模式
+var editing := false
+var _edit_cv: Node2D           # 虚线边界与工具条 (不随键的不透明度变淡)
+var _dim: Node2D               # 编辑时压暗游戏画面 (提示现在是摆键, 不是在玩)
+var _edit_drag := {}           # 手指 -> {what: key/bar/alpha/size/button/none, ...}
+var _bar := Rect2()            # 工具条 (视口坐标)
+var _bar_off := Vector2.ZERO   # 工具条被拖开的偏移 (只在本次编辑里有效)
+var _bar_items: Array = []     # [{type: text/slider/button, id, rect, text}]
+var _bar_fs := 16
 
 
 ## 画布: 本节点自己不画, 交给这个 Node2D 的 _draw
 class _Paint:
 	extends Node2D
 	var owner_pad
+	var mode := 0   # 0 = 键, 1 = 编辑层 (边界与工具条, 在键之上), 2 = 编辑时的暗底 (在键之下)
 
 	func _draw() -> void:
-		owner_pad._paint(self)
+		match mode:
+			1: owner_pad._paint_edit(self)
+			2: self.draw_rect(owner_pad._bounds, Color(0.0, 0.0, 0.0, 0.35))
+			_: owner_pad._paint(self)
 
 
 func _init() -> void:
 	layer = 110
+	_dim = _Paint.new()
+	_dim.owner_pad = self
+	_dim.mode = 2
+	_dim.visible = false
+	add_child(_dim)
 	_pad = _Paint.new()
 	_pad.owner_pad = self
 	add_child(_pad)
-	_pad.modulate.a = ALPHA if shown else IDLE_ALPHA
+	_pad.modulate.a = _alpha() if shown else _idle_alpha()
+	_edit_cv = _Paint.new()
+	_edit_cv.owner_pad = self
+	_edit_cv.mode = 1
+	_edit_cv.visible = false
+	add_child(_edit_cv)
 
 
 func _ready() -> void:
@@ -101,9 +140,33 @@ func _ready() -> void:
 		ScreenLayout.changed.connect(_layout)
 
 
-## 跟随设定 touch_pad (设定面板里改了立刻换)
+## 跟随设定 touch_pad / touch_layout (设定面板里改了立刻换); 编辑中不动正在改的布局
 func _apply_style() -> void:
-	set_style(String(GameContext.current().settings.get("touch_pad", STYLE_STICK)))
+	var st: Dictionary = GameContext.current().settings
+	set_style(String(st.get("touch_pad", STYLE_STICK)))
+	if not editing:
+		set_layout(st.get("touch_layout"))
+
+
+## 换布局 (TouchLayout 格式, 会先校验): 重排并按新的不透明度显示
+func set_layout(v) -> void:
+	_cfg = TouchLayout.sanitize(v)
+	_set_alpha(_alpha() if shown else _idle_alpha(), false)
+	if is_inside_tree():
+		_layout()
+
+
+func layout_config() -> Dictionary:
+	return _cfg.duplicate(true)
+
+
+## 不透明度: 设定值; 闲置 (或整套键隐藏) 时取 IDLE_ALPHA, 设定的更低就取设定值
+func _alpha() -> float:
+	return float(_cfg["alpha"]) / 100.0
+
+
+func _idle_alpha() -> float:
+	return minf(IDLE_ALPHA, _alpha())
 
 
 func set_style(style: String) -> void:
@@ -154,29 +217,49 @@ func _layout() -> void:
 	var h := vr.size.y
 	var bounds := window_bounds(vr, Vector2(get_window().size)) if Platform.is_mobile() else vr
 	var ins := _insets(bounds)
+	_bounds = bounds
+	_area = Rect2(bounds.position + Vector2(float(ins[0]), float(ins[1])),
+		bounds.size - Vector2(float(ins[0]) + float(ins[2]), float(ins[1]) + float(ins[3])))
 	var m := (EDGE if Platform.is_mobile() else MARGIN) * h
-	var left: float = bounds.position.x + float(ins[0]) + m
-	var right: float = bounds.end.x - float(ins[2]) - m
-	var bottom: float = bounds.end.y - float(ins[3]) - m
+	var left: float = _area.position.x + m
+	var right: float = _area.end.x - m
+	var bottom: float = _area.end.y - m
+	var s := float(_cfg["size"]) / 100.0   # 设定的大小: 各键半径与间距一起缩放
 	_keys.clear()
 	# 摇杆
-	_stick_r = STICK_R * h
-	_stick_c = Vector2(left + _stick_r, bottom - _stick_r)
+	_stick_r = STICK_R * h * s
+	_stick_c = _place(STICK, Vector2(left + _stick_r, bottom - _stick_r), _stick_r)
 	# 确认 / 取消: 两个一样大的圆键 (确认在右下角, 取消在它正左)
-	var rb := BTN_R * h
+	var rb := BTN_R * h * s
 	var a_c := Vector2(right - rb, bottom - rb)
-	_keys.append({"kind": UiAction.CONFIRM, "c": a_c, "r": rb})
-	var d := rb * 2.0 + GAP * h
-	_keys.append({"kind": UiAction.CANCEL, "c": a_c + Vector2(-d, 0.0), "r": rb})
+	_keys.append({"kind": UiAction.CONFIRM, "c": _place(UiAction.CONFIRM, a_c, rb), "r": rb})
+	var d := rb * 2.0 + GAP * h * s
+	_keys.append({"kind": UiAction.CANCEL, "c": _place(UiAction.CANCEL, a_c + Vector2(-d, 0.0), rb), "r": rb})
 	# 右上角两个小钮 (大小一样, 都按「显」钮的半径): 最右「显/隐」, 左边「设置」; 不占摇杆和确认键的拇指区, 操作盘隐藏时仍在
-	var rt := TOGGLE_R * h
-	var top: float = bounds.position.y + float(ins[1]) + m
+	var rt := TOGGLE_R * h * s
+	var top: float = _area.position.y + m
 	var tc := Vector2(right - rt, top + rt)
-	_keys.append({"kind": TOGGLE, "c": tc, "r": rt})
-	var step := Vector2(rt * 2.0 + GAP * h, 0.0)
-	_keys.append({"kind": SETTINGS, "c": tc - step, "r": rt})
-	_keys.append({"kind": SPEED, "c": tc - step * 2.0, "r": rt})   # 加速钮放在设置钮左边
+	_keys.append({"kind": TOGGLE, "c": _place(TOGGLE, tc, rt), "r": rt})
+	var step := Vector2(rt * 2.0 + GAP * h * s, 0.0)
+	_keys.append({"kind": SETTINGS, "c": _place(SETTINGS, tc - step, rt), "r": rt})
+	_keys.append({"kind": SPEED, "c": _place(SPEED, tc - step * 2.0, rt), "r": rt})   # 加速钮放在设置钮左边
+	if editing:
+		_layout_bar(h)
 	_pad.queue_redraw()
+	_edit_cv.queue_redraw()
+	_dim.queue_redraw()
+
+
+## 键的中心: 布局里存了位置 (比例) 用它, 否则用缺省排法 def; 都夹在可用区域里 (整个键不出界)
+func _place(kind: int, def: Vector2, r: float) -> Vector2:
+	var p = _cfg["pos"].get(NAME_OF[kind])
+	return _clamp_in_area(def if p == null else _area.position + Vector2(p[0], p[1]) * _area.size, r)
+
+
+func _clamp_in_area(c: Vector2, r: float) -> Vector2:
+	var lo := _area.position + Vector2(r, r)
+	var hi := (_area.end - Vector2(r, r)).max(lo)
+	return c.clamp(lo, hi)
 
 
 ## 键列表 (测试与调试用): [{kind, c, r}]
@@ -186,16 +269,21 @@ func keys() -> Array:
 
 # ---------------------------------------------------------------- 外观
 
+## 键上与工具条的字体 (游戏字体)
+static func _font() -> Font:
+	return Assets.font(true)
+
+
 func _paint(cv: Node2D) -> void:
-	var font := Assets.font(true)
-	if shown:
+	var font := _font()
+	if shown or editing:
 		if _style == STYLE_DPAD:
 			_paint_dpad(cv)
 		else:
 			_paint_stick(cv)
 	for k in _keys:
 		var kind: int = k["kind"]
-		if not shown and not _always(kind):
+		if not shown and not editing and not _always(kind):
 			continue
 		_paint_button(cv, font, kind, k["c"], k["r"])
 
@@ -335,12 +423,12 @@ func _process(delta: float) -> void:
 	if fast != _fast:   # 加速钮的图标随当前是否在加速换色
 		_fast = fast
 		_pad.queue_redraw()
-	if not visible or not shown:
+	if not visible or not shown or editing:
 		return
 	var real_dt := GameSpeed.real_delta(delta)   # 无操作变淡: 真实时间
 	_idle += real_dt
 	if _idle >= IDLE_SEC and _idle - real_dt < IDLE_SEC:
-		_set_alpha(IDLE_ALPHA, true)
+		_set_alpha(_idle_alpha(), true)
 
 
 func _set_alpha(a: float, animate: bool) -> void:
@@ -356,15 +444,15 @@ func _set_alpha(a: float, animate: bool) -> void:
 ## 有触摸: 恢复不透明度
 func touched() -> void:
 	_idle = 0.0
-	if _pad.modulate.a < ALPHA - 0.01 and shown:
-		_set_alpha(ALPHA, true)
+	if _pad.modulate.a < _alpha() - 0.01 and shown:
+		_set_alpha(_alpha(), true)
 
 
 ## 显示/隐藏整套键 (隐藏后只剩开关钮)
 func toggle() -> void:
 	shown = not shown
 	_idle = 0.0
-	_set_alpha(ALPHA if shown else IDLE_ALPHA, true)
+	_set_alpha(_alpha() if shown else _idle_alpha(), true)
 	_pad.queue_redraw()
 
 
@@ -438,3 +526,242 @@ func stick_release() -> void:
 	_stick_dir = UiAction.NONE
 	_pressed[STICK] = false
 	_pad.queue_redraw()
+
+
+# ---------------------------------------------------------------- 编辑模式 (拖动改位置)
+
+## 进入编辑: 整套键全显示 (不管当前隐不隐藏), 按设定的不透明度显示 (不闲置变淡), 画边界与工具条
+func begin_edit() -> void:
+	if editing:
+		return
+	stick_release()
+	_pressed.clear()
+	_cfg = TouchLayout.sanitize(GameContext.current().settings.get("touch_layout"))
+	editing = true
+	_edit_drag.clear()
+	_bar_off = Vector2.ZERO
+	_edit_cv.visible = true
+	_dim.visible = true
+	_set_alpha(_alpha(), false)
+	_layout()
+
+
+## 完成: 退出编辑, 整套键显示出来 (刚摆好要用), 发 edit_finished(布局)
+func end_edit() -> void:
+	if not editing:
+		return
+	editing = false
+	_edit_drag.clear()
+	_edit_cv.visible = false
+	_dim.visible = false
+	shown = true
+	_idle = 0.0
+	_set_alpha(_alpha(), false)
+	_layout()
+	edit_finished.emit(layout_config())
+
+
+## 复位: 位置、不透明度、大小都回缺省 (还在编辑里, 点完成才存)
+func reset_layout() -> void:
+	_cfg = TouchLayout.defaults()
+	_set_alpha(_alpha(), false)
+	_layout()
+
+
+## 编辑中的一个触摸事件 (InputRouter 转来; moved = 拖动)。按下时决定这根手指拖什么: 工具条上的滑条 / 按钮 > 键 > 工具条空白处 (拖工具条);
+## 按钮在松开时还在按钮上才生效
+func edit_touch(index: int, pos: Vector2, pressed: bool, moved: bool) -> void:
+	if not editing:
+		return
+	if moved:
+		var d: Dictionary = _edit_drag.get(index, {})
+		match String(d.get("what", "")):
+			"key":
+				_move_key(int(d["kind"]), pos - d["off"])
+			"bar":
+				_bar_off = d["start_off"] + (pos - d["start"])
+				_layout()
+			"alpha", "size":
+				_slide(String(d["what"]), pos)
+		return
+	if pressed:
+		var w := edit_hit(pos)
+		_edit_drag[index] = w
+		if w["what"] == "alpha" or w["what"] == "size":
+			_slide(String(w["what"]), pos)
+		_edit_cv.queue_redraw()
+		return
+	var d: Dictionary = _edit_drag.get(index, {})
+	_edit_drag.erase(index)
+	_edit_cv.queue_redraw()
+	if d.get("what") == "button" and (d["rect"] as Rect2).grow(_bar_fs * 0.5).has_point(pos):
+		if d["id"] == "reset":
+			reset_layout()
+		elif d["id"] == "done":
+			end_edit()
+
+
+## 编辑中 p 落在什么上: {what: alpha/size (滑条) / button (id, rect) / key (kind, off = p - 键中心) / bar (start, start_off) / none}
+func edit_hit(p: Vector2) -> Dictionary:
+	for it in _bar_items:
+		var r: Rect2 = it["rect"]
+		if it["type"] == "slider" and r.grow_individual(_bar_fs * 0.6, _bar_fs, _bar_fs * 0.6, _bar_fs).has_point(p):
+			return {"what": it["id"]}
+		if it["type"] == "button" and r.has_point(p):
+			return {"what": "button", "id": it["id"], "rect": r}
+	for i in range(_keys.size() - 1, -1, -1):
+		var k: Dictionary = _keys[i]
+		if p.distance_to(k["c"]) <= float(k["r"]) * HIT_SCALE:
+			return {"what": "key", "kind": int(k["kind"]), "off": p - k["c"]}
+	if p.distance_to(_stick_c) <= _stick_r * 1.25:
+		return {"what": "key", "kind": STICK, "off": p - _stick_c}
+	if _bar.has_point(p):
+		return {"what": "bar", "start": p, "start_off": _bar_off}
+	return {"what": "none"}
+
+
+## 把键 kind 的中心挪到 c (夹在可用区域里), 存成比例位置
+func _move_key(kind: int, c: Vector2) -> void:
+	var r := _stick_r
+	for k in _keys:
+		if int(k["kind"]) == kind:
+			r = float(k["r"])
+	c = _clamp_in_area(c, r)
+	_cfg["pos"][NAME_OF[kind]] = [(c.x - _area.position.x) / maxf(_area.size.x, 1.0), (c.y - _area.position.y) / maxf(_area.size.y, 1.0)]
+	_layout()
+
+
+## 滑条 (alpha / size) 拖到 p: 按横向位置取值, 立即生效
+func _slide(id: String, p: Vector2) -> void:
+	for it in _bar_items:
+		if it["type"] == "slider" and it["id"] == id:
+			var r: Rect2 = it["rect"]
+			var t := clampf((p.x - r.position.x) / maxf(r.size.x, 1.0), 0.0, 1.0)
+			var rng := _slider_range(id)
+			var v := roundi(lerpf(rng.x, rng.y, t))
+			if v != int(_cfg[id]):
+				_cfg[id] = v
+				if id == "alpha":
+					_set_alpha(_alpha(), false)
+				_layout()
+			return
+
+
+static func _slider_range(id: String) -> Vector2:
+	if id == "alpha":
+		return Vector2(TouchLayout.ALPHA_MIN, 100)
+	return Vector2(TouchLayout.SIZE_MIN, TouchLayout.SIZE_MAX)
+
+
+## 工具条排版: 提示 | 透明度 [滑条] | 大小 [滑条] | 复位 | 完成; 一行放不下 (窄屏) 就把提示单放一行。
+## 缺省在可用区域上部居中 (BAR_Y), 加上被拖开的偏移, 夹在窗口里
+func _layout_bar(h: float) -> void:
+	var font := _font()
+	var fs := maxi(10, int(h * BAR_FONT))
+	_bar_fs = fs
+	var gap := fs * 0.8
+	var pad := fs * 0.8
+	var bh := fs * 2.0
+	var row_h := fs * 2.6
+	var sl := h * BAR_SLIDER
+	var tw := func(t: String) -> float: return font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var hint := UiStrings.t("touch.edit.hint")
+	var bw := maxf(tw.call(UiStrings.t("touch.edit.reset")), tw.call(UiStrings.t("touch.edit.done"))) + fs * 1.6
+	# 控件那一行: [类型, id, 宽, 文字]
+	var ctl: Array = [["text", "", tw.call(UiStrings.t("touch.edit.alpha")), UiStrings.t("touch.edit.alpha")], ["slider", "alpha", sl, ""],
+		["text", "", tw.call(UiStrings.t("touch.edit.size")), UiStrings.t("touch.edit.size")], ["slider", "size", sl, ""],
+		["button", "reset", bw, UiStrings.t("touch.edit.reset")], ["button", "done", bw, UiStrings.t("touch.edit.done")]]
+	var cw := 0.0
+	for c in ctl:
+		cw += float(c[2]) + gap * (1.5 if c[0] == "slider" else 1.0)
+	cw -= gap
+	var hw: float = tw.call(hint)
+	var one_row := hw + gap * 2.0 + cw + pad * 2.0 <= _bounds.size.x * 0.96
+	var rows: Array = [[["text", "", hw, hint]] + ctl] if one_row else [[["text", "", hw, hint]], ctl]
+	var width := 0.0
+	for row in rows:
+		var w := -gap
+		for c in row:
+			w += float(c[2]) + gap * (1.5 if c[0] == "slider" else 1.0)
+		width = maxf(width, w)
+	var size := Vector2(width + pad * 2.0, row_h * rows.size() + pad * 0.6)
+	var center := Vector2(_area.get_center().x, _area.position.y + _area.size.y * BAR_Y) + _bar_off
+	var lo := _bounds.position + size / 2.0
+	center = center.clamp(lo, (_bounds.end - size / 2.0).max(lo))
+	_bar = Rect2(center - size / 2.0, size)
+	_bar_items.clear()
+	var y := _bar.position.y + pad * 0.3
+	for row in rows:
+		var w := -gap
+		for c in row:
+			w += float(c[2]) + gap * (1.5 if c[0] == "slider" else 1.0)
+		var x := _bar.position.x + (size.x - w) / 2.0
+		var cy := y + row_h / 2.0
+		for c in row:
+			var cwid := float(c[2])
+			var hgt := bh if c[0] == "button" else (fs * 0.5 if c[0] == "slider" else float(fs))
+			_bar_items.append({"type": c[0], "id": c[1], "text": c[3], "rect": Rect2(x, cy - hgt / 2.0, cwid, hgt)})
+			x += cwid + gap * (1.5 if c[0] == "slider" else 1.0)
+		y += row_h
+
+
+## 编辑层: 窗口变暗 + 可用区域虚线框, 每个键的虚线边界 (拖着的那个亮色实线), 工具条
+func _paint_edit(cv: Node2D) -> void:
+	var font := _font()
+	var line := maxf(1.5, _bar_fs * 0.1)
+	cv.draw_rect(_area.grow(-line), Color(CREAM, 0.45), false, line)
+	var held := {}
+	for d in _edit_drag.values():
+		if d.get("what") == "key":
+			held[int(d["kind"])] = true
+	var rings: Array = [[STICK, _stick_c, _stick_r]]
+	for k in _keys:
+		rings.append([int(k["kind"]), k["c"], float(k["r"])])
+	for rg in rings:
+		var c: Vector2 = rg[1]
+		var r: float = float(rg[2]) * HIT_SCALE
+		if held.has(int(rg[0])):
+			cv.draw_arc(c, r, 0.0, TAU, 64, Color(GOLD, 1.0), line * 1.6, true)
+		else:
+			_dashed_circle(cv, c, r, Color(CREAM, 0.85), line)
+	# 工具条
+	cv.draw_rect(_bar, Color(DARK, 0.82))
+	cv.draw_rect(_bar, Color(GOLD, 0.7), false, line)
+	var fs := _bar_fs
+	for it in _bar_items:
+		var r: Rect2 = it["rect"]
+		match String(it["type"]):
+			"text":
+				_bar_text(cv, font, String(it["text"]), Vector2(r.position.x, r.get_center().y), fs, CREAM)
+			"slider":
+				var rng := _slider_range(String(it["id"]))
+				var t := clampf((float(_cfg[it["id"]]) - rng.x) / (rng.y - rng.x), 0.0, 1.0)
+				var y := r.get_center().y
+				var kx := r.position.x + r.size.x * t
+				cv.draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), Color(CREAM, 0.55), r.size.y, true)
+				cv.draw_line(Vector2(r.position.x, y), Vector2(kx, y), Color(GOLD, 0.95), r.size.y, true)
+				cv.draw_circle(Vector2(kx, y), fs * 0.55, CREAM)
+				cv.draw_arc(Vector2(kx, y), fs * 0.55, 0.0, TAU, 24, Color(GOLD, 1.0), line, true)
+			"button":
+				var down := false
+				for d in _edit_drag.values():
+					down = down or (d.get("what") == "button" and d.get("id") == it["id"])
+				cv.draw_rect(r, Color(0.30, 0.20, 0.10, 0.95) if down else Color(0.16, 0.10, 0.06, 0.92))
+				cv.draw_rect(r, Color(GOLD, 1.0 if down else 0.8), false, line)
+				var w := font.get_string_size(String(it["text"]), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+				_bar_text(cv, font, String(it["text"]), Vector2(r.get_center().x - w / 2.0, r.get_center().y), fs, CREAM)
+
+
+## 一行字: 左端 x、竖直中线 y 在 p
+func _bar_text(cv: Node2D, font: Font, text: String, p: Vector2, size: int, col: Color) -> void:
+	var pos := Vector2(p.x, p.y + size * 0.34)
+	cv.draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, maxi(2, size / 6), Color(DARK, 0.9))
+	cv.draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+
+
+## 虚线圆 (键的边界): 每段弧长约 3 倍线宽, 空一样长
+static func _dashed_circle(cv: Node2D, c: Vector2, r: float, col: Color, width: float) -> void:
+	var n := clampi(int(TAU * r / (width * 6.0)), 8, 64)
+	for i in n:
+		var a := TAU * i / n
+		cv.draw_arc(c, r, a, a + TAU / n * 0.5, 6, col, width, true)

@@ -66,7 +66,7 @@ func test_move_points_and_haste():
 	u.status |= U.ST_HASTE
 	eq(Movement.move_cap(c, u), 67, "int(45×1.5)")
 	u.status = U.ST_BIND
-	eq(Movement.move_cap(c, u), 1, "地縛 → 1")
+	eq(Movement.move_cap(c, u), 45, "地縛不改上限 (原版阶段开始 不看地縛)")
 
 
 ## 地縛 = 1 点, 最小格消耗 >=5 → 不能动
@@ -78,6 +78,26 @@ func test_bind_cannot_move():
 	b.add_unit(u)
 	Movement.begin_phase(c, u)
 	eq(Movement.reachable(c, b, u).size(), 1, "只有原地")
+	eq(Movement.reachable(c, b, u, Movement.view_points(c, u)).size(), 1, "查看范围也只有原地")
+
+
+## 地縛只影响可走范围, 不改移动点 [实测 2026-11-05 第3关: 上官远 (MOV 37) 中地縛, 下个我方阶段 字段 = 字段 = 37,
+## 信息条「移」显示 37, 悬停/选中范围只有原地; 绝技可用判定比较的是 字段 + 字段, 所以地縛单位照样放得出耗移动点的绝技]
+func test_bind_keeps_move_points():
+	var c = ctx_scripted()
+	var b = _plain()
+	var u = _walker(3, 37)
+	u.status = U.ST_BIND
+	b.add_unit(u)
+	Movement.begin_phase(c, u)
+	eq(u.move_left, 37, "字段 照常 = 37")
+	eq(u.move_cap, 37, "字段 照常 = 37")
+	eq(Movement.reachable(c, b, u).size(), 1, "可走范围只有原地")
+	var Skills = load("res://engine/rules/skills.gd")
+	check(Skills.can_use(c, u, {"mp_cost": 20, "move_cost": 24, "move_attack_type": 1}), "地縛也放得出耗 24 移动点的绝技")
+	check(Movement.can_burst(c, u), "未移动, 可爆發")
+	Movement.burst(c, u)
+	eq(u.burst_reserve, 37, "爆發保留点 = 字段 = 37 (旧实现只有 1)")
 
 
 ## 地形消耗按路径累加; 不可通过格; 类别 10 消耗 4

@@ -48,6 +48,7 @@ func _init() -> void:
 	for i in frames.size():
 		var b := UiPanel.new(String(UiLayout.sprite("infobar.buffs")["anim"]), int(frames[i]), UiLayout.at("infobar.buffs", i))
 		_right.add_child(b)
+		b.key_background()   # 图标自带的底和高清面板颜色不同, 会露出方框
 		_buffs.append(b)
 	_left.visible = false
 	_right.visible = false

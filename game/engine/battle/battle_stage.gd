@@ -8,7 +8,6 @@ extends RefCounted
 
 const CELL_W := 30
 const CELL_H := 24
-const WALK_SPEED := 150.0  # 单位走路速度 (原版像素/秒): 行动流程与玩家移动共用; 剧情 move 指令在 0x150-速度*25 起算
 ## 玩家 / AI 移动的走路速度 (横向原版像素/秒): 原版 Win10 原生逐帧实测 (40 次格间隔, 横向平均 0.236 s、竖向 0.237 s): 每格固定 6 tick = 0.24 s, 横竖一样,
 ## 所以竖向像素速度是横向的 CELL_H/CELL_W 倍 (BattleUnit._process 按「每格用时」走)。之前用 150 像素/秒且横竖等速, 横向快 20%、竖向快 50%
 const UNIT_WALK_SPEED := 125.0

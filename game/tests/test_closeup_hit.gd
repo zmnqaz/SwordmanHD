@@ -1,104 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-only
 extends "res://tests/test_base.gd"
-## 近景战斗里被打一方的受击摆动与命中震屏 (原版 Win10 原生逐帧实测)。动画用合成数据, 不依赖原版资源。
+## 近景战斗里被打一方的反应 (HitReaction, 差异) 与命中震屏 (原版 Win10 原生逐帧实测)。除体力显示 (信息栏要原版底图) 外不依赖原版资源。
 
-
-func _fake_ok() -> bool:
-	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Assets") != null
-
-
-## 合成被打方 misc: 14 帧 (同 236misc 的布局: 帧 0 格挡, 1~5 受击, 6 空, 7~13 待机), 每帧 time=2 (3 tick = 0.12 秒), 动作表 [站立 0, 待机 7]
-func _fake_misc(key: String) -> void:
-	var A = (Engine.get_main_loop() as SceneTree).root.get_node("Assets")
-	var frames := []
-	for i in 14:
-		frames.append({"sound": -1, "time": 2, "hit": 0, "color": 0, "shake": 0, "unk4": 0, "parts": []})
-	A._anims[key.to_lower()] = {"frames": frames, "action_counts": [0, 7, 0, 0, 0], "textures": [], "sounds": [], "dir": key}
-	A._index[(key + "/anim.json").to_lower()] = true
-
-
-func _unfake(key: String) -> void:
-	var A = (Engine.get_main_loop() as SceneTree).root.get_node("Assets")
-	A._anims.erase(key.to_lower())
-	A._index.erase((key + "/anim.json").to_lower())
-
-
-func _range(m) -> Array:
-	return [m.start_frame, m.end_frame, m.loop]
-
-
-func test_hit_sway_is_1_2_1_2_then_idle():
-	if not _fake_ok():
-		check(true, "无 Assets, 跳过")
-		return
-	var key := "Sprite/test_hit/misc"
-	_fake_misc(key)
-	var cu := BattleCloseup.new(null)
-	var m := AnimPlayer.new()
-	cu._hit_sway(m, key)
-	eq(_range(m), [1, 3, false], "命中: 帧 1~2 播一遍 (不循环, 不播帧 3 的翻滚姿势)")
-	m._process(0.24)   # 2 帧 x 0.12 秒
-	eq(_range(m), [1, 3, false], "再摆一遍: 帧 1~2")
-	m._process(0.24)
-	eq(_range(m), [7, 14, true], "然后回待机循环 (帧 7~13)")
-	m.free()
-	cu.free()
-	_unfake(key)
-
-
-func test_new_hit_restarts_and_stale_sway_does_not_play_twice():
-	if not _fake_ok():
-		check(true, "无 Assets, 跳过")
-		return
-	var key := "Sprite/test_hit2/misc"
-	_fake_misc(key)
-	var cu := BattleCloseup.new(null)
-	var m := AnimPlayer.new()
-	cu._hit_sway(m, key)
-	m._process(0.2)                 # 摆到一半又被命中
-	cu._hit_sway(m, key)
-	eq(_range(m), [1, 3, false], "第二次命中重新从帧 1 开始")
-	m._process(0.24)
-	eq(_range(m), [1, 3, false], "旧的摆动作废, 只有新的往下走 (第二遍)")
-	m._process(0.24)
-	eq(_range(m), [7, 14, true], "之后回待机")
-	m.free()
-	cu.free()
-	_unfake(key)
-
-
-func test_finishing_the_attack_cancels_a_sway_in_progress():
-	if not _fake_ok():
-		check(true, "无 Assets, 跳过")
-		return
-	var key := "Sprite/test_hit3/misc"
-	_fake_misc(key)
-	var cu := BattleCloseup.new(null)
-	var m := AnimPlayer.new()
-	cu._hit_sway(m, key)
-	m._process(0.1)
-	cu._hit_id += 1                 # 攻击放完 (_play_attack 里做的)
-	m.play(key, 7, 14)              # 之后调用方自己播待机
-	m._process(0.5)
-	eq(_range(m), [7, 14, true], "被作废的摆动不再改动画")
-	m.free()
-	cu.free()
-	_unfake(key)
-
-
-## 被打方没有 misc 动画 (个别单位缺文件): 摆动流程不报错、不动待机
-func test_hit_sway_without_misc_data_is_harmless():
-	if not _fake_ok():
-		check(true, "无 Assets, 跳过")
-		return
-	var cu := BattleCloseup.new(null)
-	var m := AnimPlayer.new()
-	cu._hit_sway(m, "Sprite/not_there/misc")   # Assets.exists 为假: AnimPlayer 走「缺动画」分支
-	check(m.data.is_empty(), "没有动画数据")
-	cu._hit_id += 1
-	m.free()
-	cu.free()
-	check(true, "没有抛错")
+const REQUIRES_TEST := {"test_hp_display_float32_per_hit_frame": ["original"]}
 
 
 ## 震屏偏移 (原版像素): (7, 3) = 左上 3 像素, 每级缩小 1; 幅度 = shake/2, unk4 为轴位掩码
@@ -129,33 +33,116 @@ func test_color_code():
 	eq(BattleCloseup.color_code(28), [], "个位 8 无效")
 
 
+## 近景体力显示按原版 32 位浮点逐命中帧扣: 体力 100 受 10 伤分 3 帧 → 显示 89 (真实 90), 判倒下 / 留 1 仍用真实值
+func test_hp_display_float32_per_hit_frame() -> void:
+	var p := BattleCloseup.InfoPanel.new(true, "甲", 100, 100)
+	for i in 3:
+		p.hit(10.0 / 3, true)
+	eq(int(p.shown), 89, "原版显示 89 (96.666664 → 93.33333 → 89.99999)")
+	eq(p.hp_exact, 100, "真实体力由调用方记, hit 不动它")
+	var q := BattleCloseup.InfoPanel.new(true, "乙", 100, 100)
+	for i in 4:
+		q.hit(10.0 / 4, true)
+	eq(int(q.shown), 90, "4 帧整除: 不差")
+	p.free()
+	q.free()
+
+
+## 跑到回待机, 返回每 tick 的 [帧, 偏移] (第 0 项是命中当下)
+func _run(r: HitReaction, max_ticks := 60) -> Array:
+	var out := [[r.frame(), r.offset]]
+	for i in max_ticks:
+		var going := r.tick()
+		out.append([r.frame(), r.offset])
+		if not going:
+			break
+	return out
+
+
+## 普通命中 hit=1 time=2: 帧 1, 等 3 tick, 3 步位移 (合计 0), 一进归零就回待机; 不再固定 1→2→1→2 12 tick
+func test_hurt_single_hit_frame1_then_idle():
+	var r := HitReaction.new(true)
+	r.hit(1, 2, false)
+	var seq := _run(r)
+	eq(seq[0][0], 1, "命中: 帧 1")
+	check(seq.all(func(e): return e[0] in [1, -1]), "单次命中不出现帧 2")
+	var idle_at := seq.map(func(e): return e[0]).find(-1)
+	eq(idle_at, 7, "time+1 = 3 tick 等待 + 3 步位移 + 1 = 第 7 tick 回待机")
+	eq(seq[4][1], Vector2(-12, -8), "等完后第 1 步: 左侧向左上 (-12,-8)")
+	eq(seq[-1][1], Vector2.ZERO, "位移回原位")
+
+
+## 还在受击姿势里再被命中: 帧 1 ↔ 2 翻转, 等待重新计; hit=4 不翻
+func test_hurt_repeated_hits_flip():
+	var r := HitReaction.new(false)
+	r.hit(1, 2, false)
+	r.tick()
+	r.hit(1, 2, false)
+	eq(r.frame(), 2, "第二次命中: 帧 2")
+	r.hit(1, 2, false)
+	eq(r.frame(), 1, "第三次: 回帧 1")
+	r.hit(4, 2, false)
+	eq(r.frame(), 1, "hit=4 不翻")
+
+
+## 格挡 / 闪避 (AB 系): 一直帧 0, 不交替 ((0) 每次清翻转); 位移归零那 tick 才回待机
+func test_guard_always_frame0_and_returns_by_itself():
+	var r := HitReaction.new(true)
+	r.hit(1, 2, true)
+	eq(r.frame(), 0, "格挡: 帧 0")
+	r.hit(1, 2, true)
+	eq(r.frame(), 0, "再被命中仍帧 0")
+	var seq := _run(r)
+	var idle_at := seq.map(func(e): return e[0]).find(-1)
+	check(idle_at > 0 and idle_at <= 8, "几 tick 内自己回待机 (第 %d tick), 不等攻击动画放完" % idle_at)
+
+
+## hit=2 / hit=3 位移 (Windows 直读 U3): hit=2 (6,4) 左负右正且累加, hit=3 ±(3,2) 交替**累加**, 等完后每 tick 按 (6,4) 收回
+func test_hit2_hit3_displacement():
+	var r := HitReaction.new(true)
+	r.hit(2, 2, false)
+	eq(r.offset, Vector2(-6, -4), "hit=2 左侧 (-6,-4)")
+	r.hit(2, 2, false)
+	eq(r.offset, Vector2(-12, -8), "连续 hit=2 累加")
+	var r2 := HitReaction.new(false)
+	r2.hit(2, 2, false)
+	eq(r2.offset, Vector2(6, 4), "右侧取反")
+	var r3 := HitReaction.new(true)
+	r3.hit(3, 2, false)
+	eq(r3.offset, Vector2(-3, -2), "hit=3 左先负")
+	r3.hit(3, 2, false)
+	eq(r3.offset, Vector2.ZERO, "hit=3 交替 (累加: -3 + 3)")
+	var r4 := HitReaction.new(true)
+	r4.hit(4, 2, false)
+	eq(r4.offset, Vector2.ZERO, "hit=4 无位移")
+	var seq := _run(r)
+	eq(seq[-1][1], Vector2.ZERO, "收回到原位")
+
+
 func test_push_steps_return_to_origin():
 	for ab in [false, true]:
 		var sum := Vector2.ZERO
-		for st in BattleCloseup.PUSH_STEPS[ab]:
+		for st in HitReaction.STEPS[ab]:
 			sum += st
 		eq(sum, Vector2.ZERO, "位移三步累计回原位 ab=%s" % ab)
 
 
-## hit=2 / hit=3 被打方位移 (Windows 直读实测 U3): hit=2 瞬移 (6,4) 左负右正且累加, hit=3 ±(3,2) 交替, hit=4 不动
-func test_hit2_hit3_displacement():
-	var cu := BattleCloseup.new(null)
-	var m := Node2D.new()
-	cu._hit_disp(m, 2, true, false)
-	eq(m.position, Vector2(-6, -4), "hit=2 左侧 (-6,-4)")
-	cu._hit_disp(m, 2, true, false)
-	eq(m.position, Vector2(-12, -8), "连续 hit=2 累加")
-	var m2 := Node2D.new()
-	cu._hit_disp(m2, 2, false, false)
-	eq(m2.position, Vector2(6, 4), "hit=2 右侧取反")
-	var m3 := Node2D.new()
-	cu._hit_disp(m3, 3, true, false)
-	eq(m3.position, Vector2(-3, -2), "hit=3 左先负")
-	cu._hit_disp(m3, 3, true, false)
-	eq(m3.position, Vector2(3, 2), "hit=3 交替")
-	var m4 := Node2D.new()
-	cu._hit_disp(m4, 4, true, false)
-	eq(m4.position, Vector2.ZERO, "hit=4 无位移")
-	for n in [m, m2, m3, m4]:
-		n.free()
-	cu.free()
+## 守方不可见 (攻击动画的藏守方窗口) 时反应不走
+func test_hidden_defender_does_not_step():
+	var r := HitReaction.new(true)
+	r.hit(1, 0, false)
+	for i in 5:
+		r.tick(false)
+	eq(r.frame(), 1, "不可见期间不推进")
+	eq(r.wait, 1, "等待也不减")
+
+
+## 连击: 两遍各扣 总伤 / 2 (奇数也两遍相同), 数字读同一个值; total 带真实总伤供判倒下
+func test_double_passes_each_half_total():
+	var ks := BattleRules.strike_kinds({"result": 1, "crit": false, "double": true, "damage": 9})
+	eq(ks.map(func(k): return k["damage"]), [4, 4], "9 → 每遍 4 (sar 1), 不是 4 + 5")
+	eq(ks.map(func(k): return k["total"]), [9, 9], "真实总伤 9")
+	var gs := BattleRules.strike_kinds({"result": 2, "crit": true, "double": true, "damage": 7})
+	eq(gs.map(func(k): return k["damage"]), [3, 3], "格挡 + 连击同样各半")
+	var one := BattleRules.strike_kinds({"result": 1, "crit": true, "double": false, "damage": 9})
+	check(one.size() == 1 and not one[0].has("total"), "非连击一遍, 不带 total")

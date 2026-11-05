@@ -3,7 +3,7 @@ extends "res://tests/test_base.gd"
 ## 战场玩家操作状态机 (engine/battle/control/): 用替身 (地图/规则/表现/界面/流程) 驱动 BattleInput, 检查状态栈与原版操作逻辑
 ## 图标菜单与列表用真组件 (需要 Assets/Content)。
 const REQUIRES_TEST := {
-	"test_icon_menu_wraps_and_skips_disabled": ["original"],
+	"test_icon_menu_wraps_and_stops_on_disabled": ["original"],
 	"test_info_opens_detail_and_echo_moves_cursor_only": ["content"]
 }  # 个别方法的依赖 (同上)
 
@@ -101,6 +101,10 @@ class FakeRules:
 		return []
 	func item_cells(_u, _id) -> Array:
 		return [Vector2i(3, 3)]
+	func affected(_u, _sk, _c) -> Array:
+		return []
+	func item_affected(_u, _id, _c) -> Array:
+		return []
 	func item_area(_id) -> int:
 		return 1
 	func after_equip_or_discard(u) -> bool:
@@ -147,7 +151,7 @@ class FakeView:
 		bs.show_cursor(c.x, c.y)
 	func hide_cursor() -> void:
 		bs.hide_cursor()
-	func show_info(u, _at) -> void:
+	func show_info(u, _at, _detail := true) -> void:
 		info = u
 	func hide_info() -> void:
 		info = null
@@ -169,6 +173,9 @@ class FakeUi:
 	var bs
 	var choice := FakeChoice.new()
 	var menus: Array = []
+	func fade_free(n) -> void:
+		if is_instance_valid(n):
+			n.queue_free()
 	func icon_menu(id: String, enabled: Array, sel: int, cell: Vector2i) -> UiIconMenu:
 		var m := UiIconMenu.new()
 		m.setup_id(id, enabled, sel)
@@ -349,17 +356,20 @@ func test_move_menu_cancel_undoes_move():
 	_act(c, UiAction.RIGHT)
 	eq(m.selected, 4, "Right +1 到最右")
 	_act(c, UiAction.RIGHT)
-	eq(m.selected, 1, "最右再按右: 循环回最左的可用项 (爆發禁用, 跳过; 原版夹紧不循环, 差异)")
+	eq(m.selected, 0, "最右再按右: 循环到最左, 停在禁用的爆發上 ")
+	_act(c, UiAction.CONFIRM)
+	eq(m.selected, 0, "确认禁用项: 无反应")
 	_act(c, UiAction.LEFT)
-	eq(m.selected, 4, "最左的可用项再按左: 循环到最右 (用户要求, 跳过禁用的爆發)")
+	eq(m.selected, 4, "最左再按左: 循环到最右")
 	_act(c, UiAction.DOWN)
 	_act(c, UiAction.DOWN)
 	_act(c, UiAction.DOWN)
 	eq(m.selected, 1, "Down −1 逐项往左")
 	_act(c, UiAction.CANCEL)
-	eq(_names(c), ["CursorState"], "行动菜单取消: 回到光标")
+	# 原版实测 R4: 撤销移动后单位瞬移回原格, 回到「已选中、移动范围重新出现」, 光标回原格 (Unity 重制版的「回自由光标、光标留在移动后」不是原版)
+	eq(_names(c), ["CursorState", "UnitSelectState"], "行动菜单取消: 回到已选中 (移动范围)")
 	eq(Vector2i(c.rules.units[0].cx, c.rules.units[0].cy), Vector2i(2, 2), "撤销移动: 单位回原位")
-	eq(c.cur, Vector2i(2, 3), "光标留在移动后的位置 (§5-18)")
+	eq(c.cur, Vector2i(2, 2), "光标跟单位回原格")
 	_cleanup()
 
 
@@ -446,9 +456,7 @@ func test_info_opens_detail_and_echo_moves_cursor_only():
 	_act(c, UiAction.CANCEL)
 	eq(_names(c), ["CursorState"], "取消关闭详情")
 	_act(c, UiAction.CONFIRM)
-	eq(_names(c)[-1], "UnitSelectState", "敌方单位: 显示其范围")
-	_act(c, UiAction.CONFIRM)
-	eq(_names(c)[-1], "WindowState", "再确认打开详情")
+	eq(_names(c)[-1], "WindowState", "敌方单位: 确认直接弹属性窗 (悬停已显示范围, 玩家反馈 2026-11-01)")
 	c.ui_action(UiAction.new(UiAction.CONFIRM, "key", Vector2.INF, true))
 	check(true)
 	_cleanup()
@@ -683,22 +691,23 @@ func test_system_save_item_disabled_after_action():
 
 
 ## 图标菜单 (行动菜单/物品子菜单/系统菜单) 方向键到头循环, 跳过禁用项 (UiIconMenu.move, 差异)
-func test_icon_menu_wraps_and_skips_disabled():
+## 原版行动菜单: 左右到头循环, 禁用项也停, 确认禁用项无反应
+func test_icon_menu_wraps_and_stops_on_disabled():
 	var m := UiIconMenu.new()
 	m.setup([0, 4, 8, 12, 16], [false, true, true, true, true], {}, 2)
 	eq(m.selected, 2)
-	check(m.move(1), "右移")
-	eq(m.selected, 3)
+	m.move(1)
 	m.move(1)
 	eq(m.selected, 4)
 	check(m.move(1), "最右再按右: 循环")
-	eq(m.selected, 1, "回到最左的可用项, 跳过禁用的第 0 项")
-	check(m.move(-1), "最左可用项再按左: 循环")
+	eq(m.selected, 0, "停在禁用的第 0 项 (不跳过)")
+	eq(m.confirm(), -1, "确认禁用项: 无反应")
+	check(m.move(-1), "最左再按左: 循环")
 	eq(m.selected, 4, "到最右")
 	var one := UiIconMenu.new()
 	one.setup([0, 4, 8], [false, true, false], {}, 1)
-	check(not one.move(1) and not one.move(-1), "只有一个可用项: 不动")
-	eq(one.selected, 1)
+	check(one.move(1), "只有一个可用项也能移到禁用项上")
+	eq(one.selected, 2)
 	var none := UiIconMenu.new()
 	none.setup([], [], {}, -1)
 	check(not none.move(1), "空菜单不崩")

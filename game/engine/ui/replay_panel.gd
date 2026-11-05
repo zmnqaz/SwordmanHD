@@ -3,9 +3,10 @@ class_name ReplayPanel
 extends SettingsPanel
 ## 录像回放列表 (设定面板「录像回放」行打开的模态子面板)。
 ## 继承 SettingsPanel: 共用框架 (压暗底、面板、行/值/按钮文字、滚动列表) 与 settings.* 布局表元素, 照 PadMapPanel 只换条目:
-## 每份录像一行 (行名 = 整场游玩 / 第 N 幕, 值 = 日期时间, 都只从文件名派生, 不读文件), 之后「速度」「返回」两个按钮 (_n = 录像数)。
+## 每份录像一行 (行名 = 整场游玩 / 第 N 幕, 值 = 日期时间, 都只从文件名派生, 不读文件), 之后「速度」「删除全部」「返回」三个按钮 (_n = 录像数)。
 ##   上下选录像   左右调倍速 (0.5 / 1 / 2 / 4 / 8 / 16)   确认 = 回放选中的录像   取消 / 右键 / 点面板外 / 「返回」 = 回到设定面板
-##   「速度」按钮: 确认循环切换。选中某份录像时才解析它的 JSON, 底部显示时长与操作数 (结果缓存); 读不了的录像确认无效。
+##   「速度」按钮: 确认循环切换。「删除全部」: 确认一次变成「再按一次删除」, 再确认才删 (选别的条目就取消), 正在录的那份不删。
+##  选中某份录像时才解析它的 JSON, 底部显示时长与操作数 (结果缓存); 读不了的录像确认无效。
 ## 选定后 closed(true), 调用方 (SettingsPanel._activate) 读 chosen_path / chosen_speed 交给 SceneFlow.start_replay; 其余 closed(false)。
 
 const DIR := "user://replays"
@@ -16,6 +17,8 @@ var _dir := DIR
 var _files: Array = []           # 文件名, 新的在前
 var _info: Dictionary = {}       # 文件名 -> info_text 缓存
 var _speed := 1.0
+var _arm_delete := false         # 「删除全部」已按过一次, 再确认才真删
+var _deleted := -1               # 刚删了几份 (底部提示用; -1 = 没删过)
 
 
 ## 目录下的录像文件名 (.json), 按文件名倒序: 同类里新的在前 (时间戳在名字里)
@@ -31,6 +34,22 @@ static func list_files(dir: String = DIR) -> Array:
 	return out
 
 
+## 删掉目录下全部录像 (.json 及写到一半的 .json.tmp); 正在录的那份 (PlayLog 录制中) 跳过, 否则下次自动存盘它又冒出来。返回删掉的份数
+static func delete_all(dir: String = DIR) -> int:
+	if not DirAccess.dir_exists_absolute(dir):
+		return 0
+	var keep := ""
+	if PlayLog.current != null and PlayLog.current.mode == "record":
+		keep = PlayLog.current.path.get_file()
+	var n := 0
+	for f in DirAccess.get_files_at(dir):
+		if f == keep or f == keep + ".tmp" or not (f.ends_with(".json") or f.ends_with(".json.tmp")):
+			continue
+		if DirAccess.remove_absolute(dir.path_join(f)) == OK and f.ends_with(".json"):
+			n += 1
+	return n
+
+
 ## 文件名 -> [行名, 日期时间]; 不认识的名字原样当行名
 static func label_of(file_name: String) -> Array:
 	var re := RegEx.create_from_string("^(play|stage_(\\d+))_(\\d{4})(\\d{2})(\\d{2})_(\\d{2})(\\d{2})\\d{2}\\.json$")
@@ -43,6 +62,10 @@ static func label_of(file_name: String) -> Array:
 
 func _init() -> void:
 	_n = 0
+
+
+func total() -> int:
+	return _n + 3
 
 
 ## 扫描目录建条目 (open 时调; 测试可指定目录)
@@ -90,6 +113,17 @@ func _cycle_speed() -> void:
 	_speed = PlayLog.step_speed(_speed, 1) if _speed < PlayLog.SPEED_STEPS[-1] else PlayLog.SPEED_STEPS[0]
 
 
+## 「删除全部」: 第一次确认只是待命 (按钮文字变成再按一次), 第二次才删, 删完重新扫描目录, 光标停在这个按钮上
+func _delete_all() -> void:
+	if not _arm_delete:
+		_arm_delete = true
+		return
+	_arm_delete = false
+	_deleted = delete_all(_dir)
+	load_files(_dir)
+	_sel = _n + 1
+
+
 func _choose(e: int) -> void:
 	if not _readable(e):
 		return
@@ -131,7 +165,12 @@ func _update() -> void:
 		_buttons[s].visible = is_btn
 		var c := sel_c if e == _sel else dim_c
 		if is_btn:
-			_buttons[s].text = (UiStrings.t("replay.button.speed") % PlayLog.speed_text(_speed)) if e == _n else UiStrings.t("replay.button.done")
+			if e == _n:
+				_buttons[s].text = UiStrings.t("replay.button.speed") % PlayLog.speed_text(_speed)
+			elif e == _n + 1:
+				_buttons[s].text = UiStrings.t("replay.button.delete_confirm" if _arm_delete else "replay.button.delete")
+			else:
+				_buttons[s].text = UiStrings.t("replay.button.done")
 			_buttons[s].color = c
 		elif is_row:
 			var lv := label_of(_files[e])
@@ -139,7 +178,9 @@ func _update() -> void:
 			_values[s].text = lv[1]
 			_rows[s].color = c
 			_values[s].color = c
-	if _n == 0:
+	if _sel == _n + 1:
+		_desc.text = UiStrings.t("replay.desc.delete_confirm") if _arm_delete else (UiStrings.t("replay.deleted") % _deleted if _deleted >= 0 else UiStrings.t("replay.desc.delete"))
+	elif _n == 0:
 		_desc.text = UiStrings.t("replay.empty")
 	elif _sel < _n:
 		_desc.text = info_text(_sel)
@@ -165,7 +206,15 @@ func ui_hits() -> Array:
 
 func ui_select(i) -> void:
 	_sel = int(i)
+	_leave_delete()
 	_update()
+
+
+## 光标离开「删除全部」: 待命取消, 删完的提示也不再留
+func _leave_delete() -> void:
+	if _sel != _n + 1:
+		_arm_delete = false
+		_deleted = -1
 
 
 func ui_outside_action() -> int:
@@ -185,9 +234,12 @@ func ui_action(a: UiAction) -> bool:
 				_choose(_sel)
 			elif _sel == _n:
 				_cycle_speed()
+			elif _sel == _n + 1:
+				_delete_all()
 			else:
 				closed.emit(false)
 		UiAction.CANCEL: closed.emit(false)
+	_leave_delete()
 	if is_inside_tree():
 		_update()
 	return true

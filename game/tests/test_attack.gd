@@ -261,6 +261,37 @@ func test_exchange_post_strike_hook():
 	eq(d.hp, 100, "未受伤")
 
 
+## 测试开关 --force-strike (BattleRules._force_strike, 不是原版规则): 我方普攻命中时强制带会心 / 连击, 伤害按新标志重算且不多取随机数;
+## 敌方出手、未中、开关没开都不动
+func test_force_strike_switch():
+	const BattleRules = preload("res://engine/battle/battle_rules.gd")
+	var c = ctx_scripted()
+	var a = unit({"side": 0})
+	var d = unit({"side": 1})
+	var hit := func(): return {"result": Attack.Result.HIT, "crit": false, "double": false, "damage": 7, "add": false, "add_type": -1}
+	for mode in ["crit", "double", "critdouble"]:
+		var r: Dictionary = hit.call()
+		BattleRules._force_strike(c, mode, a, d, r)
+		var want_crit: bool = mode != "double"
+		var want_double: bool = mode != "crit"
+		check(r.crit == want_crit and r["double"] == want_double, "%s: 标志" % mode)
+		eq(r.damage, Damage.strike_damage(c, Damage.phys_damage(c, a, d, want_crit, true), want_double, false, d), "%s: 伤害按新标志重算" % mode)
+	var g := {"result": Attack.Result.GUARD, "crit": false, "double": false, "damage": 3, "add": false, "add_type": -1}
+	BattleRules._force_strike(c, "critdouble", a, d, g)
+	check(g.crit and g["double"] and g.result == Attack.Result.GUARD, "格挡照样带标志, 仍是格挡")
+	eq(g.damage, Damage.strike_damage(c, Damage.phys_damage(c, a, d, true, true), true, true, d), "格挡减伤照算")
+	eq(c.rng.used, 0, "不取随机数 (运气项用估价固定值)")
+	var miss := {"result": Attack.Result.MISS, "crit": false, "double": false, "damage": 0}
+	BattleRules._force_strike(c, "crit", a, d, miss)
+	check(not miss.crit and miss.damage == 0, "未中不动")
+	var e: Dictionary = hit.call()
+	BattleRules._force_strike(c, "double", d, a, e)
+	check(not e["double"] and e.damage == 7, "敌方出手不动")
+	var off: Dictionary = hit.call()
+	BattleRules._force_strike(c, "", a, d, off)
+	check(not off.crit and not off["double"] and off.damage == 7, "开关没开不动")
+
+
 ## 毒/麻/封武器附加触发时, 原版 strike 内先后调 R 函数 与 K 函数, 各取 1 次随机数
 ## (原版 对照: 同种子 8 次取数, 旧实现 7 次); 估价时不取; 与目标是否被打死无关
 func test_weapon_status_add_draws_two_rands():

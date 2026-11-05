@@ -95,3 +95,14 @@ func test_starting_a_replay_from_submenu_closes_the_whole_menu() -> void:
 	other.free()
 	rp.free()
 
+
+
+func test_record_setting_defaults_off_and_gates_recording() -> void:
+	eq(SettingsSchema.defaults().get("record"), 0, "战场录像缺省关")
+	check("record" in SettingsSchema.shown_rows("feature").map(func(r): return r["key"]), "在「特色功能」里")
+	var gc := GameContext.current()
+	var had = gc.settings.get("record", 0)
+	gc.settings["record"] = 0
+	if DebugArgs.current().record_play == "":
+		check(not PlayLog.recording_wanted(), "关着: 不录")
+	gc.settings["record"] = had

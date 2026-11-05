@@ -93,7 +93,7 @@ func setup(icon_frames: Array, is_enabled: Array = [], disabled := {}, sel := -1
 		add_child(p)
 		_icons.append(p)
 	selected = sel if sel >= 0 else 0
-	_clamp_selection()
+	_clamp_selection()   # 打开时落在禁用项上夹到第一个可用项 (行动菜单开在攻擊, 总可用; 存讀子菜单原版初始选中未核, 保持原样)
 	_refresh()
 
 
@@ -102,9 +102,8 @@ func ui_hits() -> Array:
 	var out: Array = []
 	if dimmed:
 		return out
-	for k in frames.size():
-		if enabled[k]:
-			out.append(UiHit.area(Rect2(Vector2(step * k + _gap * 0.5, 0), Vector2(step, _h)), k))
+	for k in frames.size():   # 禁用项也能指上去 (同方向键能停上去), 确认时无反应
+		out.append(UiHit.area(Rect2(Vector2(step * k + _gap * 0.5, 0), Vector2(step, _h)), k))
 	return out
 
 
@@ -123,27 +122,22 @@ func height() -> float:
 	return _h
 
 
-## d = +1 / -1; 遇到禁用项跳过, **到头循环** (最左再按左回到最右, 反之亦然)。返回选中项是否变了 (只有一个可用项时不动)。
-## 原版是夹紧不循环; 2026-10-07 用户实机反馈「按左回不到最右边」不方便, 有意改成循环
+## d = +1 / -1; 到头循环, **禁用项也停** (原版行动菜单: 左 sel==0 ? 4 : sel−1, 右 sel==4 ? 0 : sel+1, 不看可用标志;
+## 确认禁用项 直接跳过、无声。差异: 复刻原先跳过禁用项 (2026-11-05 用户实机「原版可以移动但不能选中」);
+## 记的「原版夹紧不循环」出自 Unity 重制版, 原版其实就是循环)。返回选中项是否变了
 func move(d: int) -> bool:
 	if d == 0 or dimmed or frames.is_empty():
 		return false
-	var n := frames.size()
-	var k := selected
-	for _i in n:
-		k = posmod(k + signi(d), n)
-		if enabled[k]:
-			if k == selected:
-				return false
-			selected = k
-			_refresh()
-			return true
-	return false
+	var k := posmod(selected + signi(d), frames.size())
+	if k == selected:
+		return false
+	selected = k
+	_refresh()
+	return true
 
 
 func select(k: int) -> void:
 	selected = clampi(k, 0, frames.size() - 1)
-	_clamp_selection()
 	_refresh()
 
 
@@ -173,7 +167,7 @@ func _refresh() -> void:
 	for k in _icons.size():
 		var p := _icons[k]
 		var base: int = frames[k] if enabled[k] else int(disabled_frames.get(k, frames[k]))
-		if k == selected and enabled[k] and not dimmed:
+		if k == selected and not dimmed:   # 选中的禁用项也放它那组淡色的 4 帧 (禁用基帧 4i+20 + 相位)
 			p.play(anim_dir, base, base + 4)
 		else:
 			p.set_frame(anim_dir, base)

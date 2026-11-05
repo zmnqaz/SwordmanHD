@@ -6,6 +6,8 @@ extends Node2D
 var gc: GameContext = GameContext.current()  # 运行上下文 (引擎不直接引用 autoload Game)
 
 signal move_finished
+## 带镜头跟随的走路 (walk 的 follow) 每开始走一格发一次: 这一格的目的格与走完它要的秒数 (BattleScene 按边缘规则卷镜头)
+signal step_begin(cell: Vector2i, seconds: float)
 
 enum Dir { SOUTH, WEST, NORTH, EAST }   # 原版动画方向顺序
 enum Act { STAND, MOVE, MOVE_START, MOVE_END, WIN, CAST }
@@ -307,6 +309,10 @@ var name_text: String:
 var _fx: UnitStatusFx
 var _true_pos := Vector2.ZERO   # 走路时的连续位置 (position 是它按行走帧量化后的显示位置)
 var _seg_from := Vector2.ZERO   # 当前这一格的起点
+var _follow := false            # 本次走路要镜头跟随 (walk 的 follow)
+var _phases := true             # 本次走路放起步 / 收步 (walk 的 phases)
+var _frame_ticks := PHASE_TICKS # 本次走路每帧 tick 数 (walk 的 frame_ticks)
+var _step_sent := false         # 当前这一格已发过 step_begin
 var _shadow: Sprite2D   # 脚下影子 (UnitShadow), 在 anim 之下
 
 
@@ -500,7 +506,7 @@ func _play_act(a: int, d: int, at := 0) -> void:
 		idx += 1
 		size -= 1
 	# 起步 / 走路 / 收步每帧 2 tick, 站立每帧 3 tick, 都与帧自带的 time 无关 (原版实测 107 个战场精灵); 其余 (胜利 / 施法) 仍按帧自带的 time
-	anim.tick_override = PHASE_TICKS if a == Act.MOVE or a == Act.MOVE_START or a == Act.MOVE_END else (STAND_TICKS if a == Act.STAND or a == Act.CAST or a == Act.WIN else 0)   # 施法 / 胜利帧也是每 3 tick 一帧 (实测 补 4 V1)
+	anim.tick_override = _frame_ticks if a == Act.MOVE or a == Act.MOVE_START or a == Act.MOVE_END else (STAND_TICKS if a == Act.STAND or a == Act.CAST or a == Act.WIN else 0)   # 施法 / 胜利帧也是每 3 tick 一帧 (实测 补 4 V1)
 	anim.start_at = at
 	if a == Act.STAND:   # 回站立: 从帧 1 起, 相位对到全局网格 (已「播过」的时间 = 2 / 3 / 1 tick (tick%3 = 0 / 1 / 2) + 本 tick 内已过的零头)
 		anim.start_at = 1
@@ -509,10 +515,17 @@ func _play_act(a: int, d: int, at := 0) -> void:
 	anim.play(_anim_dir, idx, idx + size, a != Act.WIN and a != Act.MOVE_START and a != Act.MOVE_END)
 
 
-## 沿路径一格一格移动 (先横后纵), 速度为原版像素/秒
-func walk(path: Array, speed: float) -> void:
+## 沿路径一格一格移动 (先横后纵), 速度为原版像素/秒。
+## follow: 每走一格发 step_begin, 镜头按边缘规则跟着卷 (原版战场走路对象 / tick 每格都判, 我方移动与 AI 行动都用它, 差异)
+## phases: 放起步 / 收步 (剧情走路 0x0F / 0x11 由指令头 +2 决定: 原版剧情走路对象 第 2 参数 [esi] = 1 才放动作 4 / 5, 差异)
+## frame_ticks: 起步 / 走路 / 收步每帧 tick 数 (剧情走路对象每 速度+1 tick 才推进一帧, 我方 / AI = PHASE_TICKS)
+func walk(path: Array, speed: float, follow := false, phases := true, frame_ticks := PHASE_TICKS) -> void:
 	_path = path.duplicate()
 	_speed = speed
+	_follow = follow
+	_phases = phases
+	_frame_ticks = frame_ticks
+	_step_sent = false
 	_true_pos = position
 	_seg_from = position
 	_phase_id += 1
@@ -522,7 +535,7 @@ func walk(path: Array, speed: float) -> void:
 	if _path.is_empty():
 		move_finished.emit()
 		return
-	if _has_group(2):   # 起步: 原地先播 (朝第一步的方向), 播完才开始走
+	if _phases and _has_group(2):   # 起步: 原地先播 (朝第一步的方向), 播完才开始走
 		_begin_phase(Phase.START, Act.MOVE_START, _step_dir(_path[0]))
 
 
@@ -559,6 +572,9 @@ func _process(delta: float) -> void:
 	while left > 1e-9 and not _path.is_empty():
 		var target: Vector2i = _path[0]
 		var goal := Vector2(target.x * BattleStage.CELL_W, target.y * BattleStage.CELL_H)
+		if _follow and not _step_sent:
+			_step_sent = true
+			step_begin.emit(target, float(BattleStage.CELL_W) / _speed)   # 横竖每格同样的时间
 		var nd := dir
 		if _true_pos.x != goal.x:
 			nd = Dir.EAST if goal.x > _true_pos.x else Dir.WEST
@@ -580,8 +596,9 @@ func _process(delta: float) -> void:
 			cx = target.x
 			cy = target.y
 			_path.pop_front()
+			_step_sent = false
 			if _path.is_empty():
-				if _has_group(3):   # 收步: 到格后播, 播完才发 move_finished
+				if _phases and _has_group(3):   # 收步: 到格后播, 播完才发 move_finished
 					_begin_phase(Phase.END, Act.MOVE_END, dir)
 					anim.delay_start(delta - left)   # 子动画本帧还要按整帧 delta 推进, 到格之前走掉的那部分不算收步的
 				else:

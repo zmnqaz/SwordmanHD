@@ -45,22 +45,32 @@ func _draw() -> void:
 	var sc := float(_tex["scale"])
 	var off: Vector2 = _tex["offset"]
 	texture_filter = TextureSource.filter_for(_tex["hd"])
+	# 高清: 抠掉每格自带的羊皮纸底 (底色取第 10 格空白底中间一块), 见 GlyphKey
+	var mat: Material = GlyphKey.material(tex, Rect2(W * 10 + 2, 2, W - 4, H - 4), sc) if bool(_tex["hd"]) and qmark != 10 else null
+	if material != mat:
+		material = mat
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * sc)
 	var k := 0
 	for c in text:
-		var g := -1
-		match c:
-			" ":
-				if space == "skip":
-					continue
-				g = 10 if space == "blank" else -1
-			"?": g = qmark
-			":", "+": g = 12
-			"/", "-": g = 13
-			_: g = int(c)
+		if c == " " and space == "skip":
+			continue
+		var g := glyph(c, space, qmark, bool(_tex["hd"]))
 		if g >= 0:
 			var st := step if step > 0 else (6 if vertical else 7)
 			var p := Vector2(0, st * k) if vertical else Vector2(st * k, 0)
 			var src := Rect2(Vector2(W * g, 0) / sc, Vector2(W, H) / sc)
 			draw_texture_rect_region(tex, Rect2((p + off) / sc, Vector2(W, H) / sc), src)
 		k += 1
+
+
+## 字符 -> 字模格号 (-1 = 只占位不画)。
+## 空白底 (第 10 格) 是一块羊皮纸底纹, 原版用来抹掉底下的旧数字; 高清画质下面板自己有底纹,
+## 再贴这块放大的底纹会和面板接不上、露出方框 (信息条空位), 所以只占位不画 (近景 Fig_misc 第 10 格是「?」, 不动)
+static func glyph(c: String, space_mode: String, qmark_cell: int, hd: bool) -> int:
+	match c:
+		" ":
+			return 10 if space_mode == "blank" and not (hd and qmark_cell != 10) else -1
+		"?": return qmark_cell
+		":", "+": return 12
+		"/", "-": return 13
+		_: return int(c)

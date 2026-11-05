@@ -761,8 +761,10 @@ func _start_move(u: BattleUnit, path: Array) -> void:
 	_moved += 1
 	if path.is_empty():
 		return
-	var speed := maxf(BattleStage.WALK_SPEED - _move_speed * 25.0, 35.0)
-	u.walk(path, speed)
+	# 原版 0x0F / 0x11 (→ 第 6 参数 → [字段]): 速度值 s 直接是每个小步之间的等待, 一格 3 小步 = 3·(s+1) tick,
+	# 即横向 30 / (0.12·(s+1)) = 250/(s+1) 像素/秒 (s = 1 正好是战场走路 125); 复刻原先 150 − s·25, s = 2/3 快 20%、s = 0 慢 (差异, 第 3 幕开场封寒月)
+	var speed := 250.0 / float(maxi(_move_speed, 0) + 1)
+	u.walk(path, speed, false, _move_start != 0, maxi(_move_speed, 0) + 1)   # 起步 / 收步按指令头 +2; 每帧 速度+1 tick (差异)
 	_pending_moves.append(u)
 	if _move_follow > 0:
 		bs.follow_cell(path[-1].x, path[-1].y)

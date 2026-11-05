@@ -64,7 +64,7 @@ func on_action(a: UiAction) -> void:
 	if a.kind == UiAction.SELECT_UP or a.kind == UiAction.INFO_UP:
 		_close_preview()
 		return
-	if (a.echo and not a.is_dir()) or _asking:
+	if (a.echo and not a.is_repeatable()) or _asking:
 		return
 	if (a.kind == UiAction.SELECT or a.kind == UiAction.INFO) and mode == EQUIP:
 		_open_preview()

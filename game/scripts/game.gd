@@ -93,9 +93,20 @@ func apply_settings() -> void:
 	GameSpeed.set_tenths(int(settings["game_speed"]))  # 游戏速度即时生效 (回放中只记下, 回放结束还原)
 	InputRouter.set_pad(String(settings["pad_preset"]), settings["pad_map"])  # 手柄预设与逐键覆盖即时生效
 	InputRouter.set_keys(settings["key_map"])  # 键盘逐键覆盖即时生效
+	_apply_record()  # 战场录像开关
 	ctx.settings_applied.emit()
 	ScreenLayout.set_aspect_mode(String(settings["aspect"]))  # 画面比例即时生效
 	_apply_window()
+
+
+## 战场录像开关: 关了 -> 正在录的存盘后停掉; 开了且在标题画面 -> 立即从标题起录 (游戏中开启要等回到标题, 见 goto; 启动时的录制由 _ready 的 start_from_args 管)
+func _apply_record() -> void:
+	var p := PlayLog.current
+	if p != null and p.mode == "record" and not PlayLog.recording_wanted():
+		PlayLog.stop_current()
+		print("通关录像: 设定关闭, 停止录制")
+	elif p == null and current is TitleScene and PlayLog.recording_wanted():
+		_attach_play_log(PlayLog.fresh())
 
 
 ## 全屏 / 窗口大小: 只在设定变化时动窗口 (不动命令行 / --aspect 设好的窗口), 实际操作在 ScreenLayout.apply_window (单一来源)
@@ -199,7 +210,7 @@ func _ready() -> void:
 	get_tree().auto_accept_quit = false   # 点窗口关闭按钮: 自己处理, 先藏窗口再退 (见 _fast_quit)
 	print("SwordmanHD %s" % GameVersion.label())
 	_init_audio()
-	var play_log := PlayLog.start_from_args()   # 通关录像: 默认录制玩家全程操作; --replay-play=<文件> 回放 (engine/core/play_log.gd)
+	var play_log := PlayLog.start_from_args()   # 通关录像: 设定「战场录像」开启时录制玩家全程操作; --replay-play=<文件> 回放 (engine/core/play_log.gd)
 	if play_log != null:
 		_attach_play_log(play_log)
 	InputRouter.settings_requested.connect(_open_settings)
@@ -356,6 +367,8 @@ func goto(scene: Node) -> void:
 		Assets.sweep.call_deferred()
 	current = scene
 	ctx.in_battle = scene is BattleScene   # 攻略面板选默认章用
+	if scene is TitleScene and PlayLog.current == null and PlayLog.recording_wanted():
+		_attach_play_log(PlayLog.fresh())   # 游戏中开启了战场录像: 回到标题时起录 (从标题起录, 回放直接进标题)
 	if "gc" in scene:  # 场景/组件的运行上下文显式交给它 (引擎不直接引用 Game)
 		scene.gc = ctx
 	get_tree().root.get_node("Main").add_child(scene)

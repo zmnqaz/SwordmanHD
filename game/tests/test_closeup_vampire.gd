@@ -66,7 +66,7 @@ func test_heal_target_follows_a_hit_taken_while_rising():
 		p._process(0.04)
 	var before := p.shown
 	p.hit(16.0, true)
-	eq(p.shown, before - 16.0)
+	check(absf(p.shown - (before - 16.0)) < 1e-3, "扣 16 (32 位浮点)")
 	eq(p.rise_to, 55.0, "涨的终点跟着降 16 (原版: 反击命中后黄条接着涨)")
 	for i in 60:
 		p._process(0.04)

@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-only
 class_name BattleHiddenTip
 extends Node2D
-## 宝箱提示 (设定「宝箱显示」开着时; 原版没有, 只画不改规则): 光标停在还没拿走的宝箱格上时, 在格旁显示里面是什么:
+## 宝箱提示 (设定「宝箱内容」chest_tip 开着时; 原版没有, 只画不改规则; 2026-11-05 起与「隐藏宝箱」图标分成两个开关): 光标停在还没拿走的宝箱格上时, 在格旁显示里面是什么:
 ##   隐藏宝箱 (BattleFlow.is_hidden_chest) 「隐藏: <物品名>」, 看得见的普通宝箱「宝物: <物品名>」
 ##   (物品名走 Content 物品表, 随当前语言; 金钱类显示金额; 事件宝物显示「事件」)。2026-10-11 用户: 普通宝箱也要能看内容。
-## 设定关时完全不显示 (原版行为); 宝物拿走后 (BattleFlow.take_map_event 删掉该事件) 提示随之消失。
+## 设定关时完全不显示 (原版行为); 隐藏宝箱的内容要「隐藏宝箱」(show_hidden) 也开着才提示 (单开内容不能暴露隐藏宝箱); 宝物拿走后 (BattleFlow.take_map_event 删掉该事件) 提示随之消失。
 ## 显示时机同格子坐标 (BattleCoord): 只在玩家操作阶段; 触屏点格子同样触发 (只看光标所在格)。
 ## 样式与位置规则沿用 BattleCoord (字号/颜色/描边/半透明底); 与格子坐标同开时叠在坐标标签外侧, 不互相遮挡。
 ## 数据只读: 关卡格子的事件号 (bs.st) + 当前还在的地图事件 (bs.ctl.flow.map_events, 已拿走的已删)。
@@ -76,12 +76,15 @@ func _ready() -> void:
 
 ## 当前该显示的文字 (不显示时为空); 设定关时不去问场景
 func current_text() -> String:
-	if bs == null or not _on(gc.settings.get("show_hidden", 0)) or not bs.in_player_phase():
+	if bs == null or not _on(gc.settings.get("chest_tip", 0)) or not bs.in_player_phase():
 		return ""
 	var flow = bs.ctl.flow if bs.ctl != null else null
 	if flow == null:
 		return ""
-	return tip_text(chest_at(bs.st, flow.map_events, bs.cursor_cell()))
+	var m := chest_at(bs.st, flow.map_events, bs.cursor_cell())
+	if not m.is_empty() and BattleFlow.is_hidden_chest(m) and not _on(gc.settings.get("show_hidden", 0)):
+		return ""
+	return tip_text(m)
 
 
 func _process(_delta: float) -> void:

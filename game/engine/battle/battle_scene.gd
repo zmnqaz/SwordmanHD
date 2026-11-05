@@ -20,6 +20,7 @@ var ctl: BattleController
 var world: Node2D
 var units_node: Node2D
 var _map_clip: Control         # units_node 的父节点: 裁到当前地图矩形 (layer_rect)
+var fx_node: Node2D            # 地图演出动画 (法术 / 绝技 / 施法光效) 的父节点: 与 units_node 同坐标同层级, 但不裁到地图矩形 (原版演出镜头不夹地图, 帧画在整块屏幕上, 越界的黑底上照样有火圈)
 var units: Array = []          # BattleUnit, 下标 = 单位编号
 var layer_list: Array = []     # 已加载的图层 id, 最后一个为当前图层
 var layer_y := 0.0
@@ -92,6 +93,9 @@ func _build_world() -> void:
 	cursor.visible = false
 	cursor.z_index = -1  # 选择框画在人物下面 (范围色块之上)
 	units_node.add_child(cursor)
+	fx_node = Node2D.new()
+	fx_node.z_index = units_node.z_index
+	world.add_child(fx_node)
 
 
 const COVER_MARGIN := 2048.0   # 遮罩四边多铺的像素: 任何窗口 / 全屏 / 宽屏都不露边
@@ -120,6 +124,7 @@ func _start() -> void:
 		var u := BattleUnit.create(i, st.man[i], int(p["x"]), int(p["y"]), ctl.rules.ctx)
 		units_node.add_child(u)
 		units.append(u)
+		u.step_begin.connect(_walk_edge_scroll.bind(u))
 	show_units(0, 0)
 	RegressLog.provide("battle", regress_state)
 	tree_exiting.connect(func(): RegressLog.drop("battle", self))
@@ -170,6 +175,7 @@ func _process(delta: float) -> void:
 	var lr := layer_rect()
 	_map_clip.position = lr.position
 	_map_clip.size = lr.size
+	fx_node.position = lr.position   # 与 units_node 的世界坐标一致 (units_node 在 _map_clip 的原点)
 	# 远景视差: 镜头在场景里的可移动范围映射到远景图的可移动范围
 	var v := view()
 	var msize: Vector2 = layer_size.get(_current_layer(), v)
@@ -575,9 +581,11 @@ func pan_camera_to_cell(x: int, y: int, sx: int, sy: int) -> void:
 	await camera_arrived
 
 
-## 演出镜头: 平移到原版镜头位置 p (320x200 视口左上角, 如 FxPlace.center_cam), 换到当前视口并夹在地图内; speed 像素/秒
-func pan_camera_to(p: Vector2, speed: Vector2) -> void:
-	_cam_target = _clamp_cam(_orig_to_view(p))
+## 演出镜头: 平移到原版镜头位置 p (320x200 视口左上角, 如 FxPlace.center_cam), 换到当前视口; speed 像素/秒。
+## clamp = false: 不夹在地图内 (原版施法演出器 调镜头 不夹地图, 落点靠地图边时越界处画黑, 差异);
+## true: 夹在地图内 (施法后回原镜头、地图升级光旋等)
+func pan_camera_to(p: Vector2, speed: Vector2, clamp := true) -> void:
+	_cam_target = _clamp_cam(_orig_to_view(p)) if clamp else _orig_to_view(p)
 	_cam_speed = _valid_cam_speed(speed)
 	_cam_ease = false
 	if cam.is_equal_approx(_cam_target):
@@ -634,20 +642,25 @@ func unit(i: int) -> BattleUnit:
 	return units[i] if i >= 0 and i < units.size() else null
 
 
-## 0x17 / 开场: 出场参数为 parm 的单位现身 (重制版 GameBattleUnitManager.showUnits)
-func show_units(parm: int, _check: int) -> void:
+## 0x17 / 0x4C / 开场: 出场参数为 parm 的单位现身 (静态对照原版 2026-11-05, 差异):
+##   - 坐标与朝向都不动 (载入时已按 XY 表摆好、朝南; 之后隐藏期间被 place / 转向改过的保留);
+##   - effect = 1 才查占位: 格上有在场单位 —— **含自己** (不排除本人) —— 就挪到最近的空格 (_free_cell);
+##     所以已在场的单位再被 show_group effect=1 一定会挪 (第 1 幕殷剑平: 载入即在场的 (16,10) → (16,13), 之后剧情走到 (14,21));
+##   - 开场 (载入) 对出场组 0 只置在场, 不挪。不查入队标志 (只拿名册数值)。
+func show_units(parm: int, effect: int) -> void:
 	for i in st.man.size():
 		var ep: Array = st.man[i]["event_parm"]
 		if int(ep[0]) != parm:
 			continue
 		var u: BattleUnit = units[i]
-		var p: Dictionary = st.xy[i] if i < st.xy.size() else {"x": u.cx, "y": u.cy}  # XY 表比 MAN 短 (第 12 关)
-		var c := _free_cell(Vector2i(int(p["x"]), int(p["y"])), u)  # 被占用时找最近的空格 (重制版 findNearPos)
-		u.set_cell(c.x, c.y)
+		if effect == 1 and _occupied(Vector2i(u.cx, u.cy), null):
+			var c := _free_cell(u)
+			u.set_cell(c.x, c.y)
 		u.alive = true
-		u.show_unit(BattleUnit.Dir.SOUTH)
+		u.show_unit(u.dir)
 
 
+## 格 c 上有在场单位 (except 除外; 传 null = 连同自己都算, 同)
 func _occupied(c: Vector2i, except: BattleUnit) -> bool:
 	for o in units:
 		if o != except and o.shown and o.alive and o.cx == c.x and o.cy == c.y:
@@ -655,22 +668,24 @@ func _occupied(c: Vector2i, except: BattleUnit) -> bool:
 	return false
 
 
-func _free_cell(c: Vector2i, u: BattleUnit) -> Vector2i:
-	if not _occupied(c, u):
-		return c
-	var seen := {c: true}
-	var q: Array = [c]
-	while not q.is_empty():
-		var p: Vector2i = q.pop_front()
-		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var n: Vector2i = p + d
-			if seen.has(n) or st.cell(n.x, n.y).is_empty():
+## 出场占位时挪去的格: 按本单位移动类型的地形消耗 (不算 ZOC) 去掉走不进的格 (消耗低字节 0xff) 和在场单位的格,
+## 取与原格曼哈顿距离最小的, 同距离按行序 (先 y 后 x) 取第一个; 一个都没有就不动
+func _free_cell(u: BattleUnit) -> Vector2i:
+	var from := Vector2i(u.cx, u.cy)
+	var params = ctl.rules.ctx.params
+	var best := from
+	var best_d := -1
+	for y in st.height:
+		for x in st.width:
+			var c := Vector2i(x, y)
+			var cell := st.cell(x, y)
+			if cell.is_empty() or (params.terrain_move_cost(u.st.move_type, int(cell["move"])) & 0xff) == 0xff or _occupied(c, null):
 				continue
-			seen[n] = true
-			if int(st.cell(n.x, n.y)["move"]) < 7 and not _occupied(n, u):
-				return n
-			q.append(n)
-	return c
+			var d := absi(x - from.x) + absi(y - from.y)
+			if best_d < 0 or d < best_d:
+				best = c
+				best_d = d
+	return best
 
 
 var _cursor_cell := Vector2i(-1, -1)  # 光标所在格 (隐藏后仍保留, 原版光标对象常驻)
@@ -785,15 +800,40 @@ func aim_cursor(target: Vector2i, area: int, actor: Vector2i) -> void:
 
 ## 的边缘判定 (轴 ax: 0 横 1 竖): 光标格相对镜头格的偏移为 0 (左/上缘) 或 可见格数-1 (右/下缘), 且光标不在地图边, 镜头卷 1 格
 func _cursor_edge_scroll(ax: int, c: Vector2i) -> void:
+	cam[ax] += _edge_shift(ax, c, cam)
+
+
+## 边缘判定 (光标 / 走路 · 同一套): 格 c 在镜头 base 的可见区最左/上一列 (且不是地图边) 返回 −1 格,
+## 最右/下一列 (且不是地图边) 返回 +1 格 (像素), 否则 0
+func _edge_shift(ax: int, c: Vector2i, base: Vector2) -> float:
 	var cell := Vector2(BattleStage.CELL_W, BattleStage.CELL_H)
 	var o := cam_offset()
 	var n := int(view()[ax] / cell[ax])
 	var msz := int(layer_size.get(_current_layer(), SCREEN)[ax] / cell[ax])
-	var off := c[ax] - floori((cam[ax] + o[ax]) / cell[ax])
+	var off := c[ax] - floori((base[ax] + o[ax]) / cell[ax])
 	if off == 0 and c[ax] != 0:
-		cam[ax] -= cell[ax]
-	elif off == n - 1 and c[ax] != msz - 1:
-		cam[ax] += cell[ax]
+		return -cell[ax]
+	if off == n - 1 and c[ax] != msz - 1:
+		return cell[ax]
+	return 0.0
+
+
+## 单位走路的镜头跟随 (差异): 原版战场走路对象 (起步, tick) 每开始走一格, 用 判这一格的目的格:
+## 朝右走且目的格在可见区最右列 (不是地图最右列) 等 4 种情况, 置 [字段] 并在这一格的每个 tick 让镜头随单位同向移动,
+## 走完一格正好卷 1 格。复刻把这 1 格平移摊在走这一格的时间里 (与单位同速)
+func _walk_edge_scroll(c: Vector2i, seconds: float, u: BattleUnit) -> void:
+	var ax := 0 if c.x != u.cx else 1   # 先横后纵, 一格只沿一个轴
+	var base := _cam_target if (_cam_moving and not _cam_ease) else cam   # 上一格的平移还没走完: 以它的终点判, 接着追
+	var d := _edge_shift(ax, c, base)
+	if d == 0.0:
+		return
+	_stop_cam()
+	_cam_target = base
+	_cam_target[ax] += d
+	var t := maxf(seconds, 1e-3)
+	_cam_speed = Vector2(absf(_cam_target.x - cam.x), absf(_cam_target.y - cam.y)) / t
+	_cam_ease = false
+	_cam_moving = true
 
 
 ## 寻路: 按地形和移动类型 (data/terrain.json) 找最少步数路径, 走不通时忽略地形 (同重制版的"飞行"回退)

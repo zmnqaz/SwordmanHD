@@ -229,7 +229,7 @@ func test_icon_menu_and_list_menu_components():
 	_move(r, _scr(m, Vector2(m.step * 4 + 10, 10)))
 	eq(m.selected, 4, "图标菜单: 悬停跟随")
 	_move(r, _scr(m, Vector2(10, 10)))
-	eq(m.selected, 4, "禁用项悬停不选中")
+	eq(m.selected, 0, "禁用项悬停也选中 (同方向键能停上去; 确认时无反应)")
 	_click(r, _scr(m, Vector2(m.step * 1 + 10, 10)))
 	eq([m.selected, s.log], [1, ["confirm"]], "点图标 = 选中并确认 (确认作为普通动作交给界面)")
 	r.free()

@@ -32,6 +32,7 @@ var ui: BattleUi
 var _range_node: Node2D
 var _range_style := -1
 var _range_t := 0.0
+var _pre_cast_cam := Vector2.ZERO   # 施法前的镜头 (原版 320x200 视口左上角), 收尾时回到这里 (原版 字段/字段)
 
 
 func _init(scene, battle_ui: BattleUi) -> void:
@@ -194,34 +195,43 @@ func res_anim(u: BattleUnit, dir: String, start: int, end: int, wait := true, ti
 
 
 ## 单位在大地图上升级: 镜头到该单位, 在它身上放 Misc/Maplup 第 2~14 帧 (升级光旋, 帧 2 / 3 各响一声) 并等放完 (原版 载入 MAPLUP.SAF, ①)
-func level_up_fx(u: BattleUnit) -> void:
-	await cast_camera(Vector2i(u.cx, u.cy))
+## hold: 放完保持胜利姿势 (法术升级: 子状态 0 光旋与姿势同一 tick 起, 两样都放完才弹经验框, 姿势一直保持到属性窗收起才 (2) 回站立, 差异)
+func level_up_fx(u: BattleUnit, hold := false) -> void:
+	await cast_camera(Vector2i(u.cx, u.cy), true)
 	u.play_act(BattleUnit.Act.WIN, u.dir)   # 人物摆升级姿势 (地图人物的「胜利」动作, 握拳举臂)
 	await res_anim(u, ThemeAssets.p("battle.levelup"), 2, -1, true, 0, true)
+	if hold:
+		if u.anim != null and u.anim.playing and u.act == BattleUnit.Act.WIN:
+			await u.anim.finished
+		return
 	if u.alive and u.shown:
 		u.play_act(BattleUnit.Act.STAND, u.dir)
 
 
 ## 地图演出动画 (法术、招式、施法光效) 在格 at 按约定 conv 播放 [start, end) 帧并等结束 (FxPlace: 格 + 约定偏移)
-## snap_cam: 满屏的动画 (整幅 320x200 画面, 如绝技 SM / S) 摆在实际镜头的屏幕原点而不是格子上: 原版就是「镜头到位后在屏幕 (0,0) 画」,
-## 目标格靠近地图边、镜头被夹在地图内时, 按格摆会和实际画面错开, 框外那圈黑 (FullscreenCover) 就露在一侧 (2026-10-29 用户: 电射星驰左边一块黑)
-func map_anim(dir: String, at: Vector2i, start := 0, end := -1, conv := "fx", snap_cam := false) -> void:
-	var a := spawn_fx(dir, FxPlace.at_cell(at, conv), start, end, 50, true, 0, snap_cam)
-	await a.finished
+func map_anim(dir: String, at: Vector2i, start := 0, end := -1, conv := "fx") -> void:
+	await spawn_map_fx(dir, at, start, end, conv).finished
 
 
-## 在地图坐标 pos 放一个演出动画并开始播放, 播完自动释放
-func spawn_fx(dir: String, pos: Vector2, start := 0, end := -1, z := 50, sound := true, tick := 0, snap_cam := false) -> AnimPlayer:
+## 放地图演出动画: 一律挂在格子上 (FxPlace.at_cell), 父节点是不裁地图的 fx_node。
+## 原版演出器把镜头移到 (col*30-0x91, row*24-0x58) 不夹地图, 再在屏幕 (0,0) 画帧, 所以帧原点恒等于「格 + fx 约定」;
+## 复刻施法镜头同样不夹 (cast_camera), 两者重合。旧做法 (④) 把满屏动画摆到实际镜头原点, 镜头被夹在地图内时整幅演出
+## 跟着镜头偏离落点 (离火神诀打第 1 关客栈下沿: 火柱在十字中心格上方 16 像素, 差异)
+func spawn_map_fx(dir: String, at: Vector2i, start := 0, end := -1, conv := "fx"):   # -> AnimPlayer (不写类型: engine 少引用组装层类)
+	return spawn_fx(dir, FxPlace.at_cell(at, conv), start, end, 50, true, 0, bs.fx_node)
+
+
+## 在地图坐标 pos 放一个演出动画并开始播放, 播完自动释放; parent 缺省为人物层 (裁到地图矩形)
+func spawn_fx(dir: String, pos: Vector2, start := 0, end := -1, z := 50, sound := true, tick := 0, parent: Node = null) -> AnimPlayer:
 	var a := AnimPlayer.new()
 	a.play_sound = sound
 	a.tick_override = tick
 	a.position = pos
 	a.z_index = z
-	bs.units_node.add_child(a)
+	(parent if parent != null else bs.units_node).add_child(a)
 	a.play(dir, start, end, false)
 	a.finished.connect(a.queue_free)
-	if FullscreenCover.attach(a) and snap_cam:   # 满屏的演出动画: 宽屏/全屏下框外盖黑; 要求贴镜头的就摆到实际镜头的屏幕原点
-		a.position = bs.orig_cam()
+	FullscreenCover.attach(a)   # 满屏的演出动画: 宽屏/全屏下 320x200 框外盖黑
 	return a
 
 
@@ -231,6 +241,7 @@ func spawn_fx(dir: String, pos: Vector2, start := 0, end := -1, z := 50, sound :
 ## + 施法光效 (Mag_misc 第 1 帧起, 约定 fx 锚在施法者) -> 镜头移到落点 -> 法术动画 (cast_fx)。返回 cast_end() 要收掉的节点。
 ## pose = false: 不摆施法姿势 (只有咒术 [字段]=0 才对施放者调, 绝技不摆; 演出表 skill 段 cast_pose)
 func cast_begin(u: BattleUnit, skill_name: String, pose := true) -> Array:
+	_pre_cast_cam = bs.orig_cam()
 	await cast_camera(Vector2i(u.cx, u.cy))
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, float(CastFx.section("dim").get("alpha", 0.6875)))
@@ -250,13 +261,24 @@ func cast_begin(u: BattleUnit, skill_name: String, pose := true) -> Array:
 
 
 ## 演出镜头: 原版把格移到 320x200 画面中央 (FxPlace.center_cam), 复刻再换到当前视口并夹在地图内
-func cast_camera(c: Vector2i) -> void:
+## clamp = false (施法演出): 不夹地图, 落点靠边时越界处画黑, 演出帧仍正对落点
+func cast_camera(c: Vector2i, clamp := false) -> void:
 	var cam_cfg := CastFx.section("camera")
 	if not bool(cam_cfg.get("center", true)):
 		await bs.follow_cell(c.x, c.y)
 		return
 	var sp: Array = cam_cfg.get("speed", [750, 600])
-	await bs.pan_camera_to(FxPlace.center_cam(c), Vector2(float(sp[0]), float(sp[1])))
+	await bs.pan_camera_to(FxPlace.center_cam(c), Vector2(float(sp[0]), float(sp[1])), clamp)
+
+
+## 施法收尾回到施法前的镜头 (原版法术收尾状态 5 调 (0,0) -> 演出器状态 8: 以 15/12 像素每 tick 移回 字段/字段,
+## 等到位 (状态 9) 才撤压暗); 演出表 camera.return = false 时不回。回去的位置照常夹在地图内
+func cast_camera_return() -> void:
+	var cam_cfg := CastFx.section("camera")
+	if not bool(cam_cfg.get("return", true)) or not bool(cam_cfg.get("center", true)):
+		return
+	var sp: Array = cam_cfg.get("return_speed", [375, 300])
+	await bs.pan_camera_to(_pre_cast_cam, Vector2(float(sp[0]), float(sp[1])), true)
 
 
 ## 法术/绝技的地图演出 (动画、约定、锚点由 CastFx.for_skill 从演出表与技能记录解析)
@@ -281,7 +303,7 @@ func cast_fx(fx: Dictionary, caster: BattleUnit, target: Vector2i) -> void:
 		caster.visible = false
 	# 直线射程技能按施放方向只放一段 (方向 = 施放者 -> 落点); 其它整段
 	var seg := CastFx.direction_segment(Assets.anim(dir), CastFx.direction_variant(Vector2i(caster.cx, caster.cy), target), bool(fx.get("directional", false)))
-	await map_anim(dir, at, seg.x, seg.y, String(fx.get("convention", "fx")), String(fx.get("convention", "fx")) == "fx")
+	await map_anim(dir, at, seg.x, seg.y, String(fx.get("convention", "fx")))
 	if hide:
 		caster.visible = true
 

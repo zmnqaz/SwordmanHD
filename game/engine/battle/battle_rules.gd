@@ -102,7 +102,7 @@ func move_range(u: BattleUnit) -> Dictionary:
 ## 用最大移动力算的可停留格 (查看已行动/友军/敌方单位的范围, 2.1); 不改单位状态
 func move_range_full(u: BattleUnit) -> Dictionary:
 	sync()
-	return Movement.reachable(ctx, board, u.st, Movement.move_cap(ctx, u.st))
+	return Movement.reachable(ctx, board, u.st, Movement.view_points(ctx, u.st))
 
 
 ## 到 to 的路径 (不含起点); 不可达为空
@@ -167,25 +167,26 @@ func targets_from(u: BattleUnit, from: Vector2i) -> Array:
 	return units_alive().filter(func(t): return t.hostile(u) and Vector2i(t.cx, t.cy) in cells)
 
 
-## 一次普攻交换 (主攻 + 反击一次), 已作用到单位上: 就是 Attack.exchange (唯一实现), 仅挂上 --god 钩子。
+## 一次普攻交换 (主攻 + 反击一次), 已作用到单位上: 就是 Attack.exchange (唯一实现), 仅挂上 --force-strike / --god 测试钩子。
 ## 返回 {main, counter (可空), exp_attacker, exp_defender, main_apply, counter_apply}
 func exchange(a: BattleUnit, d: BattleUnit) -> Dictionary:
 	sync()
-	return Attack.exchange(ctx, a.st, d.st, _god_strike)
+	return Attack.exchange(ctx, a.st, d.st, _test_strike)
 
 
-## 近景演出用: strike 结果 -> [{kind, damage}] (连击 = 一次结算 x2, 演出分两段)
+## 近景演出用: strike 结果 -> [{kind, damage}] (连击 = 一次结算 x2, 演出分两段);
+## 连击两段各 damage = 总伤 / 2 (原版近景准备: 每遍扣、数字都读 [字段] = 总伤 sar 1, 总伤为奇数时近景条少扣 1), total = 真实总伤
 static func strike_kinds(r: Dictionary) -> Array:
 	match int(r.result):
 		Attack.Result.MISS:
 			return [{"kind": "miss", "damage": 0}]
 		Attack.Result.GUARD:
 			if r["double"]:
-				return [{"kind": "guard", "damage": r.damage / 2, "crit": r.crit}, {"kind": "guard", "damage": r.damage - r.damage / 2, "crit": r.crit}]
+				return [{"kind": "guard", "damage": r.damage / 2, "crit": r.crit, "total": r.damage}, {"kind": "guard", "damage": r.damage / 2, "crit": r.crit, "total": r.damage}]
 			return [{"kind": "guard", "damage": r.damage, "crit": r.crit}]
 	var kind := "critical" if r.crit else ("double" if r["double"] else "hit")
 	if r["double"]:
-		return [{"kind": kind, "damage": r.damage / 2}, {"kind": kind, "damage": r.damage - r.damage / 2}]
+		return [{"kind": kind, "damage": r.damage / 2, "total": r.damage}, {"kind": kind, "damage": r.damage / 2, "total": r.damage}]
 	return [{"kind": kind, "damage": r.damage}]
 
 
@@ -197,6 +198,27 @@ func guard_flash(r: Dictionary) -> Dictionary:
 ## 战斗中装备/丢弃之后: 原版不消耗行动 (返回 false); 魔改开关 equip_costs_action 为真时结束行动 (返回 true)
 func after_equip_or_discard(u: BattleUnit) -> bool:
 	return Items.after_equip_or_discard(ctx, u.st)
+
+
+## Attack.exchange 的 post_strike 钩子: 两个测试开关依次改结果 (都没开时不动)
+func _test_strike(a, d, r: Dictionary) -> void:
+	_force_strike(ctx, gc.debug.force_strike, a, d, r)
+	_god_strike(a, d, r)
+
+
+## 测试 --force-strike=crit|double|critdouble (不是原版规则, 只为在近景里看会心 / 二连 / 二连必杀的演出):
+## 我方 (side 0) 的普攻命中 (含格挡) 时强制带上会心 / 连击标志, 伤害按新标志重算 (运气项取估价的固定值, 不多取随机数);
+## 属性化普攻 (附加类型 4, 伤害已被替换) 只改标志不重算。未命中不动 (要必中配 --god)
+static func _force_strike(c, mode: String, a, d, r: Dictionary) -> void:
+	if mode == "" or a.side != 0 or int(r.result) == Attack.Result.MISS:
+		return
+	r.crit = mode in ["crit", "critdouble"]
+	r["double"] = mode in ["double", "critdouble"]
+	if int(r.get("add_type", -1)) == 4 and r.get("add", false):
+		return
+	var raw := Damage.phys_damage(c, a, d, r.crit, true)
+	r["raw"] = raw
+	r.damage = Damage.strike_damage(c, raw, r["double"], int(r.result) == Attack.Result.GUARD, d)
 
 
 ## 测试 --god: 我方不受伤害; 我方打敌人每击至少体力上限 1/3 (保证自动通关能推进)
@@ -401,6 +423,15 @@ func item_cells(u: BattleUnit, item_id: int) -> Array:
 		elif not Items.targets_in_area(ctx, board, u.st, item_id, c).is_empty():
 			out.append(c)
 	return out
+
+
+## 道具在落点 c 影响到的单位 (同 item_cells 的判定; 召唤 / 没有目标为空)
+func item_affected(u: BattleUnit, item_id: int, c: Vector2i) -> Array:
+	sync()
+	var sk := Items.skill_of(ctx, item_id)
+	if not sk.is_empty():
+		return [] if Skills.is_summon(sk) else Skills.targets_in_area(board, u.st, sk, c).map(unit_of)
+	return Items.targets_in_area(ctx, board, u.st, item_id, c).map(unit_of)
 
 
 ## 使用道具: 先扣 (消耗品从行囊或个人物品栏、MP), 再结算。发动技能的道具走技能结算 (不给经验)。

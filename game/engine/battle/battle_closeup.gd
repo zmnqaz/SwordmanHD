@@ -16,9 +16,7 @@ var _stage: Node2D       # 人物 / 特效层
 var _bgm: Node2D         # 背景层 (本关 FLOOR 底图); 震屏时永远跟着震
 var _bgg: Node2D         # 背景残影层 (unk4 bit0 时震屏中在「上一级偏移」处半透明再画一遍)
 var _stage_base := Vector2.ZERO   # _stage 的静止位置 (震屏在它上面加偏移)
-var _hit_id := 0     # 受击摆动的编号: 新一次命中 / 结算时旧的作废
 var _shake_id := 0   # 震屏的编号
-var _push_id := 0    # 被打方受击位移的编号
 var _black: ColorRect
 var _tint_top: ColorRect   # 色闪 级 4: 盖住所有东西 (含人物 / 特效), 加色
 var _tint_mid: ColorRect   # 色闪 级 1 / 3: 背景之上、人物之下, 加色
@@ -90,65 +88,59 @@ static func misc_dir(u: BattleUnit) -> String:
 	return ThemeAssets.f("unit_misc", [s, s])
 
 
-## 命中帧 hit=1 时被打方整体位移 (原版 cfigthe .. 读, Windows 直读剧场对象位移变量确认): 每 tick 一步、共 3 步, 累计后回原位;
-## 普通 / 会心 / 连击 (NNNa) 步长 (-12,-8) (+9,+6) (+3,+2), 未命中 / 格挡 (NNNab) (-9,-6) (+6,+4) (+3,+2); 左侧单位按此, 右侧单位取反 (被推离画面中心)。
-## hit=2: 瞬移 (6,4), 左负右正, 保持约 3.5 tick 后归零, 连续触发累加; hit=3: ±(3,2) 交替, 左先负右先正, 同样保持后归零; hit=4 没有位移
-## (Windows 直读绘制调用参数实测 U3, 数据 closeup_unk4_hitdisp.json; 左 = 敌方, 右 = 我方, 与谁攻击无关)
-const HIT_HOLD := 0.14
-const PUSH_STEPS := {false: [Vector2(-12, -8), Vector2(9, 6), Vector2(3, 2)], true: [Vector2(-9, -6), Vector2(6, 4), Vector2(3, 2)]}
+## 被打方反应 (姿势 + 位移, 原版逐 tick 复刻, 见 HitReaction; 差异): 每侧一个, 命中帧调 _react, 一个 tick 循环驱动到回待机。
+## 取代原先的固定 1 → 2 → 1 → 2 受击摆动 (12 tick)、格挡帧 0 交替 (初版)、命中帧当场起位移
+var _reacts := {}        # 守方 misc 播放器的 instance id -> HitReaction
+var _react_frame := {}   # instance id -> 当前摆着的反应帧 (−1 = 待机)
 
 
-func _hit_push(m, left: bool, ab: bool) -> void:
-	_push_id += 1
-	var id := _push_id
-	var pos := Vector2.ZERO
-	for st in PUSH_STEPS[ab]:
-		pos += (st as Vector2) * (1.0 if left else -1.0)
-		m.position = pos
-		await get_tree().create_timer(0.04).timeout
-		if id != _push_id or not is_inside_tree():
+func _react(dmisc, dir: String, left: bool, h: int, time: int, ab: bool) -> void:   # dmisc 是 AnimPlayer
+	var id: int = dmisc.get_instance_id()
+	var r: HitReaction = _reacts.get(id)
+	if r == null:
+		r = HitReaction.new(left)
+		_reacts[id] = r
+	var running := r.pose != HitReaction.IDLE or r.offset != Vector2.ZERO
+	r.hit(h, time, ab)
+	_react_apply(dmisc, dir, r)
+	if not running:
+		_react_loop(dmisc, dir, r)
+
+
+func _react_loop(dmisc, dir: String, r: HitReaction) -> void:
+	while true:
+		await get_tree().create_timer(1 / 25.0).timeout
+		if not is_instance_valid(dmisc) or not is_inside_tree():
 			return
-	m.position = Vector2.ZERO
+		var going := r.tick(dmisc.visible)
+		_react_apply(dmisc, dir, r)
+		if not going:
+			return
 
 
-var _alt := 0   # hit=3 的交替计数
-
-
-func _hit_disp(m, hit: int, left: bool, ab: bool) -> void:
-	var sg := -1.0 if left else 1.0
-	match hit:
-		1:
-			_hit_push(m, left, ab)
-		2, 3:
-			_push_id += 1
-			var id := _push_id
-			if hit == 2:
-				m.position += Vector2(6, 4) * sg
-			else:
-				m.position = Vector2(3, 2) * sg * (1.0 if _alt % 2 == 0 else -1.0)
-				_alt += 1
-			await (Engine.get_main_loop() as SceneTree).create_timer(HIT_HOLD).timeout
-			if id == _push_id and is_instance_valid(m):
-				m.position = Vector2.ZERO
-
-
-## 受击摆动: 被命中的一方按 misc 帧 1 → 2 → 1 → 2 播一遍 (每帧 time=2 即 3 tick), 然后回到待机循环; 每次命中重新来一遍。
-## 受击姿势只在 misc 帧 1 / 2 之间来回切换 (原版每次命中约 0.43 秒后回待机); misc 帧 3~5 是被打飞翻滚的姿势、位置挪到画面中间
-## (殷剑平 x 203 → 143), 旧版按 1 → 2 → 3 → 2 播, 单命中的尸虫一打就整个人翻到左上再跳回来 (玩家 2026-11-03 指出「比原版凌乱」)。依据。
-func _hit_sway(dmisc, dir: String) -> void:   # dmisc 是 AnimPlayer (引擎层不新增对组装层类名的引用, 见 test_engine_deps)
-	_hit_id += 1
-	var id := _hit_id
-	dmisc.play(dir, 1, 3, false)
-	await dmisc.finished
-	if id != _hit_id:
+func _react_apply(dmisc, dir: String, r: HitReaction) -> void:
+	dmisc.position = r.offset
+	var id: int = dmisc.get_instance_id()
+	var f := r.frame()
+	if int(_react_frame.get(id, -1)) == f:
 		return
-	dmisc.play(dir, 1, 3, false)
-	await dmisc.finished
-	if id != _hit_id or dmisc.data.is_empty():   # 个别单位没有近景 misc 动画: 没有待机可回
-		return
-	var idl := idle_frame(dmisc.data)
-	dmisc.start_at = 1   # 原版实测: 受击后回到待机的第 2 帧 (不是第 1 帧), 之后仍按 3 tick 一帧
-	dmisc.play(dir, idl.x, idl.y)
+	_react_frame[id] = f
+	if f >= 0:
+		dmisc.play(dir, f, f + 1)
+	elif not dmisc.data.is_empty():   # 个别单位没有近景 misc 动画: 没有待机可回
+		var idl := idle_frame(dmisc.data)
+		dmisc.start_at = 1   # 原版实测: 受击后回到待机的第 2 帧 (不是第 1 帧), 之后仍按 3 tick 一帧
+		dmisc.play(dir, idl.x, idl.y)
+
+
+## 攻击动画放完 / 结算: 所有反应立即作废、位移归零 (之后调用方自己摆待机 / 倒下)
+func _react_reset_all() -> void:
+	for id in _reacts:
+		(_reacts[id] as HitReaction).reset()
+		var m = instance_from_id(id)
+		if is_instance_valid(m):
+			m.position = Vector2.ZERO
+	_react_frame.clear()
 
 
 ## 命中震屏 (原版 cfigthe 读内存查表, 静态观察 第 3 节): 逐级偏移 (原版像素), 每级 2 tick;
@@ -296,7 +288,8 @@ func strike(a: BattleUnit, d: BattleUnit, results: Array, skill_anim := "", skil
 		dsd["misc"].visible = true
 	if skill_name != "":
 		bs.ctl.view.cast_banner(skill_name, _ui)
-	if kind in ["critical", "double"] or skill_anim != "":
+	# Sp000: 原版种类 3 4 5 7 8 9 (会心 / 连击, 含被格挡的) 与技能都放; 复刻原先只看 "critical" / "double", 格挡 + 会心 / 连击漏放
+	if kind in ["critical", "double"] or bool(results[0].get("crit", false)) or results.size() > 1 or skill_anim != "":
 		var fx := AnimPlayer.new()
 		_stage.add_child(fx)
 		fx.play(ThemeAssets.f("cast_flash", ["l" if _side_of(a) == "left" else "r"]), 0, -1, false)
@@ -309,13 +302,20 @@ func strike(a: BattleUnit, d: BattleUnit, results: Array, skill_anim := "", skil
 		else:
 			await fx.finished
 			fx.queue_free()
-	var total := 0
+			await create_tween().tween_interval(UiSlide.TICK).finished   # 光效放完空 1 tick 才出手 (原版实测 U5: Sp000 11..29, 31 出手)
+	# 连击 (原版近景准备): 每遍扣 [字段] = 总伤 / 2, 数字也读它 —— 两遍放完只弹一次, 数值是**每遍**的伤害;
+	# 第一遍就致死也照放第二遍 (实测 U4 combokill: 体力 1 的敌人两遍 31~89 / 91~149 都放, 182 才渐隐; 差异)
+	var real_total := 0
 	for r in results:
-		total += int(r["damage"])
+		real_total += int(r["damage"])
+	real_total = int(results[0].get("total", real_total))   # 连击结果带真实总伤 (BattleRules.strike_kinds)
+	if gc.god and d.camp != 1:
+		real_total = 0
+	var hp_final := maxi(0, (dsd["panel"] as InfoPanel).hp_exact - real_total)
 	for i in results.size():
-		await _play_attack(a, d, asd, dsd, atk_dir, results[i], vampire, i == results.size() - 1, digits, ranged, total, vampire_hp)
-		if int(dsd["panel"].shown) <= 0:
-			break  # 已击杀: 不演剩余命中 (连击第一下致死不再打空气, 2026-10-06 用户实测)
+		if i > 0:
+			await create_tween().tween_interval(UiSlide.TICK).finished   # 两遍之间空 1 tick (原版 实测: 回待机 99, 100 再出手)
+		await _play_attack(a, d, asd, dsd, atk_dir, results[i], vampire, i == results.size() - 1, digits, ranged, int(results[-1]["damage"]), vampire_hp, hp_final)
 
 
 ## 技能名横幅滑入的 tick 数 (演出表 banner.in 的步数, 原版 5 步 + 判到 0 的那一 tick = 6): 横幅滑入结束时原版清近景阻塞标志, 见 strike
@@ -359,26 +359,31 @@ func cast_solo(a: BattleUnit, skill_anim: String, skill_name: String) -> void:
 	amisc.play(asd["dir"], ia.x, ia.y)
 
 
-## vamp: 吸血量 (-1 没触发); 只在最后一击后演, 致死的一击也算最后一击 (打死了后面的不演, 吸血跟在致死那一击后面)
-## digit_total: 连击两遍放完后伤害数字只弹一次 (原版实测 U4: 数字和渐隐只在两遍都放完后各出一次), 数值是两遍之和; 打死的那一遍也算最后一遍
-func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary, atk_dir: String, r: Dictionary, vamp := -1, last := true, digits := true, ranged := false, digit_total := -1, vamp_hp := true) -> void:
+## vamp: 吸血量 (-1 没触发); 只在最后一遍后演
+## digit_total: 连击两遍放完后伤害数字只弹一次 (原版实测 U4: 数字和渐隐只在两遍都放完后各出一次), 数值是每遍的伤害 (原版 [字段])
+## hp_final: 这次出手结算后的真实体力 (−1 = 按本遍伤害算); 倒下只在最后一遍后按它判, 体力条保留 1 点也按它 (原版 [字段] 在开近景时定)
+func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary, atk_dir: String, r: Dictionary, vamp := -1, last := true, digits := true, ranged := false, digit_total := -1, vamp_hp := true, hp_final := -1) -> void:
 	r = r.duplicate()
 	if gc.god and d.camp != 1:
 		r["damage"] = 0
 	var dmisc: AnimPlayer = dsd["misc"]
 	var amisc: AnimPlayer = asd["misc"]
 	var panel: InfoPanel = dsd["panel"]
-	var hp_before := int(panel.shown)
+	var hp_before := panel.hp_exact   # 结算用的真实体力 (显示的 shown 是原版 32 位浮点逐命中帧扣的, 可能比它少 1, 见 InfoPanel.hit)
 	# 伤害数字与扣血量都用完整伤害值, 不封顶为当前血量 (体力条 hit() 自行截到 0); 数字取
 	# 结算记录的伤害 (存未截断值), 04_伤害.md §2.1
 	var dmg := int(r["damage"])
 	var hp_after := maxi(0, hp_before - dmg)
-	var drain := vamp if (last or hp_after <= 0) else -1   # 本击后要演的吸血
-	var show_digits := digits and (last or hp_after <= 0)   # 连击: 数字只在最后一遍 (或打死的那一遍) 弹一次
+	if hp_final >= 0 and last:
+		hp_after = hp_final
+	var survives := hp_after > 0 if hp_final < 0 else hp_final > 0
+	var dies := last and hp_after <= 0
+	var drain := vamp if last else -1   # 本击后要演的吸血
+	var show_digits := digits and last   # 连击: 数字只在最后一遍弹一次
 	var digit_value := 0 if (gc.god and d.camp != 1) else (digit_total if digit_total >= 0 else dmg)
 	if not anim_exists(atk_dir):
 		dmisc.visible = true   # 远程技能开场藏了守方, 没有攻击动画 (没有命中帧去放它出来) 就直接现身
-		panel.hit(dmg, hp_after > 0)
+		panel.hit(dmg, survives)
 		panel.set_hp(hp_after)
 		await _jump(dsd, digit_value, show_digits)
 		if drain >= 0:
@@ -410,23 +415,21 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 		if int(data["frames"][f]["shake"]) > 0:   # 帧头的震动字段: 命中震屏 (原版逐帧实测, 见 shake_offsets)
 			_shake(int(data["frames"][f]["shake"]), int(data["frames"][f]["unk4"]))
 		if int(data["frames"][f]["hit"]) > 0:
-			_hit_disp(dmisc, int(data["frames"][f]["hit"]), _side_of(d) == "left", r["kind"] in ["miss", "guard"])
-			if r["kind"] in ["miss", "guard"]:  # 闪避/格挡: 守方格挡姿势
-				dmisc.play(dsd["dir"], 0, 1)
+			var ab: bool = r["kind"] in ["miss", "guard"]
+			_react(dmisc, dsd["dir"], _side_of(d) == "left", int(data["frames"][f]["hit"]), int(data["frames"][f]["time"]), ab)   # 姿势 + 位移 (HitReaction)
+			if ab:  # 闪避/格挡
 				if r.get("crit", false):   # 格挡 + 会心 = 白闪 (原版 kind 7 / 9 只走白闪块, 不红)
 					_flash()
 				elif not r.get("flash", {}).is_empty():
 					_flash_red(r["flash"])
-			else:
-				_hit_sway(dmisc, dsd["dir"])   # 受击摆动: 帧 1 -> 2 -> 1 -> 2 再回待机 (原版逐帧实测, 见 _hit_sway)
-				if r["kind"] == "critical":
-					_flash()
-			if dmg > 0:  # 每个命中帧扣 伤害/命中帧数, 并白闪体力条
-				panel.hit(float(dmg) / maxi(1, hits), hp_after > 0)
+			elif r["kind"] == "critical":
+				_flash()
+			# (本侧) / (对侧): 每个命中帧扣 伤害/命中帧数; 体力条白闪 在扣血判断之外, 闪避 0 伤也闪
+			panel.hit(float(dmg) / maxi(1, hits), survives)
 	atk.frame_shown.connect(on_frame)
 	atk.play(atk_dir, 0, -1, false)
 	await atk.finished
-	_hit_id += 1   # 还没摆完的受击动画作废 (下面直接回待机 / 倒下)
+	_react_reset_all()   # 还没收的受击 / 格挡反应作废 (下面直接回待机 / 倒下)
 	atk.queue_free()
 	# 远程攻击 (攻击动画第二段已切到守方一侧, 攻方不再画): 放完后攻方继续不露面, 伤害数字 / 倒下都在守方这边演 (玩家 2026-11-03 指出远程怪在扣血时又冒出来);
 	# 之后若有反击, strike 开头会让出手方现身
@@ -434,8 +437,8 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 	dmisc.visible = true
 	var ia := idle_frame(amisc.data) if not amisc.data.is_empty() else Vector2i(0, 1)
 	amisc.play(asd["dir"], ia.x, ia.y)
-	panel.set_hp(hp_after)
-	if hp_after <= 0:
+	panel.hp_exact = hp_after   # 显示不对齐到真实值: 原版近景体力 (字段) 只在开近景时写, 命中帧按 伤害/帧数 的 32 位浮点扣, "%4d" 取整显示
+	if dies:
 		await _jump(dsd, digit_value, show_digits)
 		await _kill(dmisc)
 		if drain >= 0:
@@ -475,10 +478,11 @@ func _vampire(asd: Dictionary, amount: int, heal_hp := true) -> void:
 
 
 ## 升级演出 (原版近景状态 0x12 / 0x13, 起): u 升级了, 主攻和反击都演完之后 u 做「握拳升级」动作 + 身上放升级光环 Misc/Ftlup_r,
-##   两样同时开始, 都放完才往下 (经验框):
+##   两样同一 tick 开始, 只等光环放完就往下 (经验框; 光环结束 清阻塞标志, 握拳不等):
 ##   - 握拳 = u 自己 NNNmisc 动画的「动作 0」: 第 6 帧起共 action_counts[0] 帧 (主角 10 帧、第 13 帧响音效; 待机在它后面, 见 idle_frame; 没有这段的单位不做动作);
+##     放到最后一帧就**定住** (动作 3 的步进: 到尾停在 end-1, 不回待机), 经验框、升级属性框、关近景都保持这个姿势 (资深玩家反馈「升级 → 保持 → 弹出升级」);
 ##   - 光环 = Ftlup_r (13 帧 x 3 tick, 屏幕坐标, 第 0 / 1 帧各响一个音效)。
-##   先后顺序: 玩家指出升级排在最后 (反击之后); 动作 / 光环的具体帧时间没有 实测
+##   先后顺序: 反击之后 (状态 0x0a 无反击直接到 0x12); 以上为静态对照原版, 没有 原版 逐帧实测
 func level_up_fx(u = null) -> void:
 	var cfg: Dictionary = UiLayout.el("closeup.levelup")
 	var side: Dictionary = _sides.get("right" if u == null else _side_of(u), {})
@@ -498,14 +502,10 @@ func level_up_fx(u = null) -> void:
 	var ring = m.get_script().new()   # 同 _vampire: 用攻方 misc 的播放器类
 	_stage.add_child(ring)
 	ring.play(ThemeAssets.p(String(cfg.get("anim", "battle.levelup_fx"))), 0, -1, false)
+	if pose > 0:   # 握拳不循环, 放完停在最后一帧 (不回待机); 只在放完后关掉它的声音
+		m.finished.connect(func(): m.play_sound = false, CONNECT_ONE_SHOT)
 	await ring.finished
 	ring.queue_free()
-	if pose > 0:
-		if m.playing:
-			await m.finished   # 握拳比光环长就等它放完
-		m.play_sound = false
-		var r := idle_frame(m.data)
-		m.play(md, r.x, r.y)
 
 
 ## 色闪 (原版 cfigthe / 步进; 静态观察 + Windows 直读状态确认): 命中 / 帧头 color 触发, 8 tick 阶梯加色,
@@ -572,7 +572,8 @@ class InfoPanel:
 	var right := false
 	var unit_name := ""
 	var hp_max := 1
-	var shown := 0.0      # 原版 字段: 当前显示的体力 (数字与黄条)
+	var shown := 0.0      # 原版 字段: 当前显示的体力 (数字与黄条), 32 位浮点
+	var hp_exact := 0     # 真实体力 (整数, 判倒下 / 留 1 用; shown 可能因浮点逐帧扣比它少 1)
 	var trail := 0.0      # 原版 字段: 红色残条
 	var flash := -1       # 原版 字段/字段: 命中白闪的周期
 	var rise_to := -1.0   # >= 0: 体力正在涨向这个值 (heal)
@@ -598,6 +599,7 @@ class InfoPanel:
 		unit_name = nm
 		hp_max = maxi(1, mx)
 		shown = hp
+		hp_exact = hp
 		trail = hp
 		_side = "right" if r else "left"
 		var pid := "closeup.panel." + _side
@@ -637,8 +639,10 @@ class InfoPanel:
 			_flash_add.draw_rect(_flash_rect, Color(k, k, k))
 
 	## 一次命中: 立即扣 amount, 红条留在原处慢慢追; keep_one: 不致死的攻击最少留 1
+	## 每个命中帧 shown -= 伤害/命中帧数, 都是 32 位浮点 (fsub / fstp dword), 显示 "%4d" 截断;
+	## 例 体力 100 受 10 伤 3 帧: 96.666664 → 93.33333 → 89.99999 显示 89 (资深玩家反馈「差 1 血」, 差异)
 	func hit(amount: float, keep_one: bool) -> void:
-		shown = maxf(0.0, shown - amount)
+		shown = _f32(maxf(0.0, _f32(shown) - _f32(amount)))
 		if rise_to >= 0.0:   # 吸血的体力还在涨时被打: 涨的终点跟着降, 继续涨 (原版: 反击命中后黄条接着涨)
 			rise_to = maxf(shown, rise_to - amount)
 		if keep_one and int(shown) == 0:
@@ -648,8 +652,12 @@ class InfoPanel:
 		queue_redraw()
 		_flash_add.queue_redraw()
 
+	static func _f32(x: float) -> float:
+		return PackedFloat32Array([x])[0]
+
 	func set_hp(v: int) -> void:
 		shown = v
+		hp_exact = v
 		trail = maxf(trail, shown)
 		rise_to = -1.0
 		_refresh_numbers()
@@ -658,6 +666,7 @@ class InfoPanel:
 	## 吸血 / 回复: 体力 (数字与黄条) 每周期涨 2% 上限, 涨到 shown+amount (把 字段 设成 字段+量; 原版 逐帧: 上限 71 时每周期约 1.4)
 	func heal(amount: int) -> void:
 		rise_to = minf(float(hp_max), shown + amount)
+		hp_exact = mini(hp_max, hp_exact + amount)
 
 	## 当前 %4d、上限 %d, 超过 9999 写 "????"
 	func _refresh_numbers() -> void:
