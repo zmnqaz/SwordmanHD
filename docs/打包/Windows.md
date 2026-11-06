@@ -46,13 +46,14 @@ SwordmanHD/
 
 官方 Windows release 模板不带图片压缩器，贴图 BC7 压缩在导出包里用不了。先 `tools/platform/build_template_windows.sh`（下载 Godot 源码和 llvm-mingw，约 5 分钟）编出 `.work/templates/windows_release_x86_64.exe`，再 `tools/build_windows.sh`，脚本检测到就自动用（打印「用自制模板」）。没编模板也能打包，只是不压缩（显存约 4 倍，2026-11-05 起改为不压缩但仍写磁盘缓存）；`--require-template` 则没有模板直接报错。自制模板带 ANGLE（脚本自动下 godot-angle-static，老显卡兜底与官方模板一致），不含 D3D12 / AccessKit（游戏只用 gl_compatibility）。
 
-云编译 (`.github/workflows/build.yml`) 的 Windows 包也用这份模板：从本仓库 Release `godot-template-4.7.2-cvtt` 下载，再 `--require-template` 导出，下载不到就失败（v0.1.11 云编译用了官方模板，发布版没压缩也没缓存，网友 GTX 1070 进城镇卡顿）。换 Godot 版本或改了编译脚本后在开发机重编并重新上传：
+云编译 (`.github/workflows/build.yml`) 的 Windows 包也用这份模板：从本仓库 Release `godot-template-4.7.2-cvtt` 下载，再 `--require-template` 导出，两个文件都要传 (控制台版 `.console.exe` 缺了导出不出 `SwordmanHD.console.exe`，v0.9.8 第一次云编译就因此失败)，下载不到就失败（v0.1.11 云编译用了官方模板，发布版没压缩也没缓存，网友 GTX 1070 进城镇卡顿）。换 Godot 版本或改了编译脚本后在开发机重编并重新上传：
 
 ```
 tools/platform/build_template_windows.sh
 gh release create godot-template-4.7.2-cvtt -R zmnqaz/SwordmanHD --prerelease --title "自制 Windows 导出模板 (Godot 4.7.2 + cvtt + ANGLE)" \
-  --notes "tools/platform/build_template_windows.sh 编出; CI 打 Windows 包用" .work/templates/windows_release_x86_64.exe
-# 已存在时替换: gh release upload godot-template-4.7.2-cvtt .work/templates/windows_release_x86_64.exe -R zmnqaz/SwordmanHD --clobber
+  --notes "tools/platform/build_template_windows.sh 编出; CI 打 Windows 包用" .work/templates/windows_release_x86_64.exe \
+  .work/templates/windows_release_x86_64.console.exe
+# 已存在时替换: gh release upload godot-template-4.7.2-cvtt .work/templates/windows_release_x86_64*.exe -R zmnqaz/SwordmanHD --clobber
 ```
 
 ## 运行时缓存

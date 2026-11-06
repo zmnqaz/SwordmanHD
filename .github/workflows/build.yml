@@ -35,7 +35,7 @@ jobs:
       - name: 下载自制 Windows 模板
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download godot-template-4.7.2-cvtt -R "$GITHUB_REPOSITORY" -p windows_release_x86_64.exe -D .work/templates
+        run: gh release download godot-template-4.7.2-cvtt -R "$GITHUB_REPOSITORY" -p "windows_release_x86_64*.exe" -D .work/templates   # 连同 .console.exe (Godot 从模板旁边取控制台版)
       - run: python3 tools/build_windows.py --engine-only --zip --require-template
       - uses: actions/upload-artifact@v4
         with:
