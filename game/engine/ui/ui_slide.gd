@@ -5,11 +5,28 @@ extends RefCounted
 ## 走完各档后不透明显示。收起时倒过来。
 ##   (信息条, /): 偏移 = 16,8,4,2,0, 左块向左偏、右块向右偏。
 ##   (法术/物品列表): 偏移 8,4,2,0, 列表从左、说明栏从右滑入 (~)。
-## TODO: 原版一个时钟周期的长度未查 (暂按动画帧 0.04 秒)。
+## 一个时钟周期 = 40 毫秒: 调 timeSetEvent(0x28 / 分辨率, ..., 回调) (2026-11-06 核, 同 CampUi.TICK)。
 
 const TICK := 0.04
-const BRI_OFFSETS := [16, 8, 4, 2, 0]
-const LIST_OFFSETS := [8, 4, 2, 0]
+
+
+## 各类界面块的滑入偏移档 (原版像素), 数值在布局表 motions.slide.* (mod 可改), 缺表时用原版值:
+## 信息条 slide.bri 16,8,4,2,0; 法术/物品列表 slide.list 8,4,2,0; 营地各窗 slide.camp 16,8,4,2,0 (等)
+static func bri_offsets() -> Array:
+	return _offsets("slide.bri", [16, 8, 4, 2, 0])
+
+
+static func list_offsets() -> Array:
+	return _offsets("slide.list", [8, 4, 2, 0])
+
+
+static func camp_offsets() -> Array:
+	return _offsets("slide.camp", [16, 8, 4, 2, 0])
+
+
+static func _offsets(name: String, def: Array) -> Array:
+	var a = UiLayout.motion(name).get("offsets")
+	return a.map(func(x): return int(x)) if a is Array and not a.is_empty() else def   # JSON 数字是 float, 与原来的整数常量保持同型
 
 
 ## 让 node 从 base + dir*offset 滑到 base 并淡入 (opening=true), 或反向滑出并淡出后隐藏。返回 Tween (可 await finished)。

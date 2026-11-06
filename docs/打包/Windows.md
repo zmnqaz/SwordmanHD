@@ -44,7 +44,16 @@ SwordmanHD/
 
 ## 自制导出模板
 
-官方 Windows release 模板不带图片压缩器，贴图 BC7 压缩在导出包里用不了。先 `tools/platform/build_template_windows.sh`（下载 Godot 源码和 llvm-mingw，约 5 分钟）编出 `.work/templates/windows_release_x86_64.exe`，再 `tools/build_windows.sh`，脚本检测到就自动用（打印「用自制模板」）。没编模板也能打包，只是不压缩（显存约 4 倍）。自制模板不含 ANGLE / D3D12 / AccessKit（游戏只用 gl_compatibility；`--rendering-driver opengl3_angle` 兜底在自制包里不可用）。
+官方 Windows release 模板不带图片压缩器，贴图 BC7 压缩在导出包里用不了。先 `tools/platform/build_template_windows.sh`（下载 Godot 源码和 llvm-mingw，约 5 分钟）编出 `.work/templates/windows_release_x86_64.exe`，再 `tools/build_windows.sh`，脚本检测到就自动用（打印「用自制模板」）。没编模板也能打包，只是不压缩（显存约 4 倍，2026-11-05 起改为不压缩但仍写磁盘缓存）；`--require-template` 则没有模板直接报错。自制模板带 ANGLE（脚本自动下 godot-angle-static，老显卡兜底与官方模板一致），不含 D3D12 / AccessKit（游戏只用 gl_compatibility）。
+
+云编译 (`.github/workflows/build.yml`) 的 Windows 包也用这份模板：从本仓库 Release `godot-template-4.7.2-cvtt` 下载，再 `--require-template` 导出，下载不到就失败（v0.1.11 云编译用了官方模板，发布版没压缩也没缓存，网友 GTX 1070 进城镇卡顿）。换 Godot 版本或改了编译脚本后在开发机重编并重新上传：
+
+```
+tools/platform/build_template_windows.sh
+gh release create godot-template-4.7.2-cvtt -R zmnqaz/SwordmanHD --prerelease --title "自制 Windows 导出模板 (Godot 4.7.2 + cvtt + ANGLE)" \
+  --notes "tools/platform/build_template_windows.sh 编出; CI 打 Windows 包用" .work/templates/windows_release_x86_64.exe
+# 已存在时替换: gh release upload godot-template-4.7.2-cvtt .work/templates/windows_release_x86_64.exe -R zmnqaz/SwordmanHD --clobber
+```
 
 ## 运行时缓存
 
@@ -55,10 +64,11 @@ SwordmanHD/
 
 1. 把整个 `SwordmanHD/` 文件夹 (或 7z 解压后) 拷到 Windows, 路径可含中文。
 2. 双击 `SwordmanHD.exe`。窗口默认 1280x800 (4 倍); 人物等像素画贴图运行时生成 6 倍, 任何窗口大小都清晰。
-3. 存档与设置: `%APPDATA%\SwordmanHD\` (Linux 开发版: `~/.local/share/SwordmanHD/`)。
+3. 存档与录像: 游戏文件夹的 `save\`、`replay\` (打包时预建并各放一个 `说明.txt`; 整个文件夹拷走, 存档跟着走)。游戏文件夹写不进去 (装在 Program Files) 时退回 `%APPDATA%\SwordmanHD\save\`、`replay\`; 设定菜单「存档位置」可查看 / 打开 / 改到别的文件夹 (选择记在 settings.json)。设定、日志、贴图缓存仍在 `%APPDATA%\SwordmanHD\`。
+   旧版本 (2026-11-06 以前) 的存档在 `%APPDATA%\SwordmanHD\` 根目录, 新版第一次启动在标题画面弹「存档位置」: 搬到游戏文件夹 (推荐) / 选择其它文件夹 / 先不动; 搬迁逐个复制校验, 全部成功才切换, 失败整体撤回; 旧文件挪进「旧存档备份_日期」文件夹, 不删 (`game/engine/core/save_relocate.gd`)。
    首次启动会把旧目录 `%APPDATA%\Godot\app_userdata\天地劫：神魔至尊傳 復刻\` 的存档/设置复制过来 (`game/scripts/user_dir_migrate.gd`)。
-   存档原子写入, 旁边的 `.bak` 是上一版 (正式文件损坏时自动改读), 带 "version" 按版本迁移 (`game/engine/core/save_file.gd`)。
-   想沿用 Linux 上的存档, 把 `~/.local/share/SwordmanHD/save*.json` 拷到上面目录即可。
+   存档原子写入: 写临时文件 → 读回校验 → 换成正式文件 → 新档读得出来就删掉上一版的 `.bak` (平时不留 `.bak`); 写到一半崩溃时读档自动从临时文件或 `.bak` 恢复。带 "version" 按版本迁移 (`game/engine/core/save_file.gd`)。
+   想沿用 Linux 上的存档, 把 Linux 游戏文件夹 (或 `~/.local/share/SwordmanHD/save/`) 里的 `save*.json` 拷到上面的 `save\` 即可。
 4. 自动测试参数在导出版同样可用:
    `SwordmanHD.console.exe --fixed-fps 25 -- --scene=stage1 --skip-movies --shot=60:C:/tmp/a.png --quit=61`。
    GUI 版 `SwordmanHD.exe` 同样接受这些参数。

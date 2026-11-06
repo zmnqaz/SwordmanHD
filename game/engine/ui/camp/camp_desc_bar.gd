@@ -25,7 +25,7 @@ func _init() -> void:
 
 
 func open() -> Tween:
-	return UiSlide.run(self, _pos, Vector2.LEFT, CampUi.SLIDE, true)
+	return UiSlide.run(self, _pos, Vector2.LEFT, UiSlide.camp_offsets(), true)
 
 
 ## s: 文字 (按每行字数折行, \n 强制换行)

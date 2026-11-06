@@ -148,4 +148,22 @@ func _run() -> void:
 	if skipped > 0:
 		print("\n跳过 %d 个 (缺依赖 %s)" % [skipped, skip_by_need])
 	print("\n%d 个测试, %d 失败, %d 跳过, 用时 %d ms" % [total, failed, skipped, Time.get_ticks_msec() - t0])
+	_clean_sandboxes()
 	quit(1 if failed > 0 or total == 0 else 0)
+
+
+## 测试要放进 user://content 才能被 ContentDB 找到的内容包 (ContentDB.SEARCH_DIRS 固定含 user://content); 只认这份名单, 不按前缀猜 (别删玩家自己的 mod)
+const TEST_CONTENT_PACKS := ["loc_test", "loc_test_b", "test_mod_a", "test_mod_b", "test_mod_missing", "test_start_a", "compat_need_new_engine"]
+
+
+## 测试文件沙盒收尾: 删掉本进程的 user://_test_<pid>/, 以及已经不在运行的进程留下的 (崩溃 / 被杀的那次); 再删测试内容包
+func _clean_sandboxes() -> void:
+	var TB = load("res://tests/test_base.gd")
+	for id in TEST_CONTENT_PACKS:
+		TB.remove_tree("user://content".path_join(id))
+	for d in DirAccess.get_directories_at("user://"):
+		if not d.begins_with("_test_"):
+			continue
+		var pid := int(d.trim_prefix("_test_"))
+		if pid == OS.get_process_id() or not OS.is_process_running(pid):
+			TB.remove_tree("user://".path_join(d))

@@ -24,4 +24,4 @@ func test_desktop_has_no_bundle():
 		return
 	eq(ResPacks.bundled_dir(), "", "桌面平台没有整包")
 	eq(ResPacks.read_bundle(""), {}, "没有整包目录: 空")
-	eq(ResPacks.read_bundle("user://__no_such_bundle__"), {}, "目录里没有清单: 空")
+	eq(ResPacks.read_bundle(tmp_dir("__no_such_bundle__")), {}, "目录里没有清单: 空")

@@ -9,11 +9,11 @@ extends SettingsPanel
 ##  选中某份录像时才解析它的 JSON, 底部显示时长与操作数 (结果缓存); 读不了的录像确认无效。
 ## 选定后 closed(true), 调用方 (SettingsPanel._activate) 读 chosen_path / chosen_speed 交给 SceneFlow.start_replay; 其余 closed(false)。
 
-const DIR := "user://replays"
+## 录像目录: 缺省 UserPaths.replay_dir() (各函数参数传 "" 即用它; 测试可指定)
 
 var chosen_path := ""
 var chosen_speed := 1.0
-var _dir := DIR
+var _dir := ""
 var _files: Array = []           # 文件名, 新的在前
 var _info: Dictionary = {}       # 文件名 -> info_text 缓存
 var _speed := 1.0
@@ -22,7 +22,8 @@ var _deleted := -1               # 刚删了几份 (底部提示用; -1 = 没删
 
 
 ## 目录下的录像文件名 (.json), 按文件名倒序: 同类里新的在前 (时间戳在名字里)
-static func list_files(dir: String = DIR) -> Array:
+static func list_files(dir: String = "") -> Array:
+	dir = _resolve(dir)
 	var out: Array = []
 	if not DirAccess.dir_exists_absolute(dir):   # 还没录过像: 目录不存在 (get_files_at 会打印引擎错误)
 		return out
@@ -35,7 +36,8 @@ static func list_files(dir: String = DIR) -> Array:
 
 
 ## 删掉目录下全部录像 (.json 及写到一半的 .json.tmp); 正在录的那份 (PlayLog 录制中) 跳过, 否则下次自动存盘它又冒出来。返回删掉的份数
-static func delete_all(dir: String = DIR) -> int:
+static func delete_all(dir: String = "") -> int:
+	dir = _resolve(dir)
 	if not DirAccess.dir_exists_absolute(dir):
 		return 0
 	var keep := ""
@@ -69,7 +71,12 @@ func total() -> int:
 
 
 ## 扫描目录建条目 (open 时调; 测试可指定目录)
-func load_files(dir: String = DIR) -> void:
+static func _resolve(dir: String) -> String:
+	return dir if dir != "" else UserPaths.replay_dir()
+
+
+func load_files(dir: String = "") -> void:
+	dir = _resolve(dir)
 	_dir = dir
 	_files = list_files(dir)
 	_info.clear()

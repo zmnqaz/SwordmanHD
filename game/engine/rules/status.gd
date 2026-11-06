@@ -4,12 +4,7 @@ extends RefCounted
 
 const U = preload("res://engine/rules/unit_state.gd")
 
-## 驱散 (無上滅法 / 幻月神劍): 清攻、防、技、速、狂暴 0x4f, 不清全禦、幻影
-const DISPEL_MASK := 0x4f
-## 靈淨大法: 掩码 ~0xef7f = 毒 + 麻
-const PURIFY_MASK := 0x1080
-## 天護靈燁: 掩码 ~0xe97f = 麻 + 地缚 + 封 + 毒, 不解冰結
-const HOLY_CLEANSE_MASK := 0x1680
+## 驱散 / 靈淨大法 / 天護靈燁 的解除掩码在 Params (dispel_mask / purify_mask / holy_cleanse_mask), 内容包可改
 ## 祝福 eff0~7 -> 状态位
 const BLESS_BITS := [U.ST_ATK_UP, U.ST_DEF_UP, U.ST_TECH_UP, U.ST_HASTE, U.ST_BERSERK,
 	U.ST_GUARD_SKILL, U.ST_GUARD_SPELL, U.ST_PHANTOM]
@@ -29,9 +24,16 @@ static func apply(u, bit: int, r: int, k: int, check: bool = true) -> bool:
 	if check and r < k:
 		return false
 	u.status |= bit
-	u.status_r[bit] = r
-	u.status_k[bit] = k
+	u.status_r[bit] = s16(r)
+	u.status_k[bit] = s16(k)
 	return true
+
+
+## 原版单位记录里 R / K 是 16 位有符号字 (字段 起每状态 R、K 各一个 word; movsx 读、sub 后按 word 写回):
+## 越过 32767 回绕成负数。只在 K <= 0 (祝福 K = rate10 − 2×(目标Int/(5~10)), 目标 Int ≥ 250 时可能) 才碰得到:
+## R 每阶段反而变大, 一直涨到溢出变负才到期 (上千个阶段), 复刻照此存取 (2026-11-05 对照原版核对披甲符)
+static func s16(v: int) -> int:
+	return ((v + 32768) & 0xFFFF) - 32768
 
 
 static func remove(u, mask: int) -> Array:
@@ -65,7 +67,7 @@ static func phase_tick(ctx, u) -> Dictionary:
 	for b in U.STATUS_NAMES:
 		if (u.status & b) == 0:
 			continue
-		var r: int = int(u.status_r.get(b, 0)) - int(u.status_k.get(b, 0))
+		var r: int = s16(int(u.status_r.get(b, 0)) - int(u.status_k.get(b, 0)))   # sub 后按 word 写回
 		u.status_r[b] = r
 		if r <= 0:
 			remove(u, b)

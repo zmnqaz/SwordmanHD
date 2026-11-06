@@ -9,4 +9,4 @@ python3 tools/build_windows.py --linux --zip    # 另打 dist/linux/SwordmanHD-l
 
 包内容：可执行文件（主 pck 内嵌）+ `resource/` 里的资源包 (`common_*`、`hd_*` / `classic_*`, 见 [资源包.md](资源包.md); `--edition=hd|classic` 只带一种画质) + 许可文本（见 [Windows.md](Windows.md)）。
 
-运行：解压后 `./SwordmanHD.x86_64`（需要 OpenGL 3.3）；原生 Wayland 加 `--display-driver wayland`。存档 `~/.local/share/SwordmanHD/`。
+运行：解压后 `./SwordmanHD.x86_64`（需要 OpenGL 3.3）；原生 Wayland 加 `--display-driver wayland`。存档在游戏文件夹的 `save/`、`replay/` (写不进去时 `~/.local/share/SwordmanHD/save/`、`replay/`), 设定在 `~/.local/share/SwordmanHD/`; 打包时预建这两个文件夹并各放一个说明。

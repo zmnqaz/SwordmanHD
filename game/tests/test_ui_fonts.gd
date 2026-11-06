@@ -122,7 +122,7 @@ func test_fusion_pixel_font():
 
 ## order: 后加载的包 (tdj) 的字体排到内置字体之后; 同 order 保持加载顺序
 func test_merge_order():
-	var root := "user://_fonts_order_test"
+	var root := tmp_dir("_fonts_order_test")
 	var mk := func(name: String, fonts: Array):
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(root.path_join(name).path_join("ui_theme")))
 		var f := FileAccess.open(root.path_join(name).path_join("ui_theme/fonts.json"), FileAccess.WRITE)

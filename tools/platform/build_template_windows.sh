@@ -7,7 +7,7 @@
 set -e
 VER=4.7.2-stable
 LLVM=20261006
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 W="$ROOT/.work/godot-src"
 OUT="$ROOT/.work/templates"
 mkdir -p "$W" "$OUT"
@@ -20,9 +20,19 @@ if [ -z "$TC" ]; then
   TC=$(ls -d "$W"/llvm-mingw-* | head -1)
 fi
 cd "godot-$VER"
-# d3d12 / accesskit / ANGLE 不带 (游戏用 gl_compatibility, 这几项要另下依赖); 不开 LTO 省内存与时间
+# ANGLE (OpenGL 跑在 D3D11 上): 官方模板带, 驱动不支持 OpenGL 3.3 / 在 Godot 的 ANGLE 名单里的老显卡靠它启动, 自制模板也要带。
+# 只下 x86_64-llvm 一份 (misc/scripts/install_angle.py 会下 5 份), 版本取该脚本里写的
+ANGLE_DIR=bin/build_deps/angle-x86_64-llvm
+if [ ! -d "$ANGLE_DIR" ]; then
+  AV=$(sed -n 's/^angle_version = "\(.*\)"/\1/p' misc/scripts/install_angle.py)
+  mkdir -p bin/build_deps
+  curl -fL -o bin/build_deps/angle.zip "https://github.com/godotengine/godot-angle-static/releases/download/$AV/godot-angle-static-x86_64-llvm-release.zip"
+  python3 -c "import shutil,sys; shutil.unpack_archive(sys.argv[1], sys.argv[2])" bin/build_deps/angle.zip "$ANGLE_DIR"
+  rm bin/build_deps/angle.zip
+fi
+# d3d12 / accesskit 不带 (游戏用 gl_compatibility, 这两项要另下依赖); 不开 LTO 省内存与时间
 scons platform=windows target=template_release arch=x86_64 use_mingw=yes use_llvm=yes mingw_prefix="$TC" \
-  cvtt_export_templates=yes d3d12=no accesskit=no optimize=speed lto=none debug_symbols=no -j"$(nproc)"
+  cvtt_export_templates=yes angle=yes angle_libs="$PWD/bin/build_deps/angle" d3d12=no accesskit=no optimize=speed lto=none debug_symbols=no -j"$(nproc)"
 cp bin/godot.windows.template_release.x86_64.llvm.exe "$OUT/windows_release_x86_64.exe"
 cp bin/godot.windows.template_release.x86_64.llvm.console.exe "$OUT/windows_release_x86_64.console.exe" 2>/dev/null || true
 ls -la "$OUT"

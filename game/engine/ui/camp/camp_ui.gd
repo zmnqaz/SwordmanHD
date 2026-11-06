@@ -22,8 +22,6 @@ const BOX := Color8(206, 41, 41)
 const DIM := Color(14.0 / 16.0, 14.0 / 16.0, 14.0 / 16.0)
 ## 不可选的行约 25% 不透明 (4:12 混合)
 const FAINT := 0.25
-## 滑入偏移 (/ 等都是 16,8,4,2,0)
-const SLIDE := [16, 8, 4, 2, 0]
 
 
 static func c555(v: int) -> Color:

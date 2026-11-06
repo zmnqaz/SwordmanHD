@@ -43,6 +43,9 @@ var _ar: UiPanel
 var _cyc3 := CampUi.Cycle.new(5, 3)
 var _cyc4 := CampUi.Cycle.new(5, 4)
 var _glow_t := 0.0
+var _glow_k := 16       # 描边呼吸强度 (原版 字段): 进入分配时 16、向上
+var _glow_up := true
+const BRIGHTEN := preload("res://shaders/screen_brighten.gdshader")
 var _pos := Vector2.ZERO
 
 
@@ -63,7 +66,7 @@ func _init(party: Array) -> void:
 
 
 func open() -> void:
-	UiSlide.run(_panel, _pos, Vector2.LEFT, CampUi.SLIDE, true)
+	UiSlide.run(_panel, _pos, Vector2.LEFT, UiSlide.camp_offsets(), true)
 
 
 func _remaining(uid: int) -> int:
@@ -87,6 +90,12 @@ func _build() -> void:
 	_panel.add_child(bg)
 	_glow = UiLayout.panel("camp.spirit.glow")
 	_glow.visible = allocating
+	var m := ShaderMaterial.new()   # 描边形状范围内把底下内容按 k/16 调亮, 描边贴图自身不画
+	m.shader = BRIGHTEN
+	_glow.material = m
+	for c in _glow.find_children("*", "CanvasItem", true, false):
+		(c as CanvasItem).use_parent_material = true
+	m.set_shader_parameter("k", float(_glow_k))   # 加减点重建面板时保持当前强度; 进入分配才从 16 重新起 (_start_glow)
 	_panel.add_child(_glow)
 	_panel.add_child(UiText.make("camp.spirit.name", CampInventory.unit_name(uid)))
 	_panel.add_child(UiLayout.number("camp.spirit.points", _remaining(uid), 0))
@@ -119,9 +128,23 @@ func _process(delta: float) -> void:
 	if _cyc4.step(delta):
 		_al.set_frame(_al.anim_dir, UiLayout.frame("camp.spirit.swap_left") + _cyc4.phase)
 		_ar.set_frame(_ar.anim_dir, UiLayout.frame("camp.spirit.swap_right") + _cyc4.phase)
-	if allocating and _glow:  # 描边呼吸: 强度 16↔32, 每 3 tick 变 2; 这里用透明度近似
+	if allocating and _glow:  # 描边呼吸: 每 3 tick 强度 ±2, 16↔32 往返; 画法见 screen_brighten.gdshader
 		_glow_t += delta
-		_glow.modulate.a = 0.5 + 0.5 * absf(sin(_glow_t * PI / (CampUi.TICK * 24)))
+		while _glow_t >= CampUi.TICK * 3:
+			_glow_t -= CampUi.TICK * 3
+			var r := glow_step(_glow_k, _glow_up)
+			_glow_k = r[0]
+			_glow_up = r[1]
+		(_glow.material as ShaderMaterial).set_shader_parameter("k", float(_glow_k))
+
+
+## 描边呼吸一步: 向上 +2 超过 32 就转向取 30; 向下 −2 小于 16 就转向取 18
+static func glow_step(k: int, up: bool) -> Array:
+	if up:
+		k += 2
+		return [30, false] if k > 32 else [k, true]
+	k -= 2
+	return [18, true] if k < 16 else [k, false]
 
 
 ## 指针 (engine/ui/ui_hit.gd):
@@ -210,6 +233,9 @@ func key(k: String) -> void:
 		"accept":
 			allocating = true
 			msel = 0
+			_glow_k = 16   # 进入分配时呼吸从 16、向上、计时 2 起
+			_glow_up = true
+			_glow_t = 0.0
 			_build()
 		"cancel":
 			_show_panel(false)

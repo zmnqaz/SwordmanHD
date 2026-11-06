@@ -340,6 +340,9 @@ func _activate(key: String) -> void:
 		"about":
 			sub = AboutPanel.new()
 			sub.router = router
+		"save_loc":
+			sub = SaveLocationPanel.new()
+			sub.router = router
 		_:
 			if sub == null:
 				return

@@ -22,7 +22,7 @@ func _img(path: String, px: int) -> void:
 
 ## orig + hd4 (+hd6) 三档, hd4 有 a/t.png 与 b.png, hd6 只有 a/t.png (模拟 hd6x 是子集: 人物有、大图没有)
 func _source(with_hd6: bool) -> TextureSource:
-	_base = "user://texsrc_test/%d" % Time.get_ticks_usec()
+	_base = tmp_dir("texsrc_test/%d") % Time.get_ticks_usec()
 	_mk_dirs([_base + "/orig/a", _base + "/hd4/a", _base + "/hd6/a"])
 	_img(_base + "/orig/a/t.png", 2)
 	_img(_base + "/hd4/a/t.png", 8)
@@ -96,7 +96,7 @@ func test_tier_registry_and_order():
 
 
 func test_without_want_mult_stays_at_lowest_tier():
-	_base = "user://texsrc_test/bare"
+	_base = tmp_dir("texsrc_test/bare")
 	_mk_dirs([_base + "/orig/a", _base + "/hd4/a", _base + "/hd6/a"])
 	_img(_base + "/hd4/a/t.png", 8)
 	_img(_base + "/hd6/a/t.png", 12)

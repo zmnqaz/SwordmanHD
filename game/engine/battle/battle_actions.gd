@@ -206,18 +206,20 @@ func cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id := -1) -> void:
 	gc.state.set_data(101, -1)
 	view.hide_cursor()
 	view.hide_info()
+	# 施放者先转向落点 (原版法术结算对象 状态 0 调 (施放者, -1, 落点); 法术 / 绝技 / 道具发动技能 / 召唤都走这里,
+	# 落点是自己的格不转; 放完不转回)。以前只有单体物理绝技转, 地图演出 (分天斩等直线绝技、AOE 咒术) 一律保持原朝向, 差异
+	view.face_cell(u, c)
 	var hit_units := rules.affected(u, sk, c)
 	var res := {}
 	var spr := int(u.info["sprite"])
 	var bspr := int(sk["battle_sprite"])
 	if Skills.is_physical(sk) and int(sk["battle_type"]) == 0 and hit_units.size() == 1 and hit_units[0] != u:
 		var t: BattleUnit = hit_units[0]
-		view.face(u, t)
-		await closeup.open(u, t, Vector2i(-1, -1), int(sk.get("battle_ranged", 0)) == 1)
+		var atk := ThemeAssets.f("unit_attack_alt", [spr, spr, ("-%d" % bspr) if bspr > 0 else ""])
+		await closeup.open(u, t, Vector2i(-1, -1), int(sk.get("battle_ranged", 0)) == 1, [atk])
 		res = _resolve_cast(u, sk, c, item_id)
 		var r: Dictionary = res.targets[0] if not res.targets.is_empty() else {"hit": false, "invalid": true, "damage": 0, "guard": false}
 		var kind := "miss" if r.invalid or not r.hit else ("guard" if r.guard else "hit")
-		var atk := ThemeAssets.f("unit_attack_alt", [spr, spr, ("-%d" % bspr) if bspr > 0 else ""])
 		# 摄魂鬼触 (ot1 oe6): 攻方身上放吸取光环 + 蓝数字 (术力实涨量), 不动体力条 (Skills.closeup_drain)
 		await closeup.strike(u, t, [{"kind": kind, "damage": maxi(0, int(r.damage))}], atk, String(sk["name"]), Skills.closeup_drain(sk, r), Skills.closeup_digits(sk, r), int(sk.get("battle_ranged", 0)) == 1, false)
 		if int(res.exp) > 0:
@@ -236,8 +238,9 @@ func cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id := -1) -> void:
 			intro = await view.cast_begin(u, String(sk["name"]), bool(fx.get("cast_pose", true)))  # 镜头到施法者 + 压暗 + 法术名横幅 + 施法光效
 		if theater and Skills.has_solo_closeup(sk):   # 近景 + 地图 SM (③): 地图前奏之后进施放者单人近景 (放下剑匣等), 回地图闪一下技能名横幅再放全屏特效
 			# 原版 连拍 (2026-10-29, 殷剑平电射星驰): 2.5~4.1 s 地图前奏 (压暗 + 横幅 + 光圈) -> 4.4~8.9 s 近景 (无横幅无守方) -> 9.0~9.3 s 地图上横幅滑入即滑出 -> 9.4 s 起 SM
-			await closeup.open(u, null, c)
-			await closeup.cast_solo(u, ThemeAssets.f("unit_attack_alt", [spr, spr, ("-%d" % bspr) if bspr > 0 else ""]), "")   # 近景无技能名横幅: 调近景初始化 传 0 (横幅标志 [字段]), 类型 0 传 1
+			var solo := ThemeAssets.f("unit_attack_alt", [spr, spr, ("-%d" % bspr) if bspr > 0 else ""])
+			await closeup.open(u, null, c, false, [solo])
+			await closeup.cast_solo(u, solo, "")   # 近景无技能名横幅: 调近景初始化 传 0 (横幅标志 [字段]), 类型 0 传 1
 			await closeup.close()
 			view.cast_banner(String(sk["name"]), null, 0)
 			await SceneGuard.wait(self, 0.4)
@@ -259,7 +262,7 @@ func cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id := -1) -> void:
 			if r is Dictionary and r.get("unit") != null:
 				order.append(r["unit"])
 		await flow.fade_deaths(order)
-		if theater:   # 施法镜头不夹地图, 撤压暗前回到施法前的镜头 (原版状态 5 -> 演出器状态 8/9, 咒术静态; 绝技未核, 同样回)
+		if theater:   # 施法镜头不夹地图, 撤压暗前回到施法前的镜头 (原版状态 5 -> 演出器状态 8/9, 咒术静态; 绝技对象 一带 同样调 (模式 0, 标志 0) → 演出器状态 8 回镜头, 2026-11-06 核)
 			await view.cast_camera_return()
 		await view.cast_fade_out(intro, 0.6 if theater else 0.0)   # 压暗保持到结果动画之后, 再渐亮 (④)
 		var posed = null
@@ -391,6 +394,7 @@ func use_item(u: BattleUnit, item_id: int, c: Vector2i) -> void:
 	gc.state.set_data(101, -1)
 	view.hide_cursor()
 	view.hide_info()
+	view.face_cell(u, c)   # 使用者转向落点 (原版道具对象 状态 0 调, 同法术; 对自己用不转), 差异
 	var eff := int(Items.use_rec(rules.ctx, item_id).get("effect", -1))
 	var out := rules.use_item(u, item_id, c)
 	flow.stats.item(u, item_id, out)

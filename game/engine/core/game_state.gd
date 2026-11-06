@@ -13,6 +13,9 @@ var camp_no := -1     # 进度值: 当前营地编号 CAMPnn (原版全局 字�
 var seeded := {}      # 已初次登场的主角 (存档 v1 时代: 已把随身消耗品放进行囊; 现随身物品一直在本人 party[uid].items)
 var party := {}       # 主角成长 (单位编号 0~9 -> {lv, exp, hp_max, mp_max, stats, gear}), 关卡之间保留
 var gsf_raw := ""     # 外部工具导入存档时附带的原始数据 (base64); 游戏不读, 只随存档带着; "" = 没有
+## 复刻新增的统计 (存档界面显示; 不进剧情变量, 不影响原版的过关回合记录 var 30+next):
+var play_time := 0.0  # 游戏总时间 (秒): 实际游玩的真实时间, 由组装层每帧 add_play_time (标题画面/浮层开着/窗口失焦/回放不计); < 0 = 未知 (旧存档没记)
+var turns := 0        # 总回合: 各关战斗打完时累加该关回合数 (event_vm 0x02); 读档即回到存档时的值, 所以重打/读档不会重复计; < 0 = 未知 (见 ClearRank.recorded_turns 补算)
 
 
 const ROSTER_OUT := 1000  # 0x4F 离队标志在 game_data 里的键基址: ROSTER_OUT + 角色号, 1 = 不在队 (剧情变量只用 0~127)
@@ -53,6 +56,8 @@ func reset(start_gold := 0) -> void:
 	party.clear()
 	seeded.clear()
 	gsf_raw = ""
+	play_time = 0.0
+	turns = 0
 	stage = 0
 	next_stage = 0
 	camp_no = -1   # 读过档再开新游戏时不带上旧档的进度值
@@ -60,11 +65,16 @@ func reset(start_gold := 0) -> void:
 
 ## 存档用字典 (JSON 友好; 键名即存档格式, 改动要升 SaveFile.VERSION 并写迁移)
 ## 可选字段 gsf_raw 只在非空时写 (普通存档字典与以前一字不差; 加可选字段不升版本, 旧版引擎读到会忽略)
+## 可选字段 play_time / turns 只在已知 (>= 0) 时写, 未知的继续缺着 (读回仍是未知, 不会变成 0)
 func to_dict() -> Dictionary:
 	var d := {"stage": stage, "next_stage": next_stage, "camp": camp_no, "gold": gold, "bag": bag,
 		"game_data": game_data, "party": party, "seeded": seeded.keys()}
 	if gsf_raw != "":
 		d["gsf_raw"] = gsf_raw
+	if play_time >= 0.0:
+		d["play_time"] = snappedf(play_time, 0.01)
+	if turns >= 0:
+		d["turns"] = turns
 	return d
 
 
@@ -73,9 +83,9 @@ func to_dict() -> Dictionary:
 const SAVE_FIELDS := {
 	"stage": "num", "next_stage": "num", "gold": "num", "camp": "num",
 	"bag": "nums", "game_data": "numdict", "seeded": "nums", "party": "dicts",
-	"time": "str", "where": "str", "gsf_raw": "str",
+	"time": "str", "where": "str", "gsf_raw": "str", "play_time": "num", "turns": "num",
 }
-## 必需字段 (其余可缺: 旧档没有 camp/seeded/time/where, 普通存档没有 gsf_raw); 缺哪个由 missing_field 报给玩家
+## 必需字段 (其余可缺: 旧档没有 camp/seeded/time/where/play_time/turns, 普通存档没有 gsf_raw); 缺哪个由 missing_field 报给玩家
 const SAVE_REQUIRED := ["stage", "next_stage", "gold", "bag", "game_data", "party"]
 ## 每个主角记录 party[uid] 里出现就必须合法的字段
 const PARTY_FIELDS := {"lv": "num", "exp": "num", "hp_max": "num", "mp_max": "num", "gear": "dict", "stats": "dict", "items": "nums"}
@@ -148,6 +158,22 @@ func apply_dict(d: Dictionary) -> void:
 	for k in d["party"]:
 		party[int(k)] = d["party"][k]
 	gsf_raw = String(d.get("gsf_raw", ""))   # 缺 = 清空 (读普通存档不能带着上一个导入档的原始字节)
+	play_time = maxf(float(d.get("play_time", -1.0)), -1.0)   # 缺 = 未知 (旧存档); 读档后从存档值接着累计
+	turns = maxi(int(d.get("turns", -1)), -1)
+
+
+## 累计游戏时间 (真实秒数); 未知 (旧存档) 时保持未知, 不从 0 起算冒充总时间
+func add_play_time(sec: float) -> void:
+	if play_time >= 0.0 and sec > 0.0:
+		play_time += sec
+
+
+## 一关战斗打完: 总回合加上这一关的回合数。recorded: 未知 (旧存档) 时用来补出此前各关之和的值 (ClearRank.recorded_turns, < 0 = 补不出, 保持未知)
+func add_turns(n: int, recorded := -1) -> void:
+	if turns < 0:
+		turns = recorded
+	if turns >= 0:
+		turns += maxi(n, 0)
 
 
 ## 确定性回归的全局状态 (engine/test/regress_log.gd): 进度、金钱、行囊、剧情变量、主角成长

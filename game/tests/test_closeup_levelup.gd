@@ -14,7 +14,7 @@ class FakeCloseup:
 	var opens := 0
 	var closes := 0
 
-	func open(_a, _t, _at := Vector2i(-1, -1), _hide := false) -> void:
+	func open(_a, _t, _at := Vector2i(-1, -1), _hide := false, _extra: Array = []) -> void:
 		opens += 1
 
 	func close() -> void:

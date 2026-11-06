@@ -3,7 +3,7 @@ extends "res://tests/test_base.gd"
 ## 录像列表子面板 (engine/ui/replay_panel.gd): 文件名解析、倒序、空/坏文件、倍速、选定
 
 const Router = preload("res://engine/input/input_router.gd")
-const DIR := "user://replay_panel_test"
+static var DIR: String = tmp_dir("replay_panel_test")
 
 
 func _clean() -> void:

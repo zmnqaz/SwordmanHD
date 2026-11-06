@@ -255,14 +255,14 @@ static func estimate_target(ctx, u, t, sk: Dictionary) -> int:
 	if ot == 0:
 		var d0: int = Damage.skill_ot0_damage(ctx, u, t, sk, true)
 		if ctx.rng.mod(100) < Attack.guard_rate(ctx, u, t):
-			d0 = d0 / 2
+			d0 = d0 / ctx.params.guard_div
 		return d0
 	var d1: int = Damage.phys_damage(ctx, u, t, false, true)
 	if ot != 1:
 		return d1
 	var guarded: bool = ctx.rng.mod(100) < Attack.guard_rate(ctx, u, t)
 	if guarded:
-		d1 = d1 / 2
+		d1 = d1 / ctx.params.guard_div
 	if oe >= 0 and oe < ctx.params.skill_ot1_mult.size():
 		d1 *= int(ctx.params.skill_ot1_mult[oe])
 	if oe >= 3 and oe <= 6 and not guarded:

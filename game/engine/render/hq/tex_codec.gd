@@ -17,7 +17,7 @@ const CACHE_VERSION := 1
 const MAGIC := 0x434A4454   # "TDJC"
 const FORMATS := ["bptc", "astc"]          # 自动选择的优先顺序 (画质 / 通用性)
 const EXPLICIT_ONLY := ["etc2"]            # 只在命令行显式指定时才用 (没验证过)
-## 「不压缩, 只写磁盘缓存」: 手机官方模板没有压缩器 (见 runtime_compress_available), 以前就既不压缩也没有缓存, 每次进城镇都要把上千张重新烘焙
+## 「不压缩, 只写磁盘缓存」: 官方模板 (手机, 以及没用自制模板的电脑包) 没有压缩器 (见 runtime_compress_available), 以前就既不压缩也没有缓存, 每次进城镇都要把上千张重新烘焙
 ## (天玑 720 实测第 1 镇烘焙 3036 张, 读回在 Mali 上很慢, 一路顿帧)。RAW 把读回的 RGBA8 直接 zstd 写进缓存, 下次读缓存不再烘焙; 显存占用不变 (RGBA8)
 const RAW := "raw"
 
@@ -60,7 +60,7 @@ static func pick(pref: String) -> String:
 	if pref != "auto":
 		return pref if supported(pref) else ""
 	if not runtime_compress_available():
-		return RAW if OS.has_feature("mobile") and supported(RAW) else ""   # 手机没有压缩器: 不压缩但留缓存; 桌面官方模板维持不缓存
+		return RAW if supported(RAW) else ""   # 没有压缩器 (官方模板): 不压缩但留缓存, 第二次进同一场景起不再烘焙 (2026-11-05 网友 GTX 1070 发布版 disk cache false, 每次启动重烘)
 	for f in FORMATS:
 		if supported(f):
 			return f

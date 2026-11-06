@@ -93,16 +93,19 @@ var def_up_den := 5
 var berserk_atk_mult := 2           # 狂暴 攻×2 防/2
 var berserk_def_div := 2
 var crit_def_div := 2               # 会心 = 守方防御再减半
+var def_vit_div := 2                # DEF = 护具.defence + Vit/2 + 饰物.defence
 var dmg_luk_div_min := 10           # 运气项 Luk/(10+rand%11) (网友数据 一致)
 var dmg_luk_div_span := 11
 var ai_luk_div := 15                # AI 估算运气项 Luk/15
 var min_hit_damage := 1             # 普攻命中保底 1
 var double_mult := 2                # 连击 = 伤害 ×2 一次结算
 var guard_vit_div := 10             # 普攻格挡 dmg/2 - 守Vit/10 >=1
+var guard_div := 2                  # / §4 格挡减伤: 普攻 dmg/2 (再减守Vit/10)、绝技 ot0 / ot1 d/2, AI 估价同
 var min_guard_damage := 1
 var tech_up_num := 13               # 技法提昇 power ×1.3
 var tech_up_den := 10
 var spell_int_rand_div := 20        # P = pw + Int/2 + 1 + rand%(Int/20+1)
+var spell_int_power_div := 2        # 同上式中的 Int/2 (祝福 R 同)
 var skill_str_div_min := 8          # ot0: + Str/(8+rand%13)
 var skill_str_div_span := 13
 var skill_ot1_mult := [2, 3, 4]     # ot1 oe0/1/2 倍率
@@ -111,7 +114,7 @@ var poison_heal_den := 5
 var skill_heal_vit_div := 20            # 技能治疗 ×(100 + Vit/20 + S)/100 [原版 对照: Vit 400 仅 +20%, 旧规格 Vit/10 作废]
 var heal_vit_div := 20              # 物品回 HP ×(100 + Vit/20)/100 [原版 调用 对照]
 var item_mp_int_div := 20           # 物品回 MP ×(100 + Int/20)/100 [sar 3; 原版 对照 见 HP 项]
-var vampire_div := 3                # 吸血 dmg/3 中高
+var vampire_div := 3                # 吸血 min(伤害, 目标原体力)/3, 再以攻方缺血封顶 [2026-11-06 核]
 ## 武器附加 毒/麻/封 原版 与原生 Win10 越界字节均为 FF FF: skill=-1 越界读技能表 → R 恒 0。
 ##   "original": 主攻 R(0) < K → 抵抗, 永不生效; 反击路径照样施加, R=K=0 (目标阵营下一阶段开始即解除)
 ##   "custom":   主攻/反击都以 R=time、K=cost 施加 (按 R<K 规则)
@@ -121,13 +124,20 @@ var weapon_status_mode := "original"
 ## 紫金劍持有者的反击读到堆指针 (不可复现) → 这里取 0 (伤害取下限 1)。详见 Attack.type4_mult
 var weapon_add4_ai_path_mag := 0
 var self_destruct_hp_div := 2       # 自爆: 条件 HP <= HPmax/2; 伤害 (HPmax-HP)/2 × MAG_OPP[火]/100
+var self_destruct_dmg_div := 2      # 自爆伤害 (HPmax-HP)/2 的除数
+var script_damage_div := 3          # 剧情扣血: 0x46 hp -= hp/3 (最少剩 1, 第 23 关)、0x4A hp/3 与 mp/3 (第 29 关)
 
 # ---------------- 05 状态 ----------------
 var poison_div := 5                 # 中毒每次结算扣 HPmax/5
-var poison_lethal := true           # 可致死
+var poison_lethal := true           # 可致死 [状态机, 实测]
 var bless_int_div_min := 5          # K = rate10 - 2×(目标Int/(5+rand%6))
 var bless_int_div_span := 6
 var ai_status_int_div := 7          # AI 估算 2×(Int/7)
+## 解除状态的掩码 (位定义见 unit_state.gd ST_*): 驱散 (無上滅法 / 幻月神劍) 清攻/防/技/速/狂暴, 不清全禦/幻影;
+## 靈淨大法 ~0xef7f = 毒 + 麻; 天護靈燁 ~0xe97f = 麻 + 地缚 + 封 + 毒, 不解冰結
+var dispel_mask := 0x4f
+var purify_mask := 0x1080
+var holy_cleanse_mask := 0x1680
 var freeze_spirit_mult := 2         # 冰結几率 rate10 - 2×目标魂 80-2×20=40
 var freeze_r := 1                   # 冰結 R=1 K=1; 受击即解 (不看伤害是否 >0)
 var freeze_k := 1
@@ -147,7 +157,7 @@ var recall_resets_move := false
 var fix_mo_tian := false
 ## 冥幻之陣 rt5 eff7 原版无效果 (扣 500 MP、播动画)。魔改开关, 规则模块暂未定义修复效果
 var fix_ming_huan := false
-var mp_absorb_div_ot1 := 3          # 攝魂鬼觸 吸术 min(MP, MPmax/3)
+var mp_absorb_div_ot1 := 3          # 攝魂鬼觸 吸术 min(MP, MPmax/3) [ot1 分支, 2026-11-06 代理核对]
 var mp_absorb_div_ot2 := 10         # 魔天降臨 吸术 min(MP, MPmax/10)
 
 # ---------------- 08 经验 ----------------
@@ -158,15 +168,15 @@ var exp_level_clamp := 10           # d = clamp(目标lv-自身lv, -10, 10)
 var exp_curve_step := 0.100000001490116119384765625
 var exp_kill_min := 1               # 击杀经验 <=0 时置 1
 var exp_hit_min := 1                # 未击杀经验 >=1
-var exp_heal_base := 200            # 治疗经验 200 × k × 回复量 / HPmax, >=1
+var exp_heal_base := 200            # 治疗经验 200 × k × 回复量 / HPmax, >=1 [分支, 原版实测 E1~E4]
 
 # ---------------- 09 AI ----------------
 var ai_score_threshold := 100       # 主分 < 100 不行动 高 (实测: 单目标 HP<=40% 才吃药/被治疗, 第3路)
 var ai_attack_base := 100           # 普攻/伤害技能 100, 可击杀 +50
-var ai_kill_bonus := 50
+var ai_kill_bonus := 50   # 同上
 var ai_heal_tiers := [[40, 100], [60, 50], [80, 10]]   # HP% <=40 +100, 40~60 +50, 60~80 +10
 var ai_status_each := 50            # 增益/诅咒 每人 +50, 上限 150
-var ai_status_cap := 150
+var ai_status_cap := 150   # 同上
 var ai_curse_needs_hit := false     # 诅咒 / 地缚估价: 每个目标掷一次命中 (耗随机数), 原版【不看命中结果】: 每个缺该状态的目标照样 +50, 幻影/全禦目标也算 1100+ 例逐例一致。true = 未命中 (含幻影/全禦) 不计分 (复刻旧写法, 比原版弱)
 var ai_buff_enemy_radius := 12      # 攻/防/速/狂暴 类要求目标 12 格内有敌人
 var ai_status_dmg_base := 110       # 带状态/吸术/驱散的绝技 (ot1 oe3~6、ot2 oe12) 主分 110, 末条目击杀 +30 [字段/字段]
@@ -177,7 +187,7 @@ var ai_phantom_score := 110         # 幻影 (无方变幻, 祝福 eff7) 固定 
 var ai_mp_restore_score := 130      # [字段] 仅 ot2 oe7 吸术分支 (魔天降临, 咒术走不到) 用; 实际数据中无技能到达, 保留常量
 var ai_cure_each := 50              # 解毒/麻/封道具 每人 50
 var ai_use_items := true            # 道具参与统一打分 敌人对自己/相邻友军用药, 从使用者物品栏扣
-var ai_crowd_radius := 4            # 走向敌群: 敌人 4 格菱形内累加权重 中高
+var ai_crowd_radius := 4            # 走向敌群: 敌人 4 格菱形内累加权重 [AI plan 对照 1500 例落点与随机数一致]
 ## 权重随距离: 下标 = 距离 0..4。 累加 (范围洪泛, 参数 max=4 min=0) 输出每格的 +8 字段 =
 ## 洪泛标记值: 起点 4, 距离 1 为 4, 距离 2 为 3, 距离 3 为 2, 距离 4 为 1 (标记写成「父格当前值」, 子格入队值再减 1)
 var ai_crowd_weights := [4, 4, 3, 2, 1]

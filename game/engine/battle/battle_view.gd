@@ -164,12 +164,26 @@ func retint() -> void:
 
 
 func face(u: BattleUnit, t: BattleUnit) -> void:
-	var dx := t.cx - u.cx
-	var dy := t.cy - u.cy
-	var d := BattleUnit.Dir.EAST if dx > 0 else BattleUnit.Dir.WEST
+	face_cell(u, Vector2i(t.cx, t.cy))
+
+
+## 单位转向格 c (方向写单位 字段): |dy| > |dx| 竖向 (下南 / 上北), 否则横向 (含 |dx| = |dy|; 右东 / 左西);
+## c 就是自己的格时不转 (原版直接返回; 复刻以前会转向西)。普攻双方互相转 (状态 0), 施法 / 道具施放者转向落点 (状态 0)
+func face_cell(u: BattleUnit, c: Vector2i) -> void:
+	var d = face_dir(Vector2i(u.cx, u.cy), c)
+	if d != null:
+		u.play_act(BattleUnit.Act.STAND, d)
+
+
+## face_cell 的方向; 同一格返回 null (不转)
+static func face_dir(from: Vector2i, to: Vector2i):
+	var dx := to.x - from.x
+	var dy := to.y - from.y
+	if dx == 0 and dy == 0:
+		return null
 	if absi(dy) > absi(dx):
-		d = BattleUnit.Dir.SOUTH if dy > 0 else BattleUnit.Dir.NORTH
-	u.play_act(BattleUnit.Act.STAND, d)
+		return BattleUnit.Dir.SOUTH if dy > 0 else BattleUnit.Dir.NORTH
+	return BattleUnit.Dir.EAST if dx > 0 else BattleUnit.Dir.WEST
 
 
 # ---------------- 伤害/回复数字与结果动画 ----------------

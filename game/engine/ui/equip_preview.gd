@@ -29,7 +29,7 @@ func _init(uid: int, item_id: int, side: int, row: int, at := Vector2.INF, unit 
 	for k in 5:
 		_pair(_val(old, keys_l[k]), _val(new, keys_l[k]), 0, k, k >= 2)
 		_pair(_val(old, keys_r[k]), _val(new, keys_r[k]), 1, k, k >= 2)
-	UiSlide.run(self, pos, Vector2.UP, CampUi.SLIDE, true)
+	UiSlide.run(self, pos, Vector2.UP, UiSlide.camp_offsets(), true)
 
 
 static func _val(d: Dictionary, key: Array) -> int:

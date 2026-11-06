@@ -1,4 +1,7 @@
 {
  "format": "tdj-rules/1",
- "params": {"turn_limit": 120}
+ "params": {
+  "turn_limit": 120,
+  "guard_div": 3
+ }
 }

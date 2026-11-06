@@ -254,15 +254,19 @@ static func _resolve_spell(ctx, c, sk: Dictionary, t, rec: Dictionary, out: Dict
 			rec["heal_gain"] = t.hp - hp0   # 实际回复量 (按缺血封顶)
 			return "heal"
 		RT_PURIFY:
-			Status.remove(t, Status.PURIFY_MASK)
+			Status.remove(t, ctx.params.purify_mask)
 		RT_BLESS:
 			_bless(ctx, c, sk, t, eff, rec)
 		RT_CURSE:
 			_curse(ctx, c, sk, t, Status.CURSE_BITS.get(eff, 0), rec)
 		RT_SPECIAL:
 			match eff:
-				12:  # 無上滅法 驱散, 不判命中
-					Status.remove(t, Status.DISPEL_MASK)
+				12:  # 無上滅法 驱散, 不掷命中; 但目标有 幻影 或 對術全禦 则无效 (结果码 0, 不驱散)
+					if t.has_status(U.ST_PHANTOM) or t.has_status(U.ST_GUARD_SPELL):
+						rec.invalid = true
+						rec.hit = false
+					else:
+						Status.remove(t, ctx.params.dispel_mask)
 				13:  # 返召之咒: 只置 字段=1 (可行动), 不重置移动点
 					# 已行动单位移动点已清 0 → Movement.can_start_action 为 false, 实际不能再行动
 					t.extra_action = true
@@ -337,7 +341,7 @@ static func _resolve_physical(ctx, c, sk: Dictionary, t, rec: Dictionary, out: D
 		0:  # ot0: 物理 + Str 浮动 × 五魂, 可格挡 d/2 (无保底)
 			var d: int = Damage.skill_ot0_damage(ctx, c, t, sk)
 			if ctx.rng.mod(100) < Attack.guard_rate(ctx, c, t):
-				d = d / 2
+				d = d / ctx.params.guard_div
 				rec.guard = true
 			rec.damage = d
 			rec.killed = Damage.apply_damage(t, d)
@@ -345,7 +349,7 @@ static func _resolve_physical(ctx, c, sk: Dictionary, t, rec: Dictionary, out: D
 		1:  # ot1: 普攻伤害 (crit=0), 格挡 d/2, 再乘倍率; oe3~5 未格挡时附加状态; oe6 吸术
 			var d: int = Damage.phys_damage(ctx, c, t, false)
 			if ctx.rng.mod(100) < Attack.guard_rate(ctx, c, t):
-				d = d / 2
+				d = d / ctx.params.guard_div
 				rec.guard = true
 			if oe >= 0 and oe < ctx.params.skill_ot1_mult.size():
 				d *= int(ctx.params.skill_ot1_mult[oe])
@@ -381,13 +385,13 @@ static func _resolve_physical(ctx, c, sk: Dictionary, t, rec: Dictionary, out: D
 					rec.damage = d
 					rec.killed = Damage.apply_damage(t, d)
 					if t.alive:
-						Status.remove(t, Status.DISPEL_MASK)
+						Status.remove(t, ctx.params.dispel_mask)
 					return "damage"
 				13:  # 天護靈燁: HP 全复 + 解麻/地缚/封/毒, 不解冰結
 					rec.amount = t.hp_max - t.hp   # 地图上弹的蓝数字 = 补满的量 (满血 0, 照样弹, 码 21)
 					t.hp = t.hp_max
-					Status.remove(t, Status.HOLY_CLEANSE_MASK)
-					# 全复是否给经验未核对 (中), 暂不给: rec.healed 保持 0, 演出只看 rec.amount
+					Status.remove(t, ctx.params.holy_cleanse_mask)
+					# 不给经验 [结果码 21 分支只写码与补满量 字段 后直接返回, 本目标经验 e1/e2 (字段/字段) 保持调用方置的 −1, 汇总 跳过; 2026-11-06 核]: rec.healed 保持 0, 演出只看 rec.amount
 				14:  # 不動之界 / 神臨烈陣: 攻防技速 0xf, R=power K=rate10
 					for bit in [U.ST_ATK_UP, U.ST_DEF_UP, U.ST_TECH_UP, U.ST_HASTE]:
 						Status.apply(t, bit, int(sk.get("power", 0)), int(sk.get("rate10", 0)), false)

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 class_name ContentInfo
 extends RefCounted
-## 核心层 (core/) 需要问内容包的几件事: 存档签名/版本兼容信息、主角判定与初始随身物品 (存档迁移用)。
+## 核心层 (core/) 需要问内容包的几件事: 存档签名/版本兼容信息、主角判定与初始随身物品 (存档迁移用)、规则参数 (存档摘要补算总回合用)。
 ## 经 GameContext.content 取用, core/ 不直接引用 autoload Content (闸门 tests/test_engine_deps.gd)。
 ## 缺省实现读 db 指向的 ContentDB; db 为 null 时取场景树上的 autoload "Content" (按节点名找, 不写代码引用);
 ## 找不到内容包 (纯逻辑测试) 返回空值, 测试要换内容包就 `GameContext.current().content.db = my_db`。
@@ -26,6 +26,12 @@ func signature() -> Array:
 func pack_infos() -> Array:
 	var d := _db()
 	return d.pack_infos() if d != null else []
+
+
+## 规则参数 (ContentDB.params, 每次现读 rules.json); 无内容包返回 null
+func params():
+	var d := _db()
+	return d.params() if d != null else null
 
 
 func is_hero(unit_id: int) -> bool:

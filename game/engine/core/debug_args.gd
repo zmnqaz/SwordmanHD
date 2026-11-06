@@ -21,6 +21,7 @@ var cli_overrides := {}      # 设定覆盖层 (不写盘): --gfx=orig / --font=
 
 # ---- 启动与资源 ----
 var packs := ""             # --packs=<目录>: 从这里挂资源包 (ResPacks)
+var data_root := ""         # --data-root=<目录>: 存档 / 录像写到 <目录>/save、replay (UserPaths; 工具 import_gcf 用, 别碰游戏文件夹里玩家的存档)
 var bundled := ""           # --bundled=<目录>: 桌面上模拟「整包」(目录里有 manifest.json + resource/ + mod/, 见 ResPacks.bundled_dir), 测试用
 var content_main := ""      # --content=<包 id>: 主内容包
 var mods = null             # --mods=a,b: 叠加的内容包 (null = 没给, 用设定文件里的)
@@ -151,6 +152,7 @@ func _parse_value(a: String) -> void:
 		"--coord=": cli_overrides["coord"] = int(v)   # 临时开关格子坐标 0|1
 		"--face-style=": cli_overrides["face_style"] = v   # 临时指定头像风格 classic|<头像包内名> (如 face_hk, 需要装了该包; 旧值 hk 等同 face_hk; 见 FacePacks)
 		"--packs=": packs = v
+		"--data-root=": data_root = v
 		"--bundled=": bundled = v
 		"--content=": content_main = v
 		"--mods=": mods = Array(v.split(",", false))

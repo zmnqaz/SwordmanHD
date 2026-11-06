@@ -61,7 +61,7 @@ func test_bptc_quality_is_close() -> void:
 
 func test_cache_roundtrip_trim_and_corruption() -> void:
 	var old := TexCodec.cache_dir
-	TexCodec.cache_dir = "user://hq_cache_test_%d" % Time.get_ticks_usec()
+	TexCodec.cache_dir = tmp_dir("hq_cache_test_%d") % Time.get_ticks_usec()
 	var img := _sprite(96, 64)
 	check(not TexCodec.cache_write(TexCodec.cache_path("a" + "0".repeat(31), "sig", "bptc"), img), "没压缩的图不写缓存")
 	TexCodec.compress(img, "bptc")
@@ -94,10 +94,10 @@ func test_cache_roundtrip_trim_and_corruption() -> void:
 	TexCodec.cache_dir = old
 
 
-## RAW: 手机官方模板没有压缩器, 不压缩但把烘焙结果 (RGBA8) 写进磁盘缓存, 下次直接读 (见 TexCodec.RAW)
+## RAW: 官方模板 (手机 / 没用自制模板的电脑包) 没有压缩器, 不压缩但把烘焙结果 (RGBA8) 写进磁盘缓存, 下次直接读 (见 TexCodec.RAW)
 func test_raw_cache_roundtrip() -> void:
 	var old := TexCodec.cache_dir
-	TexCodec.cache_dir = "user://hq_cache_test_%d" % Time.get_ticks_usec()
+	TexCodec.cache_dir = tmp_dir("hq_cache_test_%d") % Time.get_ticks_usec()
 	var img := _sprite(96, 64)
 	var data0 := img.get_data()
 	var p := TexCodec.cache_path("ab" + "0".repeat(30), "sig", TexCodec.RAW)
@@ -130,7 +130,7 @@ func _remove_tree(dir: String) -> void:
 ## 退出时 TexCodec.cancel 置位: 后台缓存扫描 / 清理立即停手 (扫几万个文件在 Windows 上要好几秒, 不能拖住关窗口); 没置位时照常
 func test_cancel_stops_scan_and_trim() -> void:
 	var old := TexCodec.cache_dir
-	TexCodec.cache_dir = "user://hq_cache_test_%d" % Time.get_ticks_usec()
+	TexCodec.cache_dir = tmp_dir("hq_cache_test_%d") % Time.get_ticks_usec()
 	var img := _sprite(32, 32)
 	TexCodec.compress(img, "bptc")
 	for i in 5:

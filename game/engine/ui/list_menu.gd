@@ -192,18 +192,18 @@ func _set_desc(s: String) -> void:
 func open() -> Tween:
 	visible = true
 	is_open = true
-	UiSlide.run(_desc, _desc_pos, Vector2.RIGHT, UiSlide.LIST_OFFSETS, true)
-	return UiSlide.run(_list, _list_pos, Vector2.LEFT, UiSlide.LIST_OFFSETS, true)
+	UiSlide.run(_desc, _desc_pos, Vector2.RIGHT, UiSlide.list_offsets(), true)
+	return UiSlide.run(_list, _list_pos, Vector2.LEFT, UiSlide.list_offsets(), true)
 
 
-## 收起。TODO: 原版收起时是否也有滑出动画未查, 暂按反向播放
+## 收起: 原版界面块 收起模式 从偏移表头往后取 (= 打开的反序), 同时 a−2 / b+2 淡出, 即反向播放 (2026-11-06 核)
 func close(animated := true) -> void:
 	is_open = false
 	if not animated:
 		visible = false
 		return
-	UiSlide.run(_desc, _desc_pos, Vector2.RIGHT, UiSlide.LIST_OFFSETS, false)
-	await UiSlide.run(_list, _list_pos, Vector2.LEFT, UiSlide.LIST_OFFSETS, false).finished
+	UiSlide.run(_desc, _desc_pos, Vector2.RIGHT, UiSlide.list_offsets(), false)
+	await UiSlide.run(_list, _list_pos, Vector2.LEFT, UiSlide.list_offsets(), false).finished
 	if not is_open:  # 收起动画期间又 open() 了: 别把刚打开的菜单藏掉
 		visible = false
 

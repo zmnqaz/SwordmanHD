@@ -2,7 +2,7 @@
 extends "res://tests/test_base.gd"
 ## 存档镜像 (engine/core/save_mirror.gd): 本地存档同步一份到公开目录, 外部换进来的存档按内容指纹识别并导入
 
-const ROOT := "user://test_save_mirror"
+static var ROOT: String = tmp_dir("test_save_mirror")
 var _local := ROOT + "/local"
 var _mirror := ROOT + "/mirror"
 
@@ -67,7 +67,7 @@ func test_replaced_mirror_is_imported_even_if_older():
 	var r := SaveMirror.pull(_local, _mirror)
 	eq(r.imported, ["save1.json"], "导入被换过的存档")
 	eq(_gold(_local + "/save1.json"), 777, "本地存档被覆盖")
-	eq(_gold(_local + "/save1.json.bak"), 100, "旧存档留作 .bak")
+	eq(_gold(_local + "/save1.json" + SaveMirror.BEFORE_IMPORT), 100, "旧存档留作 .before_import (SaveFile 读档不会清掉它)")
 	eq(SaveMirror.pull(_local, _mirror).imported.size(), 0, "导入后再同步不重复导入")
 	_ours(800)
 	eq(_gold(_mirror + "/save1.json"), 800, "之后游戏存档照常刷新镜像")
@@ -80,7 +80,7 @@ func test_new_slot_can_be_imported():
 	var r := SaveMirror.pull(_local, _mirror)
 	eq(r.imported, ["save3.json"], "空槽位也能换进去")
 	eq(_gold(_local + "/save3.json"), 55)
-	check(not FileAccess.file_exists(_local + "/save3.json.bak"), "原来没有存档就没有 .bak")
+	check(not FileAccess.file_exists(_local + "/save3.json" + SaveMirror.BEFORE_IMPORT), "原来没有存档就没有备份")
 
 
 func test_bad_files_are_rejected_and_left_alone():

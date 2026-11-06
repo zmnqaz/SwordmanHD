@@ -495,9 +495,9 @@ func event_damage(uid: int) -> void:
 		var hp0: int = u.hp
 		if not gc.god:
 			if uid < 0:
-				BattleRules.Damage.script_damage_46(u.st)
+				BattleRules.Damage.script_damage_46(rules.ctx, u.st)
 			else:
-				BattleRules.Damage.script_damage_4a(u.st)
+				BattleRules.Damage.script_damage_4a(rules.ctx, u.st)
 		view.digits(u, hp0 - u.hp, false)
 	await SceneGuard.wait(self, 0.6)
 

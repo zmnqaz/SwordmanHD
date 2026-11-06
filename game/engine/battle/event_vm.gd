@@ -215,7 +215,10 @@ func _stage_over(_t: int, d: PackedByteArray) -> void:
 	_log("切换场景 town=%d camp=%d next=%d" % [_s(d, 0), _s(d, 2), _s(d, 4)])
 	# 战斗销毁时 GD[0x94+4*GD.stage] = GD.turn; 此时 GD.stage 已被 0x02 改成「下一关」next,
 	# 所以回合数记在变量 base+next (base = params.turn_record_base, 默认 30; 算法见 rules/clear_rank.gd) (原版存档核对: 第 0 关打了 18 回合 -> 变量 31 = 18; 第 22->24 关跳关时 var53 = 0、var54 = 51)。只有 0x56 读取
-	var rec := ClearRank.record_var(bs.ctl.rules.ctx.params, _s(d, 4))
+	var params = bs.ctl.rules.ctx.params
+	if not ended:   # 总回合 (复刻新增统计, 存档界面显示): 先于本关记录写入补算旧档, 免得本关算两次
+		gc.state.add_turns(bs.turn, ClearRank.recorded_turns(func(v): return gc.state.get_data(v), params))
+	var rec := ClearRank.record_var(params, _s(d, 4))
 	if rec >= 0:
 		gc.state.set_data(rec, bs.turn)
 	_end_event()
@@ -713,8 +716,8 @@ func _take_item(id: int) -> int:
 		if u.camp != 0 or not u.st.items.has(id):
 			continue
 		u.st.items.erase(id)
-		for slot in ["weapon", "armor", "accessory"]:  # 原版只清饰物 (字段); 复刻对不再持有的装备一并卸下, 免得凭空留着
-			if int(u.st.get(slot)) == id and not u.st.items.has(id):
+		for slot in ["weapon", "armor", "accessory"]:  # 原版只清饰物 (字段, 是它就清, 不管身上还有没有第二件); 复刻对不再持有的武器/护具也卸下, 免得凭空留着
+			if int(u.st.get(slot)) == id and (slot == "accessory" or not u.st.items.has(id)):
 				u.st.set(slot, -1)
 				u.taken.append(id)
 		return 1

@@ -49,6 +49,19 @@ func test_zero_zero_status():
 	eq(r.expired, [U.ST_GUARD_SKILL])
 
 
+## 原版 R / K 是 16 位字 (按 word 写回): K < 0 时 R 越扣越大, 过 32767 回绕成负数才到期
+func test_status_rk_wrap_16bit():
+	var c = ctx_scripted()
+	var u = unit({})
+	check(Status.apply(u, U.ST_DEF_UP, 32700, -50, false), "祝福 K 为负照样施加")
+	check(Status.phase_tick(c, u).expired.is_empty(), "32700 → 32750 还在")
+	eq(u.status_r[U.ST_DEF_UP], 32750)
+	var r := Status.phase_tick(c, u)
+	eq(r.expired, [U.ST_DEF_UP], "32750 + 50 回绕成 -32736 → 到期")
+	Status.apply(u, U.ST_ATK_UP, 40000, 70000, false)
+	eq([u.status_r[U.ST_ATK_UP], u.status_k[U.ST_ATK_UP]], [40000 - 65536, 70000 - 65536], "写入也按 16 位")
+
+
 ## 例: 無方變幻 200/100 → 2 次; 不動之界 300/100 → 3 次
 func test_examples_duration():
 	eq(Status.duration_ticks(200, 100), 2)
@@ -71,16 +84,17 @@ func test_bless_curse_k():
 
 ## 解除掩码: 驱散不清全禦/幻影; 靈淨只解毒麻; 天護靈燁不解冰結
 func test_cleanse_masks():
+	var p = Params.new()
 	var u = unit({})
 	for b in [U.ST_ATK_UP, U.ST_DEF_UP, U.ST_BERSERK, U.ST_GUARD_SKILL, U.ST_PHANTOM, U.ST_POISON, U.ST_PARALYZE, U.ST_SEAL, U.ST_BIND, U.ST_FREEZE]:
 		Status.apply(u, b, 100, 1)
-	Status.remove(u, Status.DISPEL_MASK)
+	Status.remove(u, p.dispel_mask)
 	check(not u.has_status(U.ST_ATK_UP) and not u.has_status(U.ST_BERSERK), "驱散增益")
 	check(u.has_status(U.ST_GUARD_SKILL) and u.has_status(U.ST_PHANTOM), "驱散不清全禦、幻影")
-	Status.remove(u, Status.PURIFY_MASK)
+	Status.remove(u, p.purify_mask)
 	check(not u.has_status(U.ST_POISON) and not u.has_status(U.ST_PARALYZE), "靈淨解毒麻")
 	check(u.has_status(U.ST_SEAL), "靈淨不解封")
-	Status.remove(u, Status.HOLY_CLEANSE_MASK)
+	Status.remove(u, p.holy_cleanse_mask)
 	check(not u.has_status(U.ST_SEAL) and not u.has_status(U.ST_BIND), "天護解封、地缚")
 	check(u.has_status(U.ST_FREEZE), "天護不解冰結")
 	Damage.apply_damage(u, 1)

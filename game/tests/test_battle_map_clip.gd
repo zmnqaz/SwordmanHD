@@ -153,3 +153,25 @@ func test_walk_step_into_edge_column_scrolls_one_cell() -> void:
 	check(not bs._cam_moving, "目的格是地图最右列: 不卷")
 	u.free()
 	bs.free()
+
+
+## 地图 630 = 21 格, 可见区 320 = 10.7 格: 镜头贴右边 (310) 时可见区最右列 (19) 还不是地图最右列 (20), 卷 1 格会越界露黑 —— 卷动量限在地图内
+## (2026-11-05 网友截图: 灵驹走到右边宝箱, 画面右侧黑一条)
+func test_edge_scroll_stays_inside_map() -> void:
+	var bs := _scene(Vector2(630, 384))
+	var u := BattleUnit.new()
+	var max_x: float = 630.0 - bs.view().x
+	bs.cam = Vector2(max_x, 0)
+	var col := floori((max_x + BattleSceneScript.cam_offset().x) / BattleStage.CELL_W) + int(bs.view().x / BattleStage.CELL_W) - 1   # 可见区最右列
+	check(col < 630 / BattleStage.CELL_W - 1, "前提: 这一列不是地图最右列 (%d)" % col)
+	u.cx = col - 1
+	u.cy = 5
+	bs._walk_edge_scroll(Vector2i(col, 5), 0.12, u)
+	check(not bs._cam_moving, "镜头已贴地图右边: 走路不卷")
+	bs._cursor_edge_scroll(0, Vector2i(col, 5))
+	eq(bs.cam.x, max_x, "光标到最右列也不卷出地图")
+	bs.cam = Vector2(max_x - 10.0, 0)   # 离地图边不到 1 格: 只卷到地图边
+	bs._walk_edge_scroll(Vector2i(floori((max_x - 10.0 + BattleSceneScript.cam_offset().x) / BattleStage.CELL_W) + int(bs.view().x / BattleStage.CELL_W) - 1, 5), 0.12, u)
+	eq(bs._cam_target.x, max_x, "不足 1 格: 卷到地图边为止")
+	u.free()
+	bs.free()

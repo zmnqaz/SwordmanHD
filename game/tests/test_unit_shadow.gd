@@ -33,12 +33,12 @@ func test_glow_only_and_own_shadow_part_still_get_the_standard_shadow():
 func test_shape_matches_measured_ellipse():
 	var t := UnitShadow.texture()
 	var k := UnitShadow.SUPERSAMPLE
-	eq([t.get_width(), t.get_height()], [UnitShadow.W * k, UnitShadow.H * k], "贴图 = 32x14 原版像素 x 放大倍数")
+	eq([t.get_width(), t.get_height()], [UnitShadow.size().x * k, UnitShadow.size().y * k], "贴图 = 32x14 原版像素 x 放大倍数")
 	var img := t.get_image()
 	# 实测 (S1.2) 逐行 [起, 止): 第 12 行 8..22, 第 14 行 2..28, 第 16 行 0..30, 第 19 行 -1..31; 横向相对中心 15, 行相对中心 19
 	var rows := {12: [8, 22], 14: [2, 28], 16: [0, 30], 19: [-1, 31]}
 	for r in rows:
-		var y := int((float(r) + 0.5 - (UnitShadow.CENTER.y - UnitShadow.H / 2.0)) * k)
+		var y := int((float(r) + 0.5 - (UnitShadow.center().y - UnitShadow.size().y / 2.0)) * k)
 		var lo := -1
 		var hi := -1
 		for x in t.get_width():
@@ -46,7 +46,7 @@ func test_shape_matches_measured_ellipse():
 				if lo < 0:
 					lo = x
 				hi = x
-		var x0 := UnitShadow.CENTER.x - UnitShadow.W / 2.0
+		var x0 := UnitShadow.center().x - UnitShadow.size().x / 2.0
 		check(absf(lo / float(k) + x0 - rows[r][0]) <= 1.0 and absf((hi + 1) / float(k) + x0 - rows[r][1]) <= 1.0,
 			"第 %d 行 [%.2f, %.2f) 应约 %s" % [r, lo / float(k) + x0, (hi + 1) / float(k) + x0, rows[r]])
 	check(img.get_pixel(0, 0).a < 0.01 and img.get_pixel(t.get_width() - 1, t.get_height() - 1).a < 0.01, "四角透明")
@@ -74,8 +74,8 @@ func test_unit_gets_one_shadow_below_the_sprite_anchored_to_the_cell():
 	var shadows := u.get_children().filter(func(n): return n is Sprite2D)
 	eq(shadows.size(), 1, "只建一个影子")
 	var sh: Sprite2D = shadows[0]
-	eq(sh.position, UnitShadow.CENTER, "影子在格子里固定位置 (不随精灵部件, 不含动画偏移)")
-	check(is_equal_approx(sh.modulate.a, UnitShadow.ALPHA), "alpha 0.55")
+	eq(sh.position, UnitShadow.center(), "影子在格子里固定位置 (不随精灵部件, 不含动画偏移)")
+	check(is_equal_approx(sh.modulate.a, UnitShadow.alpha()), "alpha 0.55")
 	check(u.get_child(0) == sh, "排在人物动画之下 (先画)")
 	eq(sh.scale, Vector2.ONE / float(UnitShadow.SUPERSAMPLE), "缩回原版像素大小")
 	u.free()
@@ -103,4 +103,22 @@ func test_shadow_hidden_on_empty_frame():
 	check(not sh.visible, "空帧: 影子隐藏")
 	u.anim.frame_shown.emit(3)   # 帧 3 有人物部件
 	check(sh.visible, "有部件的帧: 影子显示")
+	u.st.status = 2   # 護禦提昇
+	u.update_shadow(3)
+	check(not sh.visible, "有增益: 脚下画光环代替影子 (Man_eff 第 0 帧 = 影子)")
+	u.st.status = 0
+	u.update_shadow(3)
+	check(sh.visible, "增益没了: 影子回来")
 	u.free()
+
+
+## 影子形状来自布局表 map.unit.shadow (2026-11-06 参数外置): 默认 = 原版实测, mod 改了要生效
+func test_shadow_params_from_layout():
+	eq([UnitShadow.size(), UnitShadow.center(), UnitShadow.alpha()], [Vector2i(32, 14), Vector2(15, 19), 0.55])
+	var d: Dictionary = UiLayout.data().duplicate(true)
+	d["elements"]["map.unit.shadow"]["alpha"] = 0.3
+	d["elements"]["map.unit.shadow"]["center"] = [15, 21]
+	UiLayout.use(d)
+	eq([UnitShadow.alpha(), UnitShadow.center()], [0.3, Vector2(15, 21)], "mod 改影子透明度 / 位置")
+	UiLayout.reload()
+	eq(UiMsgBox.chars_per_sec(), 12.5, "对话打字速度读布局表 dialog.typing (原版 12.5 字/秒, 2026-11-06 对照原版)")

@@ -21,12 +21,15 @@ var anim_dir := ThemeAssets.p("ui.menu_icons")
 var frames: Array = []
 var disabled_frames := {}
 var enabled: Array = []
+## 画成禁用、但确认仍可进入查看的项 (行动菜单法術: 放不出也能进列表看)
+var peekable := {}
 var selected := 0
 ## 图标间距 (原版像素): setup() 按 metrics() 由素材帧算出 (Man_int = 25); 布局表 actionmenu.step 可覆盖
 var step := 25.0
 ## 图标在本菜单里的起点 (原版第一个图标左边留 gap; 扣掉帧自带的偏移)
 var origin := Vector2.ZERO
-## 变灰: 物品子菜单打开时, 行动菜单 enable(false) 显示在下层。TODO: 原版变灰的画法未查, 暂按调暗。
+## 变灰: 物品子菜单打开时, 行动菜单 enable(false) 显示在下层。 用 把下层菜单按权重表 T[8] 压暗:
+## 5 位通道 min(31, v*8/16) 再清最低位 → 白 31 → 14 = 0.45 (实测 115/255, 布局表 actionmenu.dim 0.45 正是这个量化结果; 2026-11-06 核)。
 var dimmed := false:
 	set(v):
 		dimmed = v
@@ -143,7 +146,7 @@ func select(k: int) -> void:
 
 ## 确认: 返回选中项并发出 confirmed (禁用项不会被选中)
 func confirm() -> int:
-	if dimmed or frames.is_empty() or not enabled[selected]:
+	if dimmed or frames.is_empty() or not (enabled[selected] or peekable.has(selected)):
 		return -1
 	confirmed.emit(selected)
 	return selected

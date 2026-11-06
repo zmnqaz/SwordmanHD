@@ -67,7 +67,7 @@ Python 工具 (`tools/paths.py`) 读同一来源, 优先级: **环境变量 > `t
 | 用 Godot 编辑器打开 | `<GUI 版 godot.exe> --path game --editor` |
 | 打包 Windows 版 | `python tools\build_windows.py --engine-only [--zip [--split=2g]]` (说明 [打包/Windows](打包/Windows.md)) |
 
-日志与中间产物放仓库外的临时目录或 `.work/` (已忽略)。`ci.py` 把 `APPDATA` / `LOCALAPPDATA` 指到 `.work\ci\home` 隔离设置与存档, 不会碰你本机真实存档 (游戏正常运行时存档在 `%APPDATA%\SwordmanHD\`)。
+日志与中间产物放仓库外的临时目录或 `.work/` (已忽略)。`ci.py` 把 `APPDATA` / `LOCALAPPDATA` 指到 `.work\ci\home` 隔离设置与存档, 不会碰你本机真实存档 (源码运行时存档在 `%APPDATA%\SwordmanHD\save\`; 打包版在游戏文件夹的 `save\`, 见 `game/engine/core/user_paths.gd`)。
 
 ## 5. 跨平台入口
 

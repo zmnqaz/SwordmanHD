@@ -46,7 +46,7 @@ func test_hidden_rows_ignore_saved_values():
 	for k in ["tex", "aspect", "gfx"]:
 		check(not keys.has(k), "面板不显示 %s" % k)
 	keys = keys.filter(func(k): return k != "face_style")   # 头像风格只有装了港漫 mod (mod/face_hk.pck) 才列, 带资源包跑测试时会出现
-	eq(keys, ["lang", "font", "game_speed", "sound", "display", "controls", "feature", "guide", "about"], "主菜单项与顺序 (用户 2026-10-29 指定, 2026-11-02 把隐藏宝箱 / 战场坐标 / 整理行囊和新加的成长收进「特色功能」): 语言 字体 [游戏速度, 2026-10-31 加] [头像风格] 声音 图像显示 控制器设置 [特色功能, 2026-11-03 起含录像回放] 游戏攻略 [2026-10-30 加] 关于; 没有画质项")
+	eq(keys, ["lang", "font", "game_speed", "sound", "display", "controls", "feature", "guide", "save_loc", "about"], "主菜单项与顺序 (用户 2026-10-29 指定, 2026-11-02 把隐藏宝箱 / 战场坐标 / 整理行囊和新加的成长收进「特色功能」): 语言 字体 [游戏速度, 2026-10-31 加] [头像风格] 声音 图像显示 控制器设置 [特色功能, 2026-11-03 起含录像回放] 游戏攻略 [2026-10-30 加] 存档位置 [2026-11-06 加] 关于; 没有画质项")
 	eq(SettingsSchema.shown_rows("sound").map(func(r): return r["key"]), ["music", "sfx"], "「声音」二级菜单: 音乐 / 音效")
 	eq(SettingsSchema.shown_rows("display").map(func(r): return r["key"]), ["fullscreen", "win", "hq", "diag"], "「显示」二级菜单: 窗口模式 / 分辨率 / 贴图精度 / 画质诊断")
 	eq(SettingsSchema.shown_rows("controls").map(func(r): return r["key"]), ["key_edit", "pad_preset", "pad_edit"], "「控制器」二级菜单: 键盘按键 / 手柄预设 / 手柄按键")
@@ -480,14 +480,14 @@ func test_texture_quality_row_and_saved_scale():
 	eq([SettingsSchema.step("hq", 0, 1), SettingsSchema.step("hq", 6, 1), SettingsSchema.step("hq", 4, 1), SettingsSchema.step("hq", 3, 1)], [6, 4, 3, 0], "自动 → 高 → 中 → 低 → 自动")
 	eq(SettingsSchema.sanitize({"hq": 5})["hq"], 0, "非法倍数取缺省")
 	eq(SettingsSchema.sanitize({"hq": 4.0})["hq"], 4, "JSON 式 4.0 合法")
-	var p := "user://test_hq_settings.json"
+	var p := tmp_dir("test_hq_settings.json")
 	for case in [[{"hq": 6}, 6], [{"hq": 3.0}, 3], [{"hq": 5}, 0], [{"hq": "6"}, 0], [{"music": 3}, 0]]:
 		var f := FileAccess.open(p, FileAccess.WRITE)
 		f.store_string(JSON.stringify(case[0]))
 		f.close()
 		eq(Assets.saved_hq_scale(p), case[1], "设定文件 %s -> %d" % [JSON.stringify(case[0]), case[1]])
 	DirAccess.remove_absolute(p)
-	eq(Assets.saved_hq_scale("user://no_such_settings_file.json"), 0, "没有设定文件 = 自动")
+	eq(Assets.saved_hq_scale(tmp_dir("no_such_settings_file.json")), 0, "没有设定文件 = 自动")
 
 
 ## 「声音」二级菜单的「还原预设」只复位音乐 / 音效 (缺省 10), 不动别的
@@ -532,3 +532,22 @@ func test_window_size_row_is_desktop_only():
 	eq(SettingsSchema._need_ok("desktop", false, false), not Platform.is_mobile(), "desktop 条件跟平台走")
 	var keys := SettingsSchema.shown_rows("display").map(func(r): return r["key"])
 	check(keys.has("fullscreen"), "窗口模式 / 全屏行手机上也在")
+
+
+## 面板下方说明框 (布局表 settings.desc) 放得下每一行的说明 (含选项自带的那句), 简繁都查: 超过框高的行会被截掉或压到别的元素上
+func test_every_desc_fits_desc_box():
+	var spec := UiLayout.el("settings.desc")
+	var max_lines := int(float(spec["size"][1]) / float(spec["text"]["line_height"]))
+	for lang in ["hans", "hant"]:
+		Content.set_lang(lang)
+		UiStrings.reload()
+		for r in SettingsSchema.ROWS:
+			var texts := [SettingsSchema.row_desc(r)]
+			for o in SettingsSchema.options_of(r):
+				texts.append(SettingsSchema.desc_of(r["key"], o["v"]))
+			for s in texts:
+				var t := UiText.make("settings.desc", s)
+				check(t.lines.size() <= max_lines, "%s %s 说明 %d 行 > %d 行: %s" % [lang, r["key"], t.lines.size(), max_lines, s])
+				t.free()
+	Content.set_lang("hans")
+	UiStrings.reload()

@@ -3,7 +3,7 @@ class_name ActionMenuState
 extends BattleState
 ## 2.4 行动菜单 (爆發 / 法術 / 攻擊 / 物品 / 待機), 原版 图标横排, 在单位下方。
 ##   初始选中攻擊; 方向 Up/Right +1、Down/Left −1, 到头循环, 禁用项也停、确认无反应。
-##   禁用: 爆發 = 移动过 (或不能爆發); 法術 = 移动过且没有可用法术 (未移动时总可用)。麻痺时选攻擊无反应。
+##   禁用: 爆發 = 移动过 (或不能爆發); 法術 = 移动过且没有可用法术 (未移动时总可用), 图标照原版变灰, 但确认仍能进列表查看 (有意差异)。麻痺时选攻擊无反应。
 ##   确认: 爆發 -> 结束行动 (下回合移动力 ×2); 法術 -> 法术列表; 攻擊 -> 攻击目标; 物品 -> 菜单变灰, 打开物品子菜单; 待機 -> 结束行动。
 ##   取消: 撤销移动 (单位瞬间回原位, 返还移动力), 光标留在移动后的位置, 回到光标状态 (§5-18)。
 
@@ -19,6 +19,7 @@ func enter() -> void:
 	c.show_cursor(false)
 	var enabled := [c.rules.can_burst(u), spell_enabled(c.rules, u), true, true, true]
 	menu = c.ui.icon_menu("actionmenu.icons", enabled, 2, Vector2i(u.cx, u.cy))
+	menu.peekable = {1: true}   # 法術灰了也能进列表看 (放不出的法术在列表里变淡)
 
 
 ## 法術可用: 原地不动时总可用; 移动后须未封咒且有可用法术 (canUseSkill)

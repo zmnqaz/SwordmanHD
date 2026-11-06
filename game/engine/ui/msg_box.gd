@@ -16,7 +16,10 @@ var gc: GameContext = GameContext.current()  # 运行上下文 (引擎不直接�
 
 signal closed
 
-const CHARS_PER_SEC := 10.0
+## 打字速度 (字/秒): 布局表 dialog.typing.chars_per_sec, 单次可用 opts.chars_per_sec 覆盖。原版 每次更新 (25 次/秒) 计数为 0 才出一个字
+## 剧情 / 城镇对话传间隔 -1 → 1 = 每 2 次一个字 = 12.5 字/秒 (/; 2026-11-06 对照原版, 旧值重制版 10)
+static func chars_per_sec() -> float:
+	return float(UiLayout.val("dialog.typing", "chars_per_sec", 12.5))
 
 var ui_anchor := ScreenLayout.Anchor.BOTTOM
 var fast_forward := false
@@ -34,7 +37,7 @@ var _pages: Array = []
 var _page := 0
 var _lines_per_page := 3
 var _lines_default := 3
-var _cps := CHARS_PER_SEC
+var _cps := 10.0
 var _last_auto := 0.0   # 末页停多少秒自动关 (0 = 等按键); opts.auto_last_sec
 
 
@@ -72,7 +75,7 @@ func open(face: int, expr: int, side: int, text: String, opts := {}) -> void:
 	visible = true
 	is_open = true
 	_lines_per_page = int(opts.get("lines_per_page", _lines_default))
-	_cps = float(opts.get("chars_per_sec", CHARS_PER_SEC))
+	_cps = float(opts.get("chars_per_sec", chars_per_sec()))
 	_last_auto = float(opts.get("auto_last_sec", 0.0))
 	var spr := UiLayout.sprite("dialog.box")
 	_box.show_frame(String(spr.get("anim", "")), UiLayout.frame("dialog.box"))

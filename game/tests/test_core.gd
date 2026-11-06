@@ -109,9 +109,9 @@ func test_summon_stats():
 
 ## 规则参数可被内容包覆盖: 基础包无 rules.json = 原版默认; 改动包 rules.json 后加载者覆盖前者
 func test_params_from_packs():
-	var base := "user://test_packs/base"
-	var mod1 := "user://test_packs/mod1"
-	var mod2 := "user://test_packs/mod2"
+	var base := tmp_dir("test_packs/base")
+	var mod1 := tmp_dir("test_packs/mod1")
+	var mod2 := tmp_dir("test_packs/mod2")
 	for d in [base, mod1, mod2]:
 		DirAccess.make_dir_recursive_absolute(d)
 		if FileAccess.file_exists(d.path_join("rules.json")):

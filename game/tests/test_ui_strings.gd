@@ -55,7 +55,7 @@ func test_pack_ui_json_has_every_key():
 
 
 func test_later_pack_overrides_and_null_deletes():
-	var base := "user://ui_strings_test"
+	var base := tmp_dir("ui_strings_test")
 	for p in ["a", "b"]:
 		DirAccess.make_dir_recursive_absolute(base.path_join(p).path_join("text"))
 	var fa := FileAccess.open(base.path_join("a/text/ui.json"), FileAccess.WRITE)

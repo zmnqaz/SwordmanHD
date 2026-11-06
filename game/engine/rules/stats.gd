@@ -16,7 +16,7 @@ static func atk(ctx, u) -> int:
 ## DEF = 护具.defence + Vit/2 + 饰物.defence (武器不计)
 ## 爆發不降防; burst_def_num/den ≠ 1/1 时为魔改降防
 static func def(ctx, u) -> int:
-	var d: int = int(ctx.item(u.armor).get("defence", 0)) + u.get_stat("vit") / 2 + int(ctx.item(u.accessory).get("defence", 0))
+	var d: int = int(ctx.item(u.armor).get("defence", 0)) + u.get_stat("vit") / ctx.params.def_vit_div + int(ctx.item(u.accessory).get("defence", 0))
 	if u.burst_reserve != 0 and ctx.params.burst_def_num != ctx.params.burst_def_den:
 		d = d * ctx.params.burst_def_num / ctx.params.burst_def_den
 	return d

@@ -17,6 +17,28 @@ var skipped_reason := ""  ## 非空 = 测试自己判断缺依赖而跳过 (run_
 
 static var _tables_cache = null
 
+## 测试的文件沙盒: 测试要写文件一律写这下面 (tmp_dir), 不写真实 user:// 根目录 (以前写的 test_save / texsrc_test ... 留在玩家目录里)。
+## 按进程号分开 (并行跑互不干扰), run_tests.gd 收尾整个删掉
+static func sandbox_root() -> String:
+	return "user://_test_%d" % OS.get_process_id()
+
+
+## 沙盒里的一个路径 (name 可带子路径); 沙盒根目录顺手建好 (子目录由测试自己建)
+static func tmp_dir(name: String) -> String:
+	DirAccess.make_dir_recursive_absolute(sandbox_root())
+	return sandbox_root().path_join(name)
+
+
+## 删整个目录树 (测试清理用)
+static func remove_tree(dir: String) -> void:
+	if not DirAccess.dir_exists_absolute(dir):
+		return
+	for f in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(f))
+	for sub in DirAccess.get_directories_at(dir):
+		remove_tree(dir.path_join(sub))
+	DirAccess.remove_absolute(dir)
+
 
 ## 测试里动态跳过: skip("缺原版 Item_dat.dat"); return。需要静态声明依赖的见 run_tests.gd 头注 (REQUIRES)。
 func skip(reason: String) -> void:

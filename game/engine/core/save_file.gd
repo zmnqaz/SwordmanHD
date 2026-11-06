@@ -3,8 +3,10 @@ class_name SaveFile
 extends RefCounted
 ## 存档文件读写 (存档位 saveN.json、战阵存录 battle.json、设置 settings.json), 纯静态, 不依赖场景。
 ##
-## 原子写入: 先写 <文件>.tmp, 写成功后旧文件改名 <文件>.bak, 再把 .tmp 改名为正式文件。
-## 读取: 正式文件缺失/损坏/解析失败时自动改读 .bak。
+## 写入 (2026-11-06 起「确认 OK 就删 .bak」, 用户嫌 .bak 太多): 写 <文件>.tmp<进程号> → 读回校验 (能解析成字典) →
+##   旧正式文件改名 <文件>.bak → 临时文件改名为正式文件 → 正式文件再读一遍校验通过就删掉 .bak。
+##   任何一步中途崩溃, 磁盘上总有一份完整的: 正式文件, 或 (正式文件缺席时) 新写的 .tmp, 或旧的 .bak。
+## 读取: 正式文件能读就用它 (顺手删掉残留的 .bak); 读不了 / 缺席时依次试 .tmp* (最新的)、.bak, 用上了就把它写回正式文件 (恢复)。
 ## 版本: 每个文件带 "version" (整数, 当前 VERSION); 读档时按版本依次跑 migrate_vN_to_vN+1,
 ##   没有 version 的旧档视为 v0。迁移失败返回 {"ok": false, "error": 提示文字}, 调用方提示玩家, 不崩溃。
 ## 存档 (kind "game"/"battle") 另带 "content": 内容包标识与版本 (Content.signature(): [{"id", "version"}])。
@@ -14,12 +16,16 @@ const KINDS := ["game", "battle", "settings"]
 const ItemRules = preload("res://engine/rules/items.gd")
 
 
-# ---------------------------------------------------------------- 原子写入 / 带 .bak 回退的读取
+# ---------------------------------------------------------------- 原子写入 / 校验后删 .bak / 读时恢复
+
+const STALE_TMP_SEC := 60   # 这么久没动的 .tmp* 视为崩溃残留 (别的进程正在写的不动)
+
 
 ## 原子写入 JSON, 成功返回 true。
 ## 临时文件名带进程号 (<文件>.tmp<pid>): 开两个游戏实例时不会互相写坏对方的临时文件 (以前共用 .tmp, 并发写同一存档约一半失败, 差异)。
-## 改名那两步 (旧档 → .bak, 临时文件 → 正式) 被另一个实例抢先时重试几次; 读档侧 (read_json) 本来就会在正式文件暂时缺席时读 .bak。
+## 改名那两步 (旧档 → .bak, 临时文件 → 正式) 被另一个实例抢先时重试几次; 读档侧 (read_json) 在正式文件暂时缺席时读 .tmp / .bak。
 static func write_json(path: String, data: Variant) -> bool:
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var tmp := "%s.tmp%d" % [path, OS.get_process_id()]
 	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
@@ -29,7 +35,7 @@ static func write_json(path: String, data: Variant) -> bool:
 	f.flush()
 	var err := f.get_error()
 	f.close()
-	if err != OK or FileAccess.get_file_as_string(tmp).length() == 0:
+	if err != OK or _parse(tmp) == null:   # 读回校验: 写进去的东西能读出来才往下走
 		push_error("存档写入失败: %s (%s)" % [tmp, error_string(err)])
 		DirAccess.remove_absolute(tmp)
 		return false
@@ -40,30 +46,76 @@ static func write_json(path: String, data: Variant) -> bool:
 				DirAccess.remove_absolute(bak)
 			DirAccess.rename_absolute(path, bak)   # 失败 (被别的实例抢先改走) 不算错: 下面直接把临时文件放到正式位置
 		if DirAccess.rename_absolute(tmp, path) == OK:
-			return true
+			if _parse(path) != null:
+				if FileAccess.file_exists(bak):
+					DirAccess.remove_absolute(bak)   # 新档确认能读, 旧档备份没用了
+				return true
+			push_error("存档写入后读不出来: " + path)   # 极少见 (磁盘问题): 正式文件换回旧档
+			DirAccess.remove_absolute(path)
+			if FileAccess.file_exists(bak):
+				DirAccess.rename_absolute(bak, path)
+			return false
 		OS.delay_msec(5 + attempt * 5)
 	push_error("存档写入失败: 无法改名 " + tmp)
 	DirAccess.remove_absolute(tmp)
 	return false
 
 
-## 正式文件或 .bak 存在
+## 正式文件、.bak 或崩溃残留的 .tmp* 存在 (读得出来与否由 read_json 判断)
 static func exists(path: String) -> bool:
-	return FileAccess.file_exists(path) or FileAccess.file_exists(path + ".bak")
+	return FileAccess.file_exists(path) or FileAccess.file_exists(path + ".bak") or not _tmps(path).is_empty()
 
 
-## 读 JSON 字典: 正式文件不可用时读 .bak, 都不行返回 null
+## 读 JSON 字典: 正式文件能读就用它 (残留 .bak 删掉); 否则试 .tmp* (新的在前) 与 .bak, 用上的写回正式文件; 都不行返回 null
 static func read_json(path: String) -> Variant:
-	for p in [path, path + ".bak"]:
-		if not FileAccess.file_exists(p):
-			continue
-		var j := JSON.new()  # 用实例解析: parse_string 对坏 JSON 会往日志打 ERROR, 而坏档是正常要处理的情形
-		var d = j.data if j.parse(FileAccess.get_file_as_string(p)) == OK else null
-		if d is Dictionary:
-			if p != path:
-				push_warning("存档 %s 损坏, 改用备份 %s" % [path, p])
+	var d = _parse(path)
+	if d != null:
+		if FileAccess.file_exists(path + ".bak"):
+			DirAccess.remove_absolute(path + ".bak")
+		return d
+	for p in _tmps(path) + [path + ".bak"]:
+		d = _parse(p)
+		if d != null:
+			push_warning("存档 %s 读不了, 用 %s 恢复" % [path, p.get_file()])
+			if p.ends_with(".bak"):
+				DirAccess.remove_absolute(path)
+				DirAccess.rename_absolute(p, path)   # 改名即恢复, 不再多写一份
+			else:
+				write_json(path, d)
+			_clear_stale_tmps(path)
 			return d
 	return null
+
+
+## 文件解析成字典, 不是字典 / 读不了返回 null (用实例解析: parse_string 对坏 JSON 会往日志打 ERROR, 而坏档是正常要处理的情形)
+static func _parse(p: String) -> Variant:
+	if not FileAccess.file_exists(p):
+		return null
+	var j := JSON.new()
+	if j.parse(FileAccess.get_file_as_string(p)) != OK:
+		return null
+	return j.data if j.data is Dictionary else null
+
+
+## <文件>.tmp<pid> 们, 最近改过的在前
+static func _tmps(path: String) -> Array:
+	var dir := path.get_base_dir()
+	var stem := path.get_file() + ".tmp"
+	var out := []
+	if not DirAccess.dir_exists_absolute(dir):
+		return out
+	for f in DirAccess.get_files_at(dir):
+		if f.begins_with(stem):
+			out.append(dir.path_join(f))
+	out.sort_custom(func(a, b): return FileAccess.get_modified_time(a) > FileAccess.get_modified_time(b))
+	return out
+
+
+static func _clear_stale_tmps(path: String) -> void:
+	var now := int(Time.get_unix_time_from_system())
+	for t in _tmps(path):
+		if now - int(FileAccess.get_modified_time(t)) >= STALE_TMP_SEC:
+			DirAccess.remove_absolute(t)
 
 
 # ---------------------------------------------------------------- 版本

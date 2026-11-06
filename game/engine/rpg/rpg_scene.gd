@@ -355,10 +355,13 @@ func _hero_act(moving: bool, d: int) -> void:
 		return
 	gait.cancel_tail()
 	var s := d * stand
+	var was_walking := hero.dir == ThemeAssets.p("rpg.hero") and not hero.playing and hero.frame >= stand * 4   # 刚从行走帧段换回来 (行走帧由 show_frame 逐帧摆, playing 为假)
 	hero.play_sound = false
 	hero.tick_override = TownHeroGait.STAND_TICKS   # 原版城镇站立每帧 2 tick (逐 tick 实测 80ms; 战场站立才是帧自带的 3 tick)
 	if hero.dir == ThemeAssets.p("rpg.hero") and hero.start_frame == s and hero.playing:
 		return
+	if was_walking:
+		hero.start_at = TownHeroGait.STAND_RESUME_FRAME % stand   # 原版站立帧序走路时清零、停下后从帧 4 续 (实测)
 	hero.play(ThemeAssets.p("rpg.hero"), s, s + stand)
 
 
@@ -445,7 +448,7 @@ func _display_mult() -> float:
 
 
 func _overlay_open() -> bool:
-	return msgbox.visible or choice.visible or shop.visible or _items != null
+	return msgbox.visible or choice.visible or shop.visible
 
 
 func _step(d: int) -> void:
@@ -517,14 +520,9 @@ func _bfs(from: Vector2i, goals: Array) -> Array:
 
 ## 统一输入层 (城镇在界面栈底; 对话框、选择框、商店打开时在它上面):
 ##   确认 = 调查/对话面朝的格子; 鼠标/触摸点按 = 寻路走过去 (点到 talk 格走到旁边并对话);
-##   取消 / 菜单 = 打开物品管理界面 (原版 GameItemUI, 与营地「囊内乾坤」同一界面, 4.1);
+##   取消 / 菜单 = 无反应 (原版城镇打不开行囊; 4.1);
 ##   拖动 (触摸) = 不处理 (镜头跟随主角)。
 func ui_action(a: UiAction) -> bool:
-	if _items:
-		var k := a.camp_key()
-		if k != "" and not (a.echo and not a.is_dir()):
-			_items.key(k)
-		return true
 	if _busy or _moving or _overlay_open() or a.echo:
 		return true
 	if a.is_confirm():
@@ -535,36 +533,16 @@ func ui_action(a: UiAction) -> bool:
 			var t := int(st.cell(n.x, n.y).get("talk", 0))
 			if t > 0:
 				_run(t)
-	elif a.is_cancel() or a.kind == UiAction.MENU:
-		_open_items()
 	return true
 
 
-## 指针 (engine/ui/ui_hit.gd): 物品管理界面打开时交给它; 否则地图格子是命中区, 点按 = 确认并带上格子 (ui_action 里寻路走过去)
+## 指针 (engine/ui/ui_hit.gd): 地图格子是命中区, 点按 = 确认并带上格子 (ui_action 里寻路走过去)
 func ui_pointer_target() -> Object:
-	if _items:
-		return _items
 	return null if _busy or _moving or _overlay_open() else self
 
 
 func ui_hits() -> Array:
 	return [UiHit.area(Rect2(-cam, map_size), Vector2i.ZERO, self, UiAction.CONFIRM, FxPlace.CELL)]
-
-
-## 物品管理界面 (囊内乾坤): 关闭后回到行走
-var _items: CampItemWindow
-var _items_ui: UiLayer
-
-func _open_items() -> void:
-	_items_ui = UiLayer.new(48)
-	add_child(_items_ui)
-	_items = CampItemWindow.new(CampInventory.new())
-	_items_ui.add(_items)
-	_items.open()
-	await _items.closed
-	_items_ui.queue_free()
-	_items_ui = null
-	_items = null
 
 
 func _run(id: int) -> void:

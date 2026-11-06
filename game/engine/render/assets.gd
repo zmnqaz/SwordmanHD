@@ -341,6 +341,34 @@ func prefetch_list(rels: Array) -> void:
 	_pf_i = 0
 
 
+## 动画目录用到的全部贴图 (相对路径, 交给 prefetch_list / warm); 目录不存在返回空
+func anim_textures(dir: String) -> Array:
+	if dir == "" or not exists(dir + "/anim.json"):
+		return []
+	var d := anim(dir)
+	var out: Array = []
+	for i in (d["textures"] as Array).size():
+		out.append("%s/t%d.png" % [d["dir"], i])
+	return out
+
+
+## 一批动画目录的全部贴图: now = 立即载入 (同步; 要烘焙的交给烘焙器紧急队列, 先用占位图), 放在画面静止的时刻做; 否则交给后台预取 (prefetch_list, 替换原队列)。
+## 免得动画播到一半现载入卡一下、一次跨过多帧 (攻击动画一套上百张, 如封寒月 002A 116 张; 玩家反馈 1.6 倍加速下近景二段攻击怪死了还显示 50 血 —— 命中帧被跨过)
+func load_anims(dirs: Array, now: bool) -> void:
+	var rels: Array = []
+	var seen := {}
+	for d in dirs:
+		if seen.has(d):
+			continue
+		seen[d] = true
+		rels += anim_textures(String(d))
+	if not now:
+		prefetch_list(rels)
+		return
+	for rel in rels:
+		_tex(String(rel), false)
+
+
 ## 预读一批大图 (城镇大地图等 AI 类 4 倍图): 放工作线程解码, 切场景淡出的那一秒里做完, 新场景 _ready 里 tex() 直接拿。
 ## 只管 AI 类 (像素画类要运行时烘焙, 本来就小); 已在缓存里的不做。预读的图没人取, 下一次换场景会丢掉
 func preload_images(rels: Array) -> void:

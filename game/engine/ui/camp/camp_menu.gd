@@ -43,11 +43,11 @@ static func item_text(i: int) -> String:
 
 
 func open() -> Tween:
-	return UiSlide.run(self, _pos, Vector2.LEFT, CampUi.SLIDE, true)
+	return UiSlide.run(self, _pos, Vector2.LEFT, UiSlide.camp_offsets(), true)
 
 
 func close() -> Tween:
-	return UiSlide.run(self, _pos, Vector2.LEFT, CampUi.SLIDE, false)
+	return UiSlide.run(self, _pos, Vector2.LEFT, UiSlide.camp_offsets(), false)
 
 
 func _process(delta: float) -> void:

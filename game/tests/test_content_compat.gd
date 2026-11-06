@@ -8,7 +8,7 @@ const REQUIRES_TEST := {
 }  # 个别方法的依赖 (同上)
 
 const ContentDBScript = preload("res://engine/content/content_db.gd")
-const TMP := "user://compat_test"
+static var TMP: String = tmp_dir("compat_test")
 
 
 func _write(path: String, data: Variant) -> void:

@@ -46,3 +46,17 @@ func test_partial_skip_in_the_middle():
 		a._process(0.04)
 	eq(a.sfx_count, _expected(70, 85), "中间被跳过的帧 77 的声音补上了")
 	a.free()
+
+
+## 帧事件 frame_shown 也要补: 近景命中帧扣血挂在它上面, 卡顿跨过命中帧 (含一次跨过末尾直接播完) 时体力条停在半截 (玩家反馈: 怪死了还显示 50 血)
+func test_hitch_still_emits_every_frame_event():
+	var a := AnimPlayer.new()
+	var seen: Array = []
+	a.frame_shown.connect(func(f: int): seen.append(f))
+	a.play(DIR, 70, 85, false)
+	a._process(0.04)
+	a._process(0.04 * 9)   # 中间跳帧
+	a._process(100.0)      # 一次跨过末尾
+	eq(seen, range(70, 85), "每帧的帧事件按顺序各一次")
+	check(not a.playing, "播完")
+	a.free()

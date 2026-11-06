@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-only
 class_name GameSaves
 extends RefCounted
-## 游戏存档: 5 个存档位 (user://saveN.json, N = 1..5) 与战阵存录 (user://battle.json, 战场中途存档, 标题「戰陣重现」读取)。
-## 只管 GameState <-> 文件, 不碰场景/界面/提示; 读写经 SaveFile (原子写入 + .bak 回退 + 版本迁移)。
+## 游戏存档: 5 个存档位 (<存档目录>/saveN.json, N = 1..5) 与战阵存录 (<存档目录>/battle.json, 战场中途存档, 标题「戰陣重现」读取)。
+## 存档目录见 UserPaths.save_dir() (Windows / Linux 导出版在游戏文件夹的 save/, 其它在 user://save/)。
+## 只管 GameState <-> 文件, 不碰场景/界面/提示; 读写经 SaveFile (原子写入 + 校验后删 .bak + 读时恢复 + 版本迁移)。
 ## 失败返回 error 文字 (空串 = 成功), 由调用方 (Game) 决定怎么提示。
 
 const SLOTS := 5
-## 存档目录 (测试改成临时目录, 免得碰玩家的真存档)
-static var base_dir := "user://"
+## 存档目录 (测试改成临时目录, 免得碰玩家的真存档; 回放期间 PlayLog 换成沙盒)
+static var base_dir := UserPaths.save_dir()
 ## 存档镜像 (见 SaveMirror): 组装层在 Android 上调 enable_mirror 登记「本地存档目录 -> 镜像目录」;
 ## 只有 base_dir 正是登记的本地目录时才镜像 (回放沙盒、测试把 base_dir 换走后自动不镜像, 不会往真镜像目录写)
 static var _mirror_local := ""

@@ -12,7 +12,7 @@ const REQUIRES_TEST := {
 	"test_truncated_slot_uses_backup": ["content"]
 }  # 个别方法的依赖 (同上)
 
-const DIR := "user://test_save_fuzz/"
+static var DIR: String = tmp_dir("test_save_fuzz/")
 const BattleScene := preload("res://engine/battle/battle_scene.gd")
 
 
@@ -125,15 +125,18 @@ func test_truncated_slot_uses_backup():
 	_clean()
 	var st := _good_state()
 	check(GameSaves.save_slot(st, 0), "存档")
-	check(GameSaves.save_slot(st, 0), "再存一次, 留下 .bak")
+	check(GameSaves.save_slot(st, 0), "再存一次")
+	check(not FileAccess.file_exists(DIR + "save1.json.bak"), "写成功不留 .bak")
 	var text := FileAccess.get_file_as_string(DIR + "save1.json")
 	for cut in [0, 1, text.length() / 2, text.length() - 1]:
+		_write("save1.json.bak", text)   # 模拟写到一半崩溃: 旧档在 .bak, 正式文件残缺
 		_write("save1.json", text.substr(0, cut))
 		var t := GameState.new()
 		var r := GameSaves.load_slot(t, 0)
 		check(r.ok, "正式文件截断 %d 字节, 回退 .bak 读入" % cut)
 		eq(t.gold, 1234, "回退读到的内容正确")
-	DirAccess.remove_absolute(DIR + "save1.json.bak")   # 备份也没了: 报损坏, 状态不动
+	_write("save1.json", text.substr(0, 1))   # 正式文件残缺、备份也没了: 报损坏, 状态不动
+	DirAccess.remove_absolute(DIR + "save1.json.bak")
 	var t2 := GameState.new()
 	t2.gold = 5
 	var r2 := GameSaves.load_slot(t2, 0)

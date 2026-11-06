@@ -9,11 +9,11 @@
  ],
  "scale": 4,
  "stats": {
-  "elements": 263,
-  "verified": 202,
+  "elements": 267,
+  "verified": 207,
   "screenshot": 10,
-  "unknown": 51,
-  "migrated": 247
+  "unknown": 50,
+  "migrated": 250
  },
  "fonts": {
   "body": {
@@ -528,8 +528,9 @@
   },
   "dialog.typing": {
    "type": "param",
-   "status": "unknown",
-   "code": "engine/ui/dialog_box.gd:14-16",
+   "status": "verified",
+   "code": "engine/ui/msg_box.gd MsgBox (opts.chars_per_sec 可再覆盖)",
+   "chars_per_sec": 12.5,
    "migrated": true
   },
   "choice.box": {
@@ -770,24 +771,40 @@
     0,
     0
    ],
-   "status": "unknown",
-   "code": "BattleView.RANGE_ENEMY (代码常量, 本表仅记录)"
+   "status": "verified",
+   "code": "BattleView.RANGE_RED / RANGE_FIXED_P8 (代码常量, 本表仅记录)"
   },
   "map.range.attack": {
    "type": "color",
    "color": [
-    255,
+    132,
     0,
-    0
+    255
    ],
-   "status": "unknown",
-   "code": "BattleView.RANGE_ATTACK (代码常量, 本表仅记录)"
+   "status": "verified",
+   "code": "BattleView.RANGE_PURPLE / RANGE_ATTACK = RANGE_MOVE (代码常量, 本表仅记录)"
   },
   "map.range.alpha": {
    "type": "param",
    "value": 0.87,
    "status": "verified",
    "code": "BattleView.RANGE_ALPHA (代码常量, 本表仅记录)"
+  },
+  "map.unit.shadow": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/unit_shadow.gd UnitShadow",
+   "size": [
+    32,
+    14
+   ],
+   "center": [
+    15,
+    19
+   ],
+   "alpha": 0.55,
+   "exponent": 2.3,
+   "edge": 2.4
   },
   "map.unit.acted_grey": {
    "type": "param",
@@ -808,11 +825,6 @@
    "offset": [
     0,
     4
-   ],
-   "berserk_tint": [
-    1.0,
-    0.55,
-    0.55
    ],
    "entries": [
     {
@@ -1011,22 +1023,31 @@
    ]
   },
   "map.unit.status_tint": {
-   "type": "color",
+   "type": "param",
    "status": "verified",
-   "code": "BattleUnit._tint",
-   "colors": {
-    "freeze": [
-     0.74,
-     0.8,
-     1.0
-    ],
-    "poison": [
-     0.6,
-     0.92,
-     0.63
-    ]
+   "code": "BattleUnit._tint / UnitStatusFx (shaders/unit_status.gdshader, unit_berserk.gdshader)",
+   "poison": {
+    "col": "0x03e0",
+    "col_k": 6,
+    "src_k": 12
    },
-   "phantom_alpha": 0.5,
+   "freeze": {
+    "col": "0x0c77",
+    "col_k": 16,
+    "src_k": 12
+   },
+   "phantom": {
+    "src_k": 8,
+    "dst_keep": 12
+   },
+   "berserk": {
+    "col": "0x7c00",
+    "col_k": 6,
+    "dst_keep": 12,
+    "width_min": 0,
+    "width_max": 6,
+    "width_step": 2
+   },
    "migrated": true
   },
   "map.damage": {
@@ -2760,7 +2781,7 @@
   },
   "closeup.levelup": {
    "type": "param",
-   "status": "unknown",
+   "status": "verified",
    "code": "engine/battle/battle_closeup.gd BattleCloseup.level_up_fx, engine/battle/battle_actions.gd _level_fx",
    "anim": "battle.levelup_fx",
    "delay": 0.0,
@@ -4495,6 +4516,43 @@
    "code": "engine/ui/camp/camp_save_window.gd _init",
    "migrated": true
   },
+  "camp.save.slot.turns": {
+   "type": "text",
+   "parent": "camp.save.slot",
+   "pos": [
+    193,
+    16
+   ],
+   "text": {
+    "font": "small10",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.play_time": {
+   "type": "text",
+   "parent": "camp.save.slot",
+   "pos": [
+    193,
+    16
+   ],
+   "text": {
+    "font": "small10",
+    "flags": 5,
+    "color": "text.main",
+    "align": "right",
+    "box": [
+     110
+    ]
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
   "camp.save.yesno": {
    "type": "anim",
    "pos": [
@@ -4919,6 +4977,33 @@
    },
    "status": "unknown",
    "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "savelocation.where": {
+   "type": "text",
+   "parent": "settings.panel",
+   "pos": [
+    12,
+    92
+   ],
+   "size": [
+    236,
+    72
+   ],
+   "text": {
+    "font": "small10",
+    "flags": 0,
+    "color": [
+     170,
+     160,
+     140
+    ],
+    "align": "left",
+    "max_width": 236,
+    "line_height": 11
+   },
+   "status": "unknown",
+   "code": "engine/ui/save_location_panel.gd",
    "migrated": true
   },
   "settings.desc": {

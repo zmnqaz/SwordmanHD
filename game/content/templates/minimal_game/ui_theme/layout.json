@@ -9,11 +9,11 @@
  ],
  "scale": 4,
  "stats": {
-  "elements": 243,
-  "verified": 189,
-  "screenshot": 12,
-  "unknown": 42,
-  "migrated": 230
+  "elements": 246,
+  "verified": 195,
+  "screenshot": 10,
+  "unknown": 41,
+  "migrated": 231
  },
  "fonts": {
   "body": {
@@ -521,8 +521,9 @@
   },
   "dialog.typing": {
    "type": "param",
-   "status": "unknown",
-   "code": "engine/ui/dialog_box.gd:14-16",
+   "status": "verified",
+   "code": "engine/ui/msg_box.gd MsgBox (opts.chars_per_sec 可再覆盖)",
+   "chars_per_sec": 12.5,
    "migrated": true
   },
   "choice.box": {
@@ -764,6 +765,22 @@
    "status": "verified",
    "code": "BattleView.RANGE_ALPHA (代码常量, 本表仅记录)"
   },
+  "map.unit.shadow": {
+   "type": "param",
+   "status": "verified",
+   "code": "engine/battle/unit_shadow.gd UnitShadow",
+   "size": [
+    32,
+    14
+   ],
+   "center": [
+    15,
+    19
+   ],
+   "alpha": 0.55,
+   "exponent": 2.3,
+   "edge": 2.4
+  },
   "map.unit.acted_grey": {
    "type": "param",
    "color": [
@@ -776,32 +793,31 @@
    "migrated": true
   },
   "map.unit.status_tint": {
-   "type": "color",
+   "type": "param",
    "status": "unknown",
-   "code": "BattleUnit._tint",
-   "colors": {
-    "freeze": [
-     0.7,
-     0.85,
-     1.0
-    ],
-    "poison": [
-     0.75,
-     1.0,
-     0.7
-    ],
-    "paralyze": [
-     1.0,
-     1.0,
-     0.6
-    ],
-    "seal": [
-     0.85,
-     0.75,
-     1.0
-    ]
+   "code": "BattleUnit._tint / UnitStatusFx",
+   "poison": {
+    "col": "0x03e0",
+    "col_k": 6,
+    "src_k": 12
    },
-   "migrated": true
+   "freeze": {
+    "col": "0x0c77",
+    "col_k": 16,
+    "src_k": 12
+   },
+   "phantom": {
+    "src_k": 8,
+    "dst_keep": 12
+   },
+   "berserk": {
+    "col": "0x7c00",
+    "col_k": 6,
+    "dst_keep": 12,
+    "width_min": 0,
+    "width_max": 6,
+    "width_step": 2
+   }
   },
   "map.damage": {
    "type": "digits",
@@ -4239,6 +4255,43 @@
    "code": "engine/ui/camp/camp_save_window.gd _init",
    "migrated": true
   },
+  "camp.save.slot.turns": {
+   "type": "text",
+   "parent": "camp.save.slot",
+   "pos": [
+    193,
+    16
+   ],
+   "text": {
+    "font": "small10",
+    "flags": 5,
+    "color": "text.main",
+    "align": "left"
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.play_time": {
+   "type": "text",
+   "parent": "camp.save.slot",
+   "pos": [
+    193,
+    16
+   ],
+   "text": {
+    "font": "small10",
+    "flags": 5,
+    "color": "text.main",
+    "align": "right",
+    "box": [
+     110
+    ]
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
   "camp.save.yesno": {
    "type": "anim",
    "pos": [
@@ -4663,6 +4716,33 @@
    },
    "status": "unknown",
    "code": "engine/ui/settings_panel.gd",
+   "migrated": true
+  },
+  "savelocation.where": {
+   "type": "text",
+   "parent": "settings.panel",
+   "pos": [
+    12,
+    92
+   ],
+   "size": [
+    236,
+    72
+   ],
+   "text": {
+    "font": "small10",
+    "flags": 0,
+    "color": [
+     170,
+     160,
+     140
+    ],
+    "align": "left",
+    "max_width": 236,
+    "line_height": 11
+   },
+   "status": "unknown",
+   "code": "engine/ui/save_location_panel.gd",
    "migrated": true
   },
   "settings.desc": {

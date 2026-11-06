@@ -62,8 +62,9 @@ class FakeRules:
 		return not u.acted
 	func can_burst(u) -> bool:
 		return not u.st.moved
+	var cast_ok := true
 	func can_cast(_u, _id) -> bool:
-		return true
+		return cast_ok
 	var save_ok := true
 	func can_save_battle() -> bool:
 		return save_ok
@@ -326,9 +327,12 @@ func test_phase_start_only_moves_cursor():
 	eq(_names(c), ["CursorState", "UnitSelectState"], "确认后才选中")
 	eq(c.sel.name_text, "甲")
 	check(not c.view.range_cells.is_empty(), "选中后显示移动范围")
+	_act(c, UiAction.RIGHT)
+	_act(c, UiAction.DOWN)
+	eq(c.cur, Vector2i(3, 3), "选中后光标移开")
 	_act(c, UiAction.CANCEL)
 	eq(_names(c), ["CursorState"], "取消: 收起范围回到光标")
-	eq(c.cur, Vector2i(2, 2), "光标留在原处")
+	eq(c.cur, Vector2i(2, 2), "光标跳回单位 (原版)")
 	_act(c, UiAction.CANCEL)
 	eq(c.cur, Vector2i(6, 6), "光标状态取消: 跳到下一个未行动单位 (§5-1)")
 	_act(c, UiAction.CANCEL)
@@ -372,6 +376,26 @@ func test_move_menu_cancel_undoes_move():
 	eq(c.cur, Vector2i(2, 2), "光标跟单位回原格")
 	_cleanup()
 
+
+
+## 移动后没有放得出的法术, 法術图标照原版变灰 (原版进不去), 复刻确认仍能进列表查看
+func test_spell_icon_grey_but_enterable():
+	if not _assets_ready():
+		check(true)
+		return
+	var c := _setup()
+	_rules.cast_ok = false
+	_act(c, UiAction.CONFIRM)
+	_act(c, UiAction.DOWN)
+	_act(c, UiAction.CONFIRM)
+	eq(_names(c)[-1], "ActionMenuState", "移动后打开行动菜单")
+	var m: UiIconMenu = _ui.menus[-1]
+	check(not m.enabled[1], "移动过且没有放得出的法术: 法術图标变灰 (原版)")
+	_act(c, UiAction.DOWN)
+	eq(m.selected, 1, "停在法術上")
+	_act(c, UiAction.CONFIRM)
+	eq(_names(c)[-1], "SpellListState", "灰的法術确认仍能进列表查看 ")
+	_cleanup()
 
 func test_attack_target_is_free_cursor():
 	if not _assets_ready():

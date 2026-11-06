@@ -394,8 +394,130 @@ def check_pack(pid, dirs_by_id, order):
             v = load_json(lp, w + "/ui_theme/" + os.path.basename(lp))
             if v is not None and not isinstance(v, dict):
                 err(w + "/ui_theme/" + os.path.basename(lp), "应为对象")
+    check_script_fixes(w, d, dirs)
     if STRICT:
         strict_pack_checks(w, d, dirs, merged_rows("skills", tables, order, dirs_by_id, "id"))
+
+
+# ---- 剧情脚本修正表 scripts/fixes.json (docs/内容格式.md §7.1; 引擎实现 content_db.gd _apply_fixes, 规则须一致) ----
+FIXES_FORMAT = "tdj-script-fixes/1"
+
+
+def _fix_norm(line):
+    import compile_events
+    return " ".join(compile_events._strip_comment(line).split())
+
+
+def _fix_event_id(n):
+    if not n.startswith("event "):
+        return -1
+    try:
+        return int(n[6:].rstrip(":").strip(), 0)
+    except ValueError:
+        return -1
+
+
+def fix_entry_error(f):
+    """一条修正的格式错误 (None = 没问题), 与 ContentDB.fix_error 对应"""
+    if not isinstance(f, dict):
+        return "修正条目应为对象"
+    fid = f.get("id") if isinstance(f.get("id"), str) else ""
+    if not fid:
+        return "修正缺 id"
+    if not isinstance(f.get("script"), str) or not f["script"]:
+        return "%s: 缺 script (scripts/ 下的文件名)" % fid
+    ev = f.get("event")
+    if isinstance(ev, bool) or not isinstance(ev, (int, float)) or ev != int(ev) or ev < 0:
+        return "%s: event 应为非负整数" % fid
+    if ("remove" in f) == ("replace" in f):
+        return "%s: remove 与 replace 必须二选一" % fid
+    if "remove" in f and (not isinstance(f["remove"], str) or not _fix_norm(f["remove"])):
+        return "%s: remove 应为非空的一行" % fid
+    if "replace" in f:
+        r = f["replace"]
+        if not isinstance(r, dict) or not isinstance(r.get("find"), str) or not isinstance(r.get("with"), str) or not _fix_norm(r["find"]):
+            return '%s: replace 应为 {"find": 行, "with": 行}' % fid
+        if "\n" in r["with"]:
+            return "%s: replace.with 只能是一行" % fid
+    for k in f:
+        if not k.startswith("_") and k not in ("id", "script", "event", "remove", "replace", "note"):
+            return "%s: 未知字段 %s" % (fid, k)
+    return None
+
+
+def load_fixes(pack_dir_, where):
+    """读一个包的 fixes.json: (合法条目列表, 错误列表); 没有文件返回 ([], [])"""
+    p = os.path.join(pack_dir_, "scripts", "fixes.json")
+    if not os.path.isfile(p):
+        return [], []
+    try:
+        with open(p, encoding="utf-8") as fh:
+            v = json.load(fh)
+    except ValueError as e:
+        return [], ["JSON 解析失败: %s" % e]
+    if not isinstance(v, dict) or v.get("format") != FIXES_FORMAT or not isinstance(v.get("fixes"), list):
+        return [], ["不是 %s (要有 format 与 fixes 数组)" % FIXES_FORMAT]
+    ok, bad = [], []
+    for f in v["fixes"]:
+        e = fix_entry_error(f)
+        if e:
+            bad.append(e)
+        else:
+            ok.append(f)
+    return ok, bad
+
+
+def apply_fixes(text, fixes, src):
+    """按引擎规则对脚本源文本依次应用修正: 返回 (新文本, [(修正, 匹配数)] 未应用的)"""
+    lines = text.split("\n")
+    failed = []
+    for f in fixes:
+        target = _fix_norm(f["remove"] if "remove" in f else f["replace"]["find"])
+        cur, hits = -1, []
+        for i, l in enumerate(lines):
+            n = _fix_norm(l)
+            eid = _fix_event_id(n)
+            if eid >= 0:
+                cur = eid
+            elif cur == int(f["event"]) and n == target:
+                hits.append(i)
+        if len(hits) != 1:
+            failed.append((f, len(hits)))
+            continue
+        i = hits[0]
+        if "remove" in f:
+            del lines[i]
+        else:
+            indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())]
+            lines[i] = indent + f["replace"]["with"].strip()
+    return "\n".join(lines), failed
+
+
+def check_script_fixes(w, d, dirs):
+    """本包 scripts/fixes.json: 格式, 以及在合并视图 (加载顺序到本包为止, 前面包的修正先应用) 里每条恰好匹配 1 处"""
+    mine, bad = load_fixes(d, w)
+    where = "%s/scripts/fixes.json" % w
+    for e in bad:
+        err(where, e)
+    for script in sorted({f["script"] for f in mine}):
+        rel = "scripts/" + script
+        prov = -1
+        for i in range(len(dirs) - 1, -1, -1):
+            if os.path.isfile(os.path.join(dirs[i], rel)):
+                prov = i
+                break
+        if prov < 0:
+            err(where, "%s: 找不到脚本 %s" % ("/".join(f["id"] for f in mine if f["script"] == script), rel))
+            continue
+        with open(os.path.join(dirs[prov], rel), encoding="utf-8") as fh:
+            text = fh.read()
+        for j in range(prov, len(dirs)):
+            fx = [f for f in (load_fixes(dirs[j], "")[0] if dirs[j] != d else mine) if f["script"] == script]
+            text, failed = apply_fixes(text, fx, rel)
+            if dirs[j] == d:
+                for f, n in failed:
+                    err(where, "%s: %s 事件 %d 里「%s」%s" % (f["id"], rel, int(f["event"]), _fix_norm(f["remove"] if "remove" in f else f["replace"]["find"]),
+                                                             "找不到" if n == 0 else "有 %d 处" % n))
 
 
 def merged_rows(name, tables, order, dirs_by_id, default_key):

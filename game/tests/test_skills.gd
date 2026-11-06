@@ -5,6 +5,7 @@ const REQUIRES_TEST := {
 	"test_bless_fixed_rk": ["data"],
 	"test_can_use_conditions": ["data"],
 	"test_curse_and_boss_immunity": ["data"],
+	"test_dispel_blocked_by_phantom_or_spell_guard": ["data"],
 	"test_holy_and_mp_restore": ["data"],
 	"test_ice_freeze": ["data"],
 	"test_ice_freeze_roll_drawn_even_if_target_dies": ["data"],
@@ -304,3 +305,25 @@ func test_summon_flag_var_is_skill_record_rate10():
 	eq(int(sk["rate10"]), 104, "物品覆盖值仍是 104 (用于状态 K)")
 	eq(Skills.summon_flag_var(c, sk), 103, "置位的标志变量取技能记录自己的 rate10")
 	eq(Skills.summon_flag_var(c, c.skill(40)), 103, "式鬼同为 103")
+
+
+## 無上滅法 (38, rt5 eff12) 驱散: 不掷命中, 但目标有 幻影 或 對術全禦 则无效、结果码 0
+func test_dispel_blocked_by_phantom_or_spell_guard():
+	var c = ctx_data()
+	var sk: Dictionary = c.skill(38)
+	eq([int(sk["result_type"]), int(sk["result_effect"])], [5, 12], "数据: rt5 eff12")
+	var caster = unit({"mp": 999, "mp_max": 999})
+	for guard in [U.ST_PHANTOM, U.ST_GUARD_SPELL]:
+		var t = unit({"side": 1})
+		Status.apply(t, U.ST_ATK_UP, 300, 100, false)
+		Status.apply(t, guard, 300, 100, false)
+		var r := Skills.resolve(c, caster, sk, [t])
+		eq(int(r.targets[0].code), 0, "带 0x%x: 结果码 0" % guard)
+		check(t.has_status(U.ST_ATK_UP), "带 0x%x: 攻擊提昇没被驱散" % guard)
+	var t2 = unit({"side": 1})
+	Status.apply(t2, U.ST_ATK_UP, 300, 100, false)
+	Status.apply(t2, U.ST_GUARD_SKILL, 300, 100, false)
+	var r2 := Skills.resolve(c, caster, sk, [t2])
+	eq(int(r2.targets[0].code), 19, "對技全禦不挡咒术驱散: 结果码 19")
+	check(not t2.has_status(U.ST_ATK_UP), "攻擊提昇被驱散")
+	check(t2.has_status(U.ST_GUARD_SKILL), "驱散掩码 0x4f 不清對技全禦")

@@ -88,6 +88,25 @@ static func misc_dir(u: BattleUnit) -> String:
 	return ThemeAssets.f("unit_misc", [s, s])
 
 
+## 单位在近景里会用到的动画目录 (待机/受击 misc + 普攻命中 a / 被闪被挡 ab), 预取与预热用 (近景攻击动画一套上百张贴图, 现载入会卡)
+static func unit_anims(u: BattleUnit) -> Array:
+	var s := int(u.info["sprite"])
+	return [misc_dir(u), ThemeAssets.f("unit_attack", [s, s, "a"]), ThemeAssets.f("unit_attack", [s, s, "ab"])]
+
+
+## 开战后在后台预取场上各单位的近景动画 (我方排前面), 第一次出手不用现载入; 中途出场的单位靠 open 开场的同步预热
+static func prefetch_units(units: Array) -> void:
+	var dirs: Array = []
+	for u in units.filter(func(x): return x.camp == 0) + units.filter(func(x): return x.camp != 0):
+		dirs += unit_anims(u)
+	_load_anims(dirs, false)
+
+
+## now: 立即载入 (近景开场画面静止时); 否则后台预取
+static func _load_anims(dirs: Array, now: bool) -> void:
+	Assets.load_anims(dirs, now)
+
+
 ## 被打方反应 (姿势 + 位移, 原版逐 tick 复刻, 见 HitReaction; 差异): 每侧一个, 命中帧调 _react, 一个 tick 循环驱动到回待机。
 ## 取代原先的固定 1 → 2 → 1 → 2 受击摆动 (12 tick)、格挡帧 0 交替 (初版)、命中帧当场起位移
 var _reacts := {}        # 守方 misc 播放器的 instance id -> HitReaction
@@ -191,10 +210,26 @@ static func idle_frame(data: Dictionary) -> Vector2i:
 	return Vector2i(f, f + maxi(1, int(c[1])))
 
 
+## 守方 misc 能不能挂到攻击动画上 (攻击动画 ref 部件画守方 + 命中窗口 c[1]..c[2] 藏守方本体)。原版近景初始化:
+##   [字段] = 守方 misc 头计数 [2] != 0; 为 1 时 挂空 ((0, 0), 绘制 没有 other 就跳过 ref 部件),
+##   也不在命中窗口里藏守方 —— 心脏 / 魔神等大体型 (misc 是整屏大图、原点 (0,0)) 一直用自己的 misc 帧站在原位受击。
+##   复刻原先一律挂上, 心脏的 330x216 整屏图被画到 ref 部件的 (106,57) / (99,59), 画面整块错位乱跳 (玩家反馈第 33 幕飞星神剑打心脏)
+static func defender_attaches(misc_data: Dictionary) -> bool:
+	var c: Array = misc_data.get("action_counts", [])
+	return c.size() < 3 or int(c[2]) == 0
+
+
 ## 打开画面: a 攻击 t; 返回后可多次 strike, 最后 close
 ## t = null: 施放者单人近景 (battle_type 2 绝技, 见 cast_solo), 底图取 at 格 (没给就取施放者所在格)
 ## hide_target: 远程技能 (battle_ranged = 1, 如无方飞剑) 从开场起守方就不在画面里, 命中帧才出现 (见 strike 的 ranged), 否则放大淡入和闪光期间守方先露脸再消失
-func open(a: BattleUnit, t: BattleUnit, at := Vector2i(-1, -1), hide_target := false) -> void:
+## extra_anims: 这次还会放的其他动画 (技能出手 / 单人近景), 与双方普攻动画一起在开场前预热
+func open(a: BattleUnit, t: BattleUnit, at := Vector2i(-1, -1), hide_target := false, extra_anims: Array = []) -> void:
+	# 开场先把这次要放的动画贴图全部载入: 原版确认后地图本来就静止 3 tick (见下), 卡在这里看不出; 放到攻击动画中途现载入会一次跨过多帧
+	var warm: Array = extra_anims + [ThemeAssets.f("cast_flash", ["l"]), ThemeAssets.f("cast_flash", ["r"])]
+	for u in [a, t]:
+		if u != null:
+			warm += unit_anims(u)
+	_load_anims(warm, true)
 	for c in _stage.get_children() + _bgm.get_children() + _bgg.get_children():
 		c.queue_free()
 	_shake_id += 1   # 上一次近景没震完的收尾作废, 各层回原位
@@ -390,7 +425,9 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 			await _vampire(asd, drain, vamp_hp)
 		return
 	var atk := AnimPlayer.new()
-	atk.other = dmisc
+	var attach := defender_attaches(dmisc.data)
+	if attach:
+		atk.other = dmisc   # 攻击动画的 ref 部件画守方; 大体型 (见 defender_attaches) 不挂, ref 部件不画
 	_stage.add_child(atk)
 	amisc.visible = false
 	var data := Assets.anim(atk_dir)
@@ -407,7 +444,7 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 				hide_until = i
 				break
 	var on_frame := func(f: int):
-		var hide_def := (int(c[1]) > 0 and f >= int(c[1]) and f < int(c[2])) or f < hide_until
+		var hide_def := (attach and int(c[1]) > 0 and f >= int(c[1]) and f < int(c[2])) or f < hide_until
 		dmisc.visible = not hide_def
 		var cc := color_code(int(data["frames"][f]["color"]))   # 帧头的 color 字段: 近景色闪 (与命中结果无关, 每个有 color 的帧都触发)
 		if not cc.is_empty():

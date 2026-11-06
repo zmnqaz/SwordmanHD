@@ -9,6 +9,7 @@
   python tools/build_windows.py --packs-from=DIR   不重新生成资源包, 直接用 DIR 里现成的 resource/*.pck 与 mod/*.pck (不需要原版)
   python tools/build_windows.py --engine-only      只出引擎 (exe + 手写内容 + 许可), 不打资源包、不需要原版: 公开 CI 出安装包用;
                                                    玩家把自己生成的 resource/ 文件夹 (必要时加 mod/) 放到 exe 旁 (docs/打包/资源包.md)
+  --require-template   必须用自制模板 (.work/templates/, 带图片压缩器), 没有就报错; CI 出发布包用
 需要: Godot 4.7.2 (tools/paths.py 解析, Windows 用 *_console.exe) 与同版本 export templates:
   Linux  ~/.local/share/godot/export_templates/<版本>/    macOS  ~/Library/Application Support/Godot/export_templates/<版本>/    Windows  %APPDATA%\\Godot\\export_templates\\<版本>\\
 资源打成 exe 旁 resource/ (必备) 与 mod/ (可选) 两个文件夹里的 .pck (资源生成工具), 主 pck 嵌在 exe 里。
@@ -53,7 +54,10 @@ NOTE = """SwordmanHD (Windows)
 
 Run SwordmanHD.exe (SwordmanHD.console.exe shows the log). Keep the whole folder together: the resource packs next to the
 executable (the resource folder, and the optional mod folder) are read at run time and must not be deleted.
-Saves and settings: %APPDATA%\\SwordmanHD\\
+Saves and replays: the save and replay folders here (copy the whole folder and your saves go with it). If this folder is not writable
+(e.g. under C:\\Program Files), or you chose another folder in Settings > Save location, they are elsewhere: Settings > Save location shows where.
+Settings and logs: %APPDATA%\\SwordmanHD\\
+存档与录像: 本文件夹的 save、replay (整个文件夹拷走, 存档跟着走); 设定里「存档位置」可查看 / 打开 / 更改。旧版本存在 %APPDATA%\\SwordmanHD 的存档, 新版第一次启动会问要不要搬过来。
 If the picture is broken or the game does not start, run from a command line: SwordmanHD.exe --rendering-driver opengl3_angle
 Licenses: see the licenses folder (LICENSE.txt, NOTICE.md and third-party license texts).
 """
@@ -79,6 +83,17 @@ PLACEHOLDER_MOD = """可选: mod 资源包 (如 face_hk.pck 港漫头像) 放在
 Optional: put mod packs (e.g. face_hk.pck) here.
 """
 
+PLACEHOLDER_SAVE = """游戏存档 (save1~5.json、战阵存录 battle.json) 存在这个文件夹里。整个游戏文件夹拷走, 存档跟着走。
+更新游戏时别删这个文件夹; 设定里「存档位置」可以打开 / 更改存档位置。
+
+Your saves live in this folder. Keep it when you update the game; Settings > Save location shows / changes the place.
+"""
+
+PLACEHOLDER_REPLAY = """战场录像 (设定「战场录像」打开时自动录) 存在这个文件夹里, 设定「录像回放」可以回放。
+
+Battle replays (when Settings > Battle recording is on) are saved here.
+"""
+
 NOTE_MAC = """SwordmanHD (macOS, universal: Apple silicon + Intel)
 
 Put SwordmanHD.app, the resource folder and the optional mod folder in the same folder (do not put the packs inside the .app).
@@ -93,7 +108,9 @@ NOTE_LINUX = """SwordmanHD (Linux)
 
 Run ./SwordmanHD.x86_64 (run it from a terminal to see the log). Keep the whole folder together: the resource packs next to the
 executable (the resource folder, and the optional mod folder) are read at run time and must not be deleted. An OpenGL 3.3 driver is required.
-Saves and settings: ~/.local/share/SwordmanHD/
+Saves and replays: the save and replay folders here (copy the whole folder and your saves go with it); if this folder is not writable
+(e.g. under /opt) they go to ~/.local/share/SwordmanHD/save and replay. Settings > Save location shows / opens / changes the place.
+Settings and logs: ~/.local/share/SwordmanHD/
 Native Wayland (sharper on hiDPI): ./SwordmanHD.x86_64 --display-driver wayland
 Licenses: see the licenses folder (LICENSE.txt, NOTICE.md and third-party license texts).
 """
@@ -145,13 +162,16 @@ def templates_dir(ver):
 
 
 @contextlib.contextmanager
-def custom_template(plat, preset):
+def custom_template(plat, preset, require=False):
     """有自制模板 (.work/templates/, tools/platform/build_template_windows.sh 编出来) 就临时写进导出预设的 custom_template/release,
-    导出完恢复预设文件。官方 release 模板不带图片压缩器, 导出版里 BC7 压缩用不了; 自制模板开了 cvtt_export_templates。"""
+    导出完恢复预设文件。官方 release 模板不带图片压缩器, 导出版里 BC7 压缩用不了; 自制模板开了 cvtt_export_templates。
+    require = 没有自制模板就报错退出 (CI 发布包用: v0.1.11 云编译悄悄用了官方模板, 发布版没压缩也没缓存)。"""
     tname = {"windows": "windows_release_x86_64.exe", "linux": "linux_release.x86_64"}.get(plat)
     tpl = os.path.join(REPO, ".work", "templates", tname or "-")
     cfg = os.path.join(REPO, "game", "export_presets.cfg")
     if not os.path.isfile(tpl):
+        if require:
+            die("--require-template: 缺自制模板 %s (tools/platform/build_template_windows.sh 编出来)" % tpl)
         yield
         return
     with open(cfg, encoding="utf-8", newline="") as f:
@@ -160,6 +180,8 @@ def custom_template(plat, preset):
     new_rest = rest.replace('custom_template/release=""', 'custom_template/release="%s"' % tpl.replace("\\", "/"), 1)
     new_rest = new_rest.replace('custom_features=""', 'custom_features="tex_compress"', 1)   # 游戏据此知道这个包的引擎能压缩 (TexCodec.runtime_compress_available)
     if not sep or new_rest == rest:
+        if require:
+            die("--require-template: 导出预设 %s 里找不到空的 custom_template/release / custom_features" % preset)
         yield
         return
     print("== 用自制模板 (带图片压缩器): " + tpl)
@@ -174,12 +196,14 @@ def custom_template(plat, preset):
 
 def main(argv):
     global OUT
-    zip_, split, plat, engine_only, edition, packs_from = False, "", "windows", False, "all", ""
+    zip_, split, plat, engine_only, edition, packs_from, require_tpl = False, "", "windows", False, "all", "", False
     for a in argv:
         if a == "--no-hd6x":  # 旧参数: 现在包里本来就不带 hd6x
             pass
         elif a == "--engine-only":
             engine_only = True
+        elif a == "--require-template":
+            require_tpl = True
         elif a.startswith("--packs-from="):
             packs_from = os.path.abspath(os.path.expanduser(a[len("--packs-from="):]))
             if not os.path.isdir(packs_from):
@@ -224,7 +248,7 @@ def main(argv):
     os.makedirs(OUT)
     print("== 导出 %s + pck (%s)" % (pf["exe"], ver))
     target = os.path.join(OUT, "SwordmanHD.zip" if plat == "macos" else pf["exe"])   # macOS 只能导出成 zip/dmg, 里面是 .app
-    with custom_template(plat, pf["preset"]):
+    with custom_template(plat, pf["preset"], require_tpl):
         r = subprocess.run([godot, "--headless", "--path", os.path.join(REPO, "game").replace("\\", "/"), "--export-release", pf["preset"],
                             target], capture_output=True, text=True, encoding="utf-8", errors="replace", env=paths.env_for_godot())
     for line in (r.stdout + r.stderr).splitlines():
@@ -273,6 +297,13 @@ def main(argv):
         os.makedirs(dd, exist_ok=True)
         if not any(fn.endswith(".pck") for fn in os.listdir(dd)):
             with open(os.path.join(dd, "放资源包到这里.txt"), "w", encoding="utf-8", newline="\n") as f:
+                f.write(txt)
+    # 存档 / 录像文件夹 (Windows / Linux 导出版缺省存在程序旁, 见 game/engine/core/user_paths.gd): 预先建好并放说明, 玩家一眼知道存档在哪
+    if plat in ("windows", "linux"):
+        for d, txt in (("save", PLACEHOLDER_SAVE), ("replay", PLACEHOLDER_REPLAY)):
+            dd = os.path.join(OUT, d)
+            os.makedirs(dd, exist_ok=True)
+            with open(os.path.join(dd, "说明.txt"), "w", encoding="utf-8", newline="\n") as f:
                 f.write(txt)
     # 第三方许可放包外, 方便查看: 字体 (OFL 等, 字体本身在主 pck) 与运行时放大着色器 (hqx LGPL-2.1+、xBRZ GPL-3.0)
     hq = os.path.join(REPO, "game", "engine", "render", "hq")

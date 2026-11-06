@@ -126,6 +126,7 @@ func _start() -> void:
 		units.append(u)
 		u.step_begin.connect(_walk_edge_scroll.bind(u))
 	show_units(0, 0)
+	BattleCloseup.prefetch_units(units)   # 后台预取近景动画 (一套上百张, 现载入会卡、一次跨过多帧)
 	RegressLog.provide("battle", regress_state)
 	tree_exiting.connect(func(): RegressLog.drop("battle", self))
 	RegressLog.checkpoint("battle_start", {"stage": st.n})
@@ -804,8 +805,19 @@ func _cursor_edge_scroll(ax: int, c: Vector2i) -> void:
 
 
 ## 边缘判定 (光标 / 走路 · 同一套): 格 c 在镜头 base 的可见区最左/上一列 (且不是地图边) 返回 −1 格,
-## 最右/下一列 (且不是地图边) 返回 +1 格 (像素), 否则 0
+## 最右/下一列 (且不是地图边) 返回 +1 格 (像素), 否则 0。卷动量再限在地图内 (_clamp_cam): 地图宽高不是整格数时, 镜头已贴地图边、
+## 可见区最边一列却还不是地图最边一列, 卷满 1 格会越界露出 1 格黑边 (2026-11-05 网友反馈: 灵驹走到右边宝箱, 画面右侧黑一条); 只缩不放, 已越界的镜头不往回拉
 func _edge_shift(ax: int, c: Vector2i, base: Vector2) -> float:
+	var d := _edge_shift_raw(ax, c, base)
+	if d == 0.0:
+		return 0.0
+	var moved := base
+	moved[ax] += d
+	var lim := _clamp_cam(moved)[ax] - base[ax]
+	return clampf(lim, 0.0, d) if d > 0.0 else clampf(lim, d, 0.0)
+
+
+func _edge_shift_raw(ax: int, c: Vector2i, base: Vector2) -> float:
 	var cell := Vector2(BattleStage.CELL_W, BattleStage.CELL_H)
 	var o := cam_offset()
 	var n := int(view()[ax] / cell[ax])

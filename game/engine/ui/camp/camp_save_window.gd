@@ -5,11 +5,14 @@ extends Node2D
 ##   背景 第 0 帧在 (0,0); 标题框 第 1 帧在 (3,5), 标题文字在 (20,10) flags=5。
 ##   5 个档位条: x=3, y=30+33i; 有记录用第 2 帧 (头像画在帧里), 空档位第 3 帧。
 ##   条内: 关名 (152,4) flags=5; 等级 %3d 用第 4 帧字模在 (125,14); 「MM/DD HH:MM」在 (112,21), 空格只占位不画。
+##   复刻新增: 条内第二行右侧「总回合」(靠左) 与「时长」(游戏总时间, 靠右) (camp.save.slot.turns / play_time); 旧存档没记的显示「--」。
 ##   选中条: 叠加蓝色 (0x001F) 并按 2,4,…,16,…,4 每 2 tick 一档呼吸; 读档时空档位泛白。
 ##   打开时全屏由黑渐亮, 档位条单数行从左、双数行从右滑入 16,8,4,2,0。
 ## 按键: ↑/← 减 1、↓/→ 加 1, 5 个档位循环; 取消返回 −1;
 ##   确认: 读档时空档位无反应; 存档到空档位直接存; 其余在 (270, 42+33·sel) 弹是/否框, 默认✗。
 ## 坐标、帧号取布局表 camp.save.* (档位序号 i; 档位条帧 which 0 有记录 / 1 空)。标题「前历再续」也用这个窗。
+
+const ClearRank = preload("res://engine/rules/clear_rank.gd")
 
 signal picked(slot: int)
 
@@ -48,6 +51,9 @@ func _init(is_save: bool) -> void:
 			bar.add_child(UiText.make("camp.save.slot.title", info["title"]))
 			bar.add_child(UiLayout.number("camp.save.slot.lv", int(info["lv"])))
 			bar.add_child(UiLayout.number("camp.save.slot.time", String(info["time"])))
+			if String(info.get("turns", "")) != "":
+				bar.add_child(UiText.make("camp.save.slot.turns", UiStrings.t("camp.save.turns", [info["turns"]])))
+				bar.add_child(UiText.make("camp.save.slot.play_time", UiStrings.t("camp.save.play_time", [info["play_time"]])))
 		elif not saving:
 			CampUi.set_material_deep(p, _wash_material())
 		add_child(bar)
@@ -60,10 +66,11 @@ func open() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "modulate", Color.WHITE, CampUi.TICK * 14)
 	for i in _slots:
-		UiSlide.run(_bars[i], UiLayout.at("camp.save.slot", i), Vector2.LEFT if i % 2 == 0 else Vector2.RIGHT, CampUi.SLIDE, true)
+		UiSlide.run(_bars[i], UiLayout.at("camp.save.slot", i), Vector2.LEFT if i % 2 == 0 else Vector2.RIGHT, UiSlide.camp_offsets(), true)
 
 
-## 复刻版存档摘要: {"title": 关名, "lv": 殷剑平等级, "time": "MM/DD HH:MM"}, 空档位返回 {}
+## 复刻版存档摘要: {"title": 关名, "lv": 殷剑平等级, "time": "MM/DD HH:MM", "turns": 总回合, "play_time": 游戏时间 "H:MM"}, 空档位返回 {}
+## (损坏 / 不兼容的档位没有 turns / play_time, 不显示这两项)
 static func slot_info(i: int) -> Dictionary:
 	var path: String = GameSaves.slot_path(i)
 	var r: Dictionary = SaveFile.load_file(path, "game")  # 原子写入/.bak 回退/版本迁移
@@ -92,7 +99,25 @@ static func slot_info(i: int) -> Dictionary:
 	var time := ""
 	if t.length() >= 16:
 		time = "%s/%s %s" % [t.substr(5, 2), t.substr(8, 2), t.substr(11, 5)]
-	return {"title": title, "lv": lv, "time": time}
+	return {"title": title, "lv": lv, "time": time, "turns": turns_text(d), "play_time": play_time_text(float(d.get("play_time", -1.0)))}
+
+
+## 总回合文字: 存档的 turns; 旧存档 / 原版导入存档没有时用原版的过关回合记录 (var 30+next) 补出已打完各关之和, 也补不出显示「--」
+static func turns_text(d: Dictionary) -> String:
+	var n := int(d.get("turns", -1))
+	var params = GameContext.current().content.params() if n < 0 else null
+	if params != null and d.get("game_data") is Dictionary:
+		var gd: Dictionary = d["game_data"]
+		n = ClearRank.recorded_turns(func(v): return int(gd.get(str(v), gd.get(v, 0))), params)
+	return str(n) if n >= 0 else UiStrings.t("camp.save.unknown")
+
+
+## 游戏时间文字「时:分」(小时不限位数, 封顶 9999:59); 未知 (< 0, 旧存档) 显示「--」
+static func play_time_text(sec: float) -> String:
+	if sec < 0.0:
+		return UiStrings.t("camp.save.unknown")
+	var m := mini(floori(sec / 60.0), 9999 * 60 + 59)
+	return "%d:%02d" % [floori(m / 60.0), m % 60]
 
 
 func _wash_material() -> ShaderMaterial:

@@ -50,7 +50,7 @@ func _init() -> void:
 
 # ---------------- 设置 (user://settings.json): 音乐/音效音量 0~10, 画质 hd/orig ----------------
 
-const SETTINGS_PATH := "user://settings.json"
+const SETTINGS_PATH := UserPaths.SETTINGS
 ## 设定项定义/缺省/校验在 engine/settings/settings_schema.gd; 另有 tex 贴图倍数 / fullscreen / win 窗口大小
 var settings: Dictionary:
 	get: return ctx.settings
@@ -142,6 +142,19 @@ func _open_settings() -> void:
 	var sp := SettingsPanel.new()
 	add_child(sp)  # 挂在 Game 下而不是当前场景: 打开期间场景被切走也不会连面板一起释放 (否则 open() 永远等不到 closed, F10 就死了)
 	await sp.open()
+	_settings_open = false
+
+
+## 「存档位置」启动提示 (Windows / Linux 导出版: 旧位置发现存档, 或选过的位置失效; 见 UserPaths.needs_prompt): 标题画面上弹 SaveLocationPanel,
+## 玩家选搬到游戏文件夹 / 其它文件夹 / 先不动。挂在 Game 下 (同设定面板), 模态
+func prompt_save_location() -> void:
+	if _settings_open or not UserPaths.needs_prompt:
+		return
+	_settings_open = true
+	var p := SaveLocationPanel.new()
+	p.startup = true
+	add_child(p)
+	await p.open()
 	_settings_open = false
 
 
@@ -260,7 +273,7 @@ func boot() -> void:
 		get_tree().create_timer(1.0).timeout.connect(func(): start_replay(ctx.debug.replay_switch, ctx.debug.replay_speed))
 	GameSaves.stage_limit = Content.stage_count()
 	if Platform.is_android():   # 真存档在应用私有目录 (没 root 看不到), 另存一份到资源包旁的公开目录, 见 SaveMirror
-		GameSaves.enable_mirror("user://", ResPacks.android_pack_dir().path_join(SaveMirror.SUBDIR))
+		GameSaves.enable_mirror(UserPaths.save_dir(), ResPacks.android_pack_dir().path_join(SaveMirror.SUBDIR))
 	GameSaves.sync_mirror()
 	for n in ctx.debug.load_slots:  # 测试: --load=N 先读入第 N 个存档位的数据 (不切换场景)
 		GameSaves.load_slot(state, int(n) - 1)
@@ -399,9 +412,23 @@ func _failed_to_title(err: String) -> Node:
 var block_quit := false
 
 
-## 每帧记真实帧耗时 (engine/core/frame_stats.gd, 画质诊断页显示)
-func _process(_delta: float) -> void:
+## 每帧记真实帧耗时 (engine/core/frame_stats.gd, 画质诊断页显示), 并累计游戏总时间
+func _process(delta: float) -> void:
 	FrameStats.record(Assets.loads)
+	_count_play_time(delta)
+
+
+## 游戏总时间 (GameState.play_time, 存档界面显示) 一帧最多计这么多秒: 加载卡顿 / 系统休眠回来的超长帧不整段算进去
+const PLAY_TIME_MAX_STEP := 0.5
+var _app_focused := true
+
+
+## 只在游玩画面 (战场 / 城镇 / 营地) 计, 按真实时间 (游戏加速不多计); 标题与片头、设定 / 攻略等浮层开着 (相当于暂停)、窗口失焦 (后台)、回放中都不计
+func _count_play_time(delta: float) -> void:
+	if not _app_focused or PlayLog.replaying() or InputRouter.overlay_open():
+		return
+	if current is BattleScene or current is RpgScene or current is CampScene:
+		state.add_play_time(minf(GameSpeed.real_delta(delta), PLAY_TIME_MAX_STEP))
 
 
 ## Windows 导出版退出时跳过引擎收尾直接结束进程 (见 _fast_quit); 出问题时改 false 退回正常收尾
@@ -418,6 +445,10 @@ func quit_game() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_fast_quit()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_app_focused = false
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_app_focused = true
 
 
 ## 退出: 先把窗口收起来再走正常退出流程。真实显卡上销毁上千张 6 倍贴图和生成用的视口要好几秒, 窗口一直挂着像卡死

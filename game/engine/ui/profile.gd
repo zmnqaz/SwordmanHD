@@ -76,8 +76,8 @@ func _init(party: Array) -> void:
 
 
 func open() -> void:
-	UiSlide.run(_left, UiLayout.at("camp.profile.left"), Vector2.LEFT, CampUi.SLIDE, true)
-	UiSlide.run(_right, UiLayout.at("camp.profile.right"), Vector2.RIGHT, CampUi.SLIDE, true)
+	UiSlide.run(_left, UiLayout.at("camp.profile.left"), Vector2.LEFT, UiSlide.camp_offsets(), true)
+	UiSlide.run(_right, UiLayout.at("camp.profile.right"), Vector2.RIGHT, UiSlide.camp_offsets(), true)
 
 
 func _clear(n: Node) -> void:
@@ -267,6 +267,6 @@ func key(k: String) -> void:
 		"accept":
 			page = (page + 1) % 3
 			_build_right()
-			UiSlide.run(_right, UiLayout.at("camp.profile.right"), Vector2.RIGHT, CampUi.SLIDE, true)
+			UiSlide.run(_right, UiLayout.at("camp.profile.right"), Vector2.RIGHT, UiSlide.camp_offsets(), true)
 		"cancel":
 			closed.emit()

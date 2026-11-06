@@ -60,7 +60,7 @@ func _init(inventory: CampInventory) -> void:
 
 func open() -> void:
 	desc.open()
-	UiSlide.run(_left, _pos[0], Vector2.LEFT, CampUi.SLIDE, true)
+	UiSlide.run(_left, _pos[0], Vector2.LEFT, UiSlide.camp_offsets(), true)
 
 
 func _refresh_pool() -> void:
@@ -219,7 +219,7 @@ func key(k: String) -> void:
 				top[1] = 0
 				_right.visible = true
 				_rebuild()
-				UiSlide.run(_right, _pos[1], Vector2.LEFT, CampUi.SLIDE, true)
+				UiSlide.run(_right, _pos[1], Vector2.LEFT, UiSlide.camp_offsets(), true)
 			else:
 				desc.set_text(UiStrings.t("camp.forge.ask"))
 				_ask = CampAsk.YesNo.make("camp.forge.yesno", {"r": sel[1] - top[1]})

@@ -3,7 +3,7 @@ extends "res://tests/test_base.gd"
 ## 画质诊断页 (engine/ui/diag_panel.gd): 文字内容 (含生成器失败的醒目提示)、点按 / 确认 / 取消返回 (刚打开有防误触)、写 user://diag.txt。
 
 const Router = preload("res://engine/input/input_router.gd")
-const TEST_OUT := "user://test_diag_panel.txt"
+static var TEST_OUT: String = tmp_dir("test_diag_panel.txt")
 
 
 func _tree() -> SceneTree:

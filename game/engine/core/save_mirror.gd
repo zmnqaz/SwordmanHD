@@ -6,11 +6,14 @@ extends RefCounted
 ##
 ## 判断「镜像文件是不是被人换过」不比修改时间 (换进来的常是旧档), 比内容指纹: 每次镜像写出时把文件的 MD5 记进
 ## <本地目录>/mirror_state.json; 镜像里文件的指纹和记录一致 = 游戏自己写的, 不用管; 对不上 = 外部换过, 校验通过就覆盖本地存档
-## (旧的先改名 .bak), 不通过 (格式/版本/关卡范围) 就保留镜像文件不动并报告原因, 本地存档不受影响。
+## (旧的先改名 <名>.before_import —— 外部换进来的档覆盖本地, 这份是推错文件时唯一的退路, 有意保留; 不用 .bak: SaveFile 读档时会清掉 .bak;
+##  它在应用私有目录里, 玩家看不到也不乱),
+## 不通过 (格式/版本/关卡范围) 就保留镜像文件不动并报告原因, 本地存档不受影响。
 ## 纯静态, 目录都由调用方给 (GameSaves 决定什么时候、在哪个目录启用)。
 
 const SUBDIR := "saves"
 const STATE_FILE := "mirror_state.json"
+const BEFORE_IMPORT := ".before_import"   # 导入覆盖前的本地旧档
 
 
 ## 受管的文件名: 5 个存档位 + 战阵存录
@@ -35,7 +38,7 @@ static func _write_state(local_dir: String, state: Dictionary) -> void:
 	SaveFile.write_json(local_dir.path_join(STATE_FILE), state)
 
 
-## 整文件拷贝 (先写临时文件再改名); keep_bak 时目标已有的旧文件先改名 .bak
+## 整文件拷贝 (先写临时文件再改名); keep_bak 时目标已有的旧文件先改名 BEFORE_IMPORT
 static func _copy(src: String, dst: String, keep_bak: bool) -> bool:
 	var data := FileAccess.get_file_as_bytes(src)
 	if data.is_empty():
@@ -53,9 +56,9 @@ static func _copy(src: String, dst: String, keep_bak: bool) -> bool:
 		return false
 	if FileAccess.file_exists(dst):
 		if keep_bak:
-			if FileAccess.file_exists(dst + ".bak"):
-				DirAccess.remove_absolute(dst + ".bak")
-			DirAccess.rename_absolute(dst, dst + ".bak")
+			if FileAccess.file_exists(dst + BEFORE_IMPORT):
+				DirAccess.remove_absolute(dst + BEFORE_IMPORT)
+			DirAccess.rename_absolute(dst, dst + BEFORE_IMPORT)
 		else:
 			DirAccess.remove_absolute(dst)
 	if DirAccess.rename_absolute(tmp, dst) != OK:

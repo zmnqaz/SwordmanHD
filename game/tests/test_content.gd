@@ -45,6 +45,10 @@ func test_load_base_pack():
 	check(db.is_hero(9) and not db.is_hero(10), "我方角色 = party_init 表 (0~9)")
 	eq(int(db.camp(3)["town"]), 2)
 	eq(int(db.camp(32)["town"]), -1, "原版缺 CAMP32: 缺省直接下一关")
+	eq(db.camp(32)["background_anim"], db.camp(33)["background_anim"], " 原版缺 CAMP32: 底图沿用 CAMP33 (第 31 幕结束原版去的营地), 不用第 0 幕的 Camp00")
+	for n in db.stage_count():   # 引擎会进的营地都要有底图 (Camp00 只属于第 0 幕; camp34 原版缺图但第 33 幕结束不进营地)
+		if n != 0 and n != 34:
+			check(db.camp(n)["background_anim"] != null and db.camp(n)["background_anim"] != "Camp/Image/Camp00", "camp%02d 有自己的底图" % n)
 	eq(db.shop("town00.0")["items"].map(func(x): return int(x)), [0, 15, 45, 95])
 	eq(db.stage_name(1), "第一幕  因缘")
 	check(db.is_ending_movie(13) and not db.is_ending_movie(12), "结局过场来自 manifest")
@@ -138,6 +142,7 @@ func test_example_mod():
 	eq(db.item(1), base.item(1), "其他物品不变")
 	eq(db.items().size(), base.items().size())
 	eq(db.params().turn_limit, 120, "rules.json 覆盖回合上限")
+	eq([db.params().guard_div, base.params().guard_div], [3, 2], "rules.json 覆盖外置的规则常数 (格挡减伤 1/2 -> 1/3)")
 	eq(db.params().bag_capacity, base.params().bag_capacity)
 	eq(db.stage_info(1), base.stage_info(1), "没改的关卡文件用基础包的")
 	eq(db.signature(), [{"id": "tdj", "version": "1.3.0"}, {"id": "example_mod", "version": "0.1.0"}], "remake 是 save_neutral, 不进存档签名")
@@ -232,14 +237,14 @@ func test_content_schema():
 		return
 	var py := _python()
 	# 输出走 --report 文件 (UTF-8): Windows 上 Godot 按 ANSI 代码页解码子进程 stdout, 直接抓中文会乱
-	var report := ProjectSettings.globalize_path("user://schema_report.txt")
+	var report := ProjectSettings.globalize_path(tmp_dir("schema_report.txt"))
 	var out := []
 	var rc := OS.execute(py, [script, "--report", report], out, true)
 	if rc == -1:
 		check(true, "没有 Python (%s), 跳过" % py)
 		return
 	eq(rc, 0, "内置内容包 schema 校验: " + FileAccess.get_file_as_string(report))
-	var bad := ProjectSettings.globalize_path("user://schema_bad/bad")
+	var bad := ProjectSettings.globalize_path(tmp_dir("schema_bad/bad"))
 	_write(bad + "/manifest.json", {"format": "tdj-content/1", "id": "bad", "name": "x", "version": "1", "base": ["tdj"]})
 	_write(bad + "/data/units.json", [{"id": 0, "move": "fast"}, {"name": "没有键"}])
 	rc = OS.execute(py, [script, "--pack", bad, "--report", report], [], true)

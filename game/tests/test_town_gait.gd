@@ -195,6 +195,7 @@ func test_scene_walks_a_cell_in_thirds_and_keeps_the_last_frame_after_stopping()
 	eq(sd2, 0, "满 3 tick 回到朝南站立")
 	s._hero_act(false, sd2)
 	check(s.hero.playing and s.hero.start_frame == 0 and s.hero.tick_override == 2, "站立动画在播, 每帧 2 tick")
+	eq(s.hero.frame, TownHeroGait.STAND_RESUME_FRAME % 3, "走完停下后站立从段内第 4 帧续 (假动画站立 3 帧 → 4 mod 3)")
 	WalkStyle.override = -1
 	_scene_free(s)
 	_unfake()

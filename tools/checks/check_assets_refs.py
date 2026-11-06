@@ -66,6 +66,8 @@ def refs_in_pack(d):
                     for vv in v.values():
                         if isinstance(vv, str):
                             out.append((rel, k, names.get(vv, vv) if "/" not in vv else vv))
+                elif k in NULLABLE and v == "":
+                    continue   # 同 null: 故意不放动画 (如 fx/cast.json 天魔护铠那类不起演出器的绝技)
                 elif k in KEYS and isinstance(v, str):
                     out.append((rel, k, names.get(v, v) if "/" not in v else v))
                 elif k in KEYS and v is None and k not in NULLABLE:

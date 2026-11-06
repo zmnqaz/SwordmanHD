@@ -35,10 +35,49 @@ func test_measured_segments():
 	check(by.has(0x20) and by.has(US.ST_BIND) and by.has(US.ST_FREEZE), "對術全禦 / 地縛 / 冰結 都有")
 
 
+## 着色参数 = 的调用参数 (2026-11-06 对照原版): 中毒 源*12 + 绿 0x3e0*6, 冰結 源*12 + 0xc77*16, 幻影 源*8 + 底*12, 狂暴 红 0x7c00*6 + 底*12
 func test_tint_table():
-	var c: Dictionary = UiLayout.val("map.unit.status_tint", "colors", {})
-	check(c.has("freeze") and c.has("poison"), "冰結/中毒 着色")
-	check(not c.has("seal") and not c.has("paralyze"), "封咒/麻痹不着色 (原版是叠层/抖动)")
+	var d: Dictionary = UiLayout.el("map.unit.status_tint")
+	eq([d.poison.col, int(d.poison.col_k), int(d.poison.src_k)], ["0x03e0", 6, 12])
+	eq([d.freeze.col, int(d.freeze.col_k), int(d.freeze.src_k)], ["0x0c77", 16, 12])
+	eq([int(d.phantom.src_k), int(d.phantom.dst_keep)], [8, 12])
+	eq([d.berserk.col, int(d.berserk.col_k), int(d.berserk.dst_keep), int(d.berserk.width_max)], ["0x7c00", 6, 12, 6])
+	check(UnitStatusFx.status_material(US.ST_SEAL | US.ST_PARALYZE) == null, "封咒/麻痹不着色 (原版是叠层/抖动)")
+	var m: ShaderMaterial = UnitStatusFx.status_material(US.ST_POISON)
+	eq([m.get_shader_parameter("tint1_src_k"), m.get_shader_parameter("tint1_col_k")], [0.75, 0.375], "中毒: 源 x0.75 + 绿 x0.375")
+	eq(m.get_shader_parameter("tint1_col"), Vector3(0, 1, 0))
+	check(not m.get_shader_parameter("tint2_on") and not m.get_shader_parameter("ghost"))
+	var g: ShaderMaterial = UnitStatusFx.status_material(US.ST_PHANTOM | US.ST_FREEZE)
+	eq([g.get_shader_parameter("ghost_src"), g.get_shader_parameter("ghost_keep")], [0.5, 0.75], "幻影: 源 x0.5 + 底 x0.75 (比底亮)")
+	eq(g.get_shader_parameter("tint2_col_k"), 1.0, "冰結: 色权重 16 -> 1.0")
+
+
+## 原版权重表 (填): t = min(31, floor(v*K/16)) 去最低位; 连续公式会偏亮 (白 x0.75: 22 而不是 23.25)
+func test_weight_table_quantized():
+	eq(UnitStatusFx.t555(31, 12), 22, "白 x0.75 = 23.25 -> 23 -> 偶数 22")
+	eq(UnitStatusFx.t555(31, 6), 10, "纯绿 x0.375 = 11.6 -> 11 -> 10")
+	eq(UnitStatusFx.t555(23, 16), 22, "冰結色蓝 23 x1.0 -> 偶数 22")
+	eq(UnitStatusFx.t555(3, 16), 2)
+	eq(UnitStatusFx.t555(31, 13), 22, "k 取 k>>1 档: 13 同 12")
+	eq(UnitStatusFx.blend555(31, 12, 31, 6), 31, "中毒白袍绿通道 22 + 10 = 32 封顶 31")
+	eq(UnitStatusFx.blend555(20, 12, 0, 6), 14, "暗部: 20 x0.75 = 15 -> 14, 绿项 0")
+	for v in 32:
+		for k in [0, 2, 6, 8, 12, 16, 32]:
+			var t := UnitStatusFx.t555(v, k)
+			check(t % 2 == 0 and t <= 30 and t <= v * k / 16, "偶数、不超过连续值、不超过 30 (v=%d k=%d)" % [v, k])
+
+
+## 狂暴光晕宽度 (往返): 0,2,4,6,4,2,0,2,...
+func test_berserk_width_pingpong():
+	var w := 0
+	var down := false
+	var seq := [w]
+	for i in 8:
+		var r := UnitStatusFx.berserk_step(w, down, 0, 6, 2)
+		w = r[0]
+		down = r[1]
+		seq.append(w)
+	eq(seq, [0, 2, 4, 6, 4, 2, 0, 2, 4])
 
 
 func _unit() -> BattleUnit:
@@ -62,18 +101,64 @@ func test_status_bits_show_overlays_and_tint():
 	u.st.status = US.ST_POISON | 0x1
 	u._tint()
 	eq(u._fx._entries.filter(func(en): return en.active).size(), 2, "攻击提升: 光环 + 火花两段")
-	check(u.anim.modulate != Color.WHITE, "中毒: 贴图变绿")
+	check(u.anim.status_material != null and u.anim.status_material.get_shader_parameter("tint1_on"), "中毒: 人物贴图套着色材质")
 	u.st.status = 0
 	u._tint()
 	eq(u._fx._entries.filter(func(en): return en.active).size(), 0, "状态没了: 叠层全隐")
 	eq(u.anim.modulate, Color.WHITE)
+	check(u.anim.status_material == null, "状态没了: 着色材质还原")
+	u.st.status = US.ST_BERSERK
+	u._tint()
+	check(u._fx._bz_player != null, "狂暴: 有红色光晕层")
+	u._fx._process(0.12)
+	check(u._fx._bz_mat.get_shader_parameter("width") != null, "光晕按宽度 w 放大 (不是外扩半径)")
+	u.st.status = 0
+	u._tint()
+	check(u._fx._bz_player == null, "狂暴解除: 光晕层删掉")
+	u.shown = true   # 在场且活着才在解除时恢复动画
+	u.st.alive = true
+	u.anim.playing = true
 	u.st.status = US.ST_PARALYZE
 	u._tint()
 	check(u._fx._jitter, "麻痹: 贴图抖动")
+	check(not u.anim.playing, "麻痹: 人物定格不换帧 ")
+	var xs := {}
+	for i in 30:
+		u._fx._process(0.12)
+		xs[u.anim.position.x - FxPlace.offset("unit").x] = true
+		check(not u.anim.playing, "摇晃期间一直定格")
+	check(xs.size() >= 2, "每 0.12 秒都在动: %s" % str(xs.keys()))
 	u.st.status = 0
 	u._tint()
 	check(not u._fx._jitter and u.anim.position.x == FxPlace.offset("unit").x, "抖动停了, 位置复原")
+	check(u.anim.playing, "麻痹解除: 动画恢复")
+	u.st.status = US.ST_FREEZE
+	u._tint()
+	check(not u.anim.playing and not u._fx._jitter, "冰結: 定格但不抖 (原版 字段 跳过换帧)")
+	u.anim.playing = true   # 别处 (阶段开始播站立) 又开了动画
+	u._fx._process(BattleUnit.TICK)
+	check(not u.anim.playing, "冰結期间压回定格")
+	eq(u.anim.position.x, FxPlace.offset("unit").x, "冰結不偏移")
+	u.st.status = 0
+	u._tint()
+	check(u.anim.playing, "冰結解除: 动画恢复")
 	u.free()
+
+
+## 麻痹摇晃: r1=1 换边, r1=0 偏着回中 / 在中间随机去一边 —— 每一步都和上一步不同
+func test_paralyze_jitter_step():
+	eq(UnitStatusFx.jitter_step(-1, 1, 0), 1, "左 → 右")
+	eq(UnitStatusFx.jitter_step(1, 1, 0), -1, "右 → 左")
+	eq(UnitStatusFx.jitter_step(0, 1, 1), -1, "中 → 左 (r1=1)")
+	eq(UnitStatusFx.jitter_step(1, 0, 0), 0, "偏着 → 回中")
+	eq(UnitStatusFx.jitter_step(-1, 0, 1), 0)
+	eq(UnitStatusFx.jitter_step(0, 0, 1), -1, "中 → 随机一边")
+	eq(UnitStatusFx.jitter_step(0, 0, 0), 1)
+	for off in [-1, 0, 1]:
+		for r1 in 2:
+			for r2 in 2:
+				var n := UnitStatusFx.jitter_step(off, r1, r2)
+				check(n != off and absi(n) <= 1, "从不停在原位、只在 -1..1: %d -> %d" % [off, n])
 
 
 ## 状态到期: 阶段开始 R-=K 到 0 时单位身上放 MAN_RES 一段, 区间按到期位选 (状态 9 / 模式 5、6)

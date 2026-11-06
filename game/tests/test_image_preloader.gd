@@ -8,7 +8,7 @@ func _png(w: int, h: int) -> String:
 	for y in h:
 		for x in w:
 			img.set_pixel(x, y, Color8(x * 4 % 256, y * 7 % 256, 90, 255))
-	var path := "user://preload_test_%d_%d.png" % [Time.get_ticks_usec(), w]
+	var path := tmp_dir("preload_test_%d_%d.png") % [Time.get_ticks_usec(), w]
 	img.save_png(path)
 	return path
 
@@ -23,7 +23,7 @@ func test_take_returns_the_decoded_image_once() -> void:
 	var direct := Image.load_from_file(f)
 	check(img != null and img.get_size() == Vector2i(64, 32) and img.get_data() == direct.get_data(), "取到的和直接读的像素一致")
 	check(p.take(f) == null, "取走后没有了 (调用方自己读)")
-	check(p.take("user://no_such_image.png") == null, "没 start 过返回 null")
+	check(p.take(tmp_dir("no_such_image.png")) == null, "没 start 过返回 null")
 	DirAccess.remove_absolute(f)
 
 

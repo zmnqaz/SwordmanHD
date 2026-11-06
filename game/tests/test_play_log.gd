@@ -172,7 +172,7 @@ func test_battle_growth_mode_recorded_and_replayed_with_seed() -> void:
 func test_stage_segment_exports_clean_path_after_load() -> void:
 	var x := _rec_player()
 	var p: PlayLog = x[0]
-	p.path = "user://replays_test/session.json"
+	p.path = tmp_dir("replays_test/session.json")
 	_press(x[1], UiAction.UP)                    # 这一幕之前的操作 (不进本幕录像)
 	PlayLog.stage_begin(7, {"stage": 7, "gold": 100})
 	_press(x[1], UiAction.DOWN)
@@ -182,12 +182,12 @@ func test_stage_segment_exports_clean_path_after_load() -> void:
 	_press(x[1], UiAction.RIGHT)                # 顺利的一段
 	PlayLog.stage_end(7, true)
 	var found := ""
-	var dir := DirAccess.open("user://replays_test")
+	var dir := DirAccess.open(tmp_dir("replays_test"))
 	check(dir != null, "导出目录存在")
 	if dir != null:
 		for f in dir.get_files():
 			if f.begins_with("stage_07_"):
-				found = "user://replays_test/" + f
+				found = tmp_dir("replays_test/") + f
 	check(found != "", "导出了第 7 幕的单幕录像")
 	if found != "":
 		var j = JSON.parse_string(FileAccess.get_file_as_string(found))
@@ -204,7 +204,7 @@ func test_stage_segment_exports_clean_path_after_load() -> void:
 
 # ---------------------------------------------------------------- 跨次启动: 存档带着录像历史 (整场录像)
 
-const SIDE_DIR := "user://replays_test"
+static var SIDE_DIR: String = tmp_dir("replays_test")
 
 
 func _side_path(tag: String) -> String:
@@ -315,7 +315,7 @@ func test_battle_save_from_earlier_session_keeps_history_and_stage_start_after_i
 ## 端到端: GameSaves 存档 -> (模拟退出重启) -> GameSaves 读档, 录像历史接上
 func test_game_saves_roundtrip_keeps_the_whole_recording():
 	var old_dir := GameSaves.base_dir
-	GameSaves.base_dir = "user://replays_test/"
+	GameSaves.base_dir = tmp_dir("replays_test/")
 	DirAccess.make_dir_recursive_absolute(GameSaves.base_dir)
 	var x := _rec_player()
 	_press(x[1], UiAction.UP)
@@ -449,7 +449,7 @@ func test_fresh_recording_after_stopping_a_replay_starts_at_title() -> void:
 # ---------------------------------------------------------------- 进程内回放 (菜单入口)
 
 func _write_replay(events: Array) -> String:
-	var p := "user://test_replay_%d.json" % Time.get_ticks_usec()
+	var p := tmp_dir("test_replay_%d.json") % Time.get_ticks_usec()
 	var f := FileAccess.open(p, FileAccess.WRITE)
 	f.store_string(JSON.stringify({"version": PlayLog.VERSION, "kind": "play", "meta": {}, "duration": 1.0, "seeds": [], "checkpoints": [], "events": events}))
 	f.close()
@@ -467,8 +467,8 @@ func test_open_replay_ok_and_bad_file() -> void:
 	eq(l.mode, "replay")
 	eq(l.speed, 2.0)
 	l.free()
-	eq(PlayLog.open_replay("user://no_such_replay.json", 1.0), null, "不存在 -> null")
-	var bad := "user://test_bad_replay.json"
+	eq(PlayLog.open_replay(tmp_dir("no_such_replay.json"), 1.0), null, "不存在 -> null")
+	var bad := tmp_dir("test_bad_replay.json")
 	var f := FileAccess.open(bad, FileAccess.WRITE)
 	f.store_string("{}")
 	f.close()
@@ -532,7 +532,7 @@ func test_replay_redirects_saves_to_sandbox_and_restores() -> void:
 	var real := GameSaves.base_dir
 	var l := PlayLog.open_replay(p, 1.0)
 	l._ready()
-	eq(GameSaves.base_dir, PlayLog.REPLAY_SAVE_DIR, "回放期间存档写沙盒")
+	eq(GameSaves.base_dir, UserPaths.replay_sandbox(), "回放期间存档写沙盒")
 	PlayLog.stop_current()
 	eq(GameSaves.base_dir, real, "结束后恢复真实目录")
 	_rm(p)
@@ -591,7 +591,7 @@ func _read_json(file: String) -> Dictionary:
 func test_autosave_runs_in_background_and_writes_a_snapshot() -> void:
 	var x := _rec_player()
 	var p: PlayLog = x[0]
-	p.path = "user://playlog_async_test_%d.json" % Time.get_ticks_usec()
+	p.path = tmp_dir("playlog_async_test_%d.json") % Time.get_ticks_usec()
 	for i in 50:
 		_press(x[1], UiAction.UP)
 	p._process(PlayLog.AUTOSAVE_SEC + 0.1)   # 到点: 触发后台存盘
@@ -613,7 +613,7 @@ func test_autosave_runs_in_background_and_writes_a_snapshot() -> void:
 func test_repeated_save_is_skipped_until_something_changes() -> void:
 	var x := _rec_player()
 	var p: PlayLog = x[0]
-	p.path = "user://playlog_dedupe_test_%d.json" % Time.get_ticks_usec()
+	p.path = tmp_dir("playlog_dedupe_test_%d.json") % Time.get_ticks_usec()
 	_press(x[1], UiAction.UP)
 	p.save()
 	var m0 := FileAccess.get_modified_time(p.path)

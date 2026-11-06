@@ -37,6 +37,7 @@ var start_at := 0
 var start_skew := 0.0
 var cull_offscreen := false  # 屏外只推进时间不换帧 (不取贴图): 城镇里全部 NPC/物件循环播放会把整个目录的帧都载入显存; 只用于不依赖 frame_shown/声音的动画
 var other: AnimPlayer   # 部件 tex=null 时按 ref 引用它的帧 (近景攻击动画里画被打的一方)
+var status_material: Material = null   # 战场单位的状态着色 (中毒/冰結/幻影, UnitStatusFx): 非空时不透明的普通部件 (type 0) 一律用它, 影子与混合部件不受影响
 var _time := 0.0
 var sfx_count := 0        # 本节点触发过的音效次数 (测试/验收用)
 var _abs_prev := 0        # 本次播放已处理到的「绝对帧序」(循环动画每圈累加), 帧被卡顿跳过时用它补播中间有声音的帧
@@ -128,15 +129,17 @@ func _process(delta: float) -> void:
 	_show(start_frame + i)
 
 
-## 帧推进一次跨过多帧 (卡顿: 首次贴图生成、着色器、加载) 时, 被跨过的帧显示不了, 但它们的音效不能丢:
-## 原版固定 25 tick 逐帧推进, 区间内每个进入的帧都发声。abs_i = 这一刻的绝对帧序 (循环动画每圈累加); 循环动画最多补最近一圈
+## 帧推进一次跨过多帧 (卡顿: 首次贴图生成、着色器、加载) 时, 被跨过的帧显示不了, 但它们的音效与帧事件不能丢:
+## 原版固定 25 tick 逐帧推进, 区间内每个进入的帧都发声、都走帧逻辑 (近景命中帧扣血 / 色闪 / 震屏挂在 frame_shown 上,
+## 漏了命中帧体力条就停在半截: 玩家反馈怪死了还显示 50 血)。abs_i = 这一刻的绝对帧序 (循环动画每圈累加); 循环动画最多补最近一圈
 func _catch_up_sounds(abs_i: int) -> void:
 	var count := _durs.size()
 	if abs_i <= _abs_prev:
 		return
-	if play_sound and abs_i - _abs_prev > 1:
-		for k in range(maxi(_abs_prev + 1, abs_i - count + 1), abs_i):
+	for k in range(maxi(_abs_prev + 1, abs_i - count + 1), abs_i):
+		if play_sound:
 			_sound_only(start_frame + k % count)
+		frame_shown.emit(start_frame + k % count)
 	_abs_prev = abs_i
 
 
@@ -203,7 +206,7 @@ func _show(f: int) -> void:
 		return
 	frame = f
 	var fr: Dictionary = data["frames"][f]
-	var parts: Array = fr["parts"].filter(func(p): return p["tex"] != null or (other != null and p.has("ref")))
+	var parts := draw_parts(fr, other != null)
 	while _sprites.size() < parts.size():
 		var s := Sprite2D.new()
 		s.centered = false
@@ -217,6 +220,18 @@ func _show(f: int) -> void:
 	if play_sound and int(fr["sound"]) >= 0:
 		_play_sound(int(fr["sound"]))
 	frame_shown.emit(f)
+
+
+## 一帧要画的部件, 按绘制先后。ref 部件 (tex=null, 画另一个动画 other 的帧): 原版绘制 先找本帧**第一个** ref 部件画在最底下,
+## 再按顺序画其余普通部件; 没挂 other (挂空) 就不画。复刻原先按部件顺序画, 守方盖在剑光等特效上面
+static func draw_parts(fr: Dictionary, has_other: bool) -> Array:
+	var parts: Array = fr["parts"].filter(func(p): return p["tex"] != null)
+	if has_other:
+		for p in fr["parts"]:
+			if p["tex"] == null and p.has("ref"):
+				parts.push_front(p)
+				break
+	return parts
 
 
 func _setup(s: Sprite2D, p: Dictionary) -> void:
@@ -260,6 +275,19 @@ func _setup(s: Sprite2D, p: Dictionary) -> void:
 	else:   # 发光 (type 2~6): 饱和相加, 源 p8/16、底保留 p10/16 (shaders/screen_blend.gdshader)
 		var w := glow_weights(int(p["p8"]), int(p["p10"]))
 		s.material = _glow_material(w[0], w[1], recolor_red)
+	s.set_meta("plain", type == 0 and s.material == null)   # 只套不透明的普通部件; 半透明影子 (type 1) 不着色
+	if status_material != null and bool(s.get_meta("plain")):
+		s.material = status_material
+
+
+## 换状态着色材质 (null = 还原): 立即作用到当前帧的普通部件, 之后换帧的部件在 _setup 里套
+func set_status_material(m: Material) -> void:
+	if m == status_material:
+		return
+	status_material = m
+	for s in _sprites:
+		if bool(s.get_meta("plain", false)):
+			s.material = m
 
 
 static var _mats := {}

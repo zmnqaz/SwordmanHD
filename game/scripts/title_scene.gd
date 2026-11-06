@@ -48,6 +48,8 @@ func _ready() -> void:
 	Game.fade_in(0.5)
 	if Game.fast or Game.skip_movies:  # 自动测试: 直接显示菜单
 		_show_menu()
+	if UserPaths.needs_prompt and not Game.fast:   # 存档位置: 旧位置有存档 / 选过的位置失效 (Windows / Linux 导出版), 先让玩家选
+		Game.prompt_save_location.call_deferred()
 
 
 func _process(delta: float) -> void:

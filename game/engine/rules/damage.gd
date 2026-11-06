@@ -42,7 +42,7 @@ static func strike_damage(ctx, raw: int, double: bool, guard: bool, defender) ->
 	if double:
 		dmg *= p.double_mult
 	if guard:
-		dmg = dmg / 2 - defender.get_stat("vit") / p.guard_vit_div
+		dmg = dmg / p.guard_div - defender.get_stat("vit") / p.guard_vit_div
 		if dmg <= 0:
 			dmg = p.min_guard_damage
 	return dmg
@@ -61,7 +61,7 @@ static func spell_power(ctx, caster, skill: Dictionary, ai_estimate: bool = fals
 		r = (iv / p.spell_int_rand_div) / 2
 	else:
 		r = ctx.rng.mod(iv / p.spell_int_rand_div + 1)
-	return pw + iv / 2 + 1 + r
+	return pw + iv / p.spell_int_power_div + 1 + r
 
 
 ## 五魂修正 S (只看【目标】五魂)
@@ -134,11 +134,12 @@ static func skill_ot0_damage(ctx, a, d, skill: Dictionary, ai_estimate: bool = f
 	return dmg
 
 
-## 技能治疗 h = P × (100 + 目标Vit/20 + S)/100 (对照原版是 Vit/20, 不是 /10); 中毒 ×0.8; 不超过缺口
+## 技能治疗 h = P × (目标Vit/20 + max(0, 100 + S))/100 (对照原版是 Vit/20, 不是 /10); 中毒 ×0.8; 不超过缺口
+## 只把 100+S 夹到 >= 0, Vit 项在夹之后加 (以前夹的是总和, S < -100 时少回 Vit/20 那份)
 static func heal_amount(ctx, caster, target, skill: Dictionary, ai_estimate: bool = false, power_override: int = -1) -> int:
 	var p = ctx.params
 	var pp: int = spell_power(ctx, caster, skill, ai_estimate, power_override)
-	var h: int = pp * maxi(0, 100 + target.get_stat("vit") / p.skill_heal_vit_div + spirit_mod(target, skill)) / 100
+	var h: int = pp * (target.get_stat("vit") / p.skill_heal_vit_div + maxi(0, 100 + spirit_mod(target, skill))) / 100
 	if target.has_status(U.ST_POISON):
 		h = h * p.poison_heal_num / p.poison_heal_den
 	return Bits.clamp_hp_gain(h, target.hp, target.hp_max)
@@ -161,7 +162,7 @@ static func item_heal_mp(ctx, target, base: int) -> int:
 
 ## 自爆: (施术者 HPmax - HP)/2 × 目标 MAG_OPP[火]/100
 static func self_destruct_damage(ctx, caster, target) -> int:
-	return (caster.hp_max - caster.hp) / 2 * ctx.mag_opp_value(Stats.mag_row(ctx, target), 1) / 100
+	return (caster.hp_max - caster.hp) / ctx.params.self_destruct_dmg_div * ctx.mag_opp_value(Stats.mag_row(ctx, target), 1) / 100
 
 
 ## 施加一次命中的伤害 (负数 = 回复, 不超上限)。HP 按 u16。
@@ -184,13 +185,14 @@ static func apply_heal(u, h: int) -> void:
 
 
 ## 剧情扣血 0x46 (第 23 关): 玩家单位 hp -= 当前hp/3, 最少剩 1, 无动画
-static func script_damage_46(u) -> void:
-	u.hp = maxi(1, u.hp - u.hp / 3)
+static func script_damage_46(ctx, u) -> void:
+	u.hp = maxi(1, u.hp - u.hp / ctx.params.script_damage_div)
 
 
 ## 剧情扣血 0x4A (第 29 关): hp -= hp/3, mp -= mp/3, mp <= 0 时置 1
-static func script_damage_4a(u) -> void:
-	u.hp -= u.hp / 3
-	u.mp -= u.mp / 3
+static func script_damage_4a(ctx, u) -> void:
+	var div: int = ctx.params.script_damage_div
+	u.hp -= u.hp / div
+	u.mp -= u.mp / div
 	if u.mp <= 0:
 		u.mp = 1

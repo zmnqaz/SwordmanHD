@@ -106,6 +106,9 @@ const ROWS := [
 	{"key": "guide", "kind": "action", "needs": "guide"},
 	# 画质诊断 (复刻新增, 2026-10-29): 屏幕 / 贴图倍数 / 生成器状态 / 显存 / 帧率, 手机上画面发糊时用 (engine/ui/diag_panel.gd)
 	{"key": "diag", "kind": "action", "group": "display"},
+	# 存档位置 (2026-11-06 用户要求): 显示存档 / 录像在哪、打开存档文件夹、搬到游戏文件夹或别的文件夹 (engine/ui/save_location_panel.gd, 位置规则见 UserPaths);
+	#   回放中不列 (回放时存档写沙盒, 不该在这时搬真存档)
+	{"key": "save_loc", "kind": "action", "needs": "idle_replay"},
 	# 关于 (复刻新增): 版本号 + GitHub 地址 (engine/ui/about_panel.gd), 主菜单最后一行
 	{"key": "about", "kind": "action"},
 ]

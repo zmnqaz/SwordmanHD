@@ -56,12 +56,27 @@ func test_reentry_last_wins() -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	var n := Node2D.new()
 	tree.root.add_child(n)
-	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.BRI_OFFSETS, false)
-	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.BRI_OFFSETS, true)
+	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.bri_offsets(), false)
+	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.bri_offsets(), true)
 	await _wait_slide()
 	check(n.visible, "滑出中重入滑入: 以滑入为准")
-	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.BRI_OFFSETS, true)
-	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.BRI_OFFSETS, false)
+	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.bri_offsets(), true)
+	UiSlide.run(n, Vector2.ZERO, Vector2.LEFT, UiSlide.bri_offsets(), false)
 	await _wait_slide()
 	check(not n.visible, "滑入中重入滑出: 以滑出为准")
 	n.queue_free()
+
+
+## 滑入偏移从布局表 motions.slide.* 读 (2026-11-06 参数外置): 表里有原版值, mod 改了要生效, 缺表时退回原版值
+func test_offsets_come_from_layout():
+	eq(UiSlide.bri_offsets(), [16, 8, 4, 2, 0])
+	eq(UiSlide.list_offsets(), [8, 4, 2, 0])
+	eq(UiSlide.camp_offsets(), [16, 8, 4, 2, 0])
+	var d: Dictionary = UiLayout.data().duplicate(true)
+	d["motions"]["slide.camp"]["offsets"] = [32, 0]
+	UiLayout.use(d)
+	eq(UiSlide.camp_offsets(), [32, 0], "mod 改 motions.slide.camp 生效")
+	d["motions"].erase("slide.list")
+	UiLayout.use(d)
+	eq(UiSlide.list_offsets(), [8, 4, 2, 0], "缺表退回原版值")
+	UiLayout.reload()

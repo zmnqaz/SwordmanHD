@@ -8,7 +8,7 @@ func _keys() -> Array:
 
 
 func _start_replay() -> String:
-	var p := "user://test_rs_%d.json" % Time.get_ticks_usec()
+	var p := tmp_dir("test_rs_%d.json") % Time.get_ticks_usec()
 	var f := FileAccess.open(p, FileAccess.WRITE)
 	f.store_string(JSON.stringify({"version": PlayLog.VERSION, "kind": "play", "meta": {}, "duration": 1.0, "seeds": [], "checkpoints": [], "events": [{"t": 100.0, "k": UiAction.UP}]}))
 	f.close()

@@ -14,6 +14,8 @@ jobs:
   windows:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
     env:
       GODOT_CACHE_DIR: ${{ github.workspace }}/.cache/godot
       GODOT_TEMPLATES: "1"
@@ -28,7 +30,13 @@ jobs:
           key: godot-templates-4.7.2-${{ hashFiles('tools/ci_install_godot.sh') }}
       - run: python3 -m pip install -r tools/requirements-build.txt
       - run: tools/ci_install_godot.sh
-      - run: python3 tools/build_windows.py --engine-only --zip
+      # 自制导出模板 (带图片压缩器, 贴图 BC7 压缩 + 磁盘缓存要它; 官方模板没有): 开发机 tools/platform/build_template_windows.sh 编好后传到
+      # 本仓库的 Release「godot-template-4.7.2-cvtt」(命令见 docs/打包/Windows.md)。缺了就让这一步失败, 不悄悄退回官方模板
+      - name: 下载自制 Windows 模板
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download godot-template-4.7.2-cvtt -R "$GITHUB_REPOSITORY" -p windows_release_x86_64.exe -D .work/templates
+      - run: python3 tools/build_windows.py --engine-only --zip --require-template
       - uses: actions/upload-artifact@v4
         with:
           name: SwordmanHD-win64

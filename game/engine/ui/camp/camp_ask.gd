@@ -33,7 +33,7 @@ class YesNo:
 		add_child(_panel)
 
 	func _ready() -> void:
-		UiSlide.run(self, _base, Vector2.UP, CampUi.SLIDE, true)
+		UiSlide.run(self, _base, Vector2.UP, UiSlide.camp_offsets(), true)
 
 	func _process(delta: float) -> void:
 		if _cyc.step(delta):
@@ -90,7 +90,7 @@ class Question:
 		return b
 
 	func _ready() -> void:
-		UiSlide.run(_box, _pos, Vector2.LEFT, CampUi.SLIDE, true)
+		UiSlide.run(_box, _pos, Vector2.LEFT, UiSlide.camp_offsets(), true)
 
 	func key(k: String) -> void:
 		yes_no.key(k)
@@ -114,7 +114,7 @@ class Notice:
 		add_child(_box)
 
 	func _ready() -> void:
-		UiSlide.run(_box, UiLayout.at("camp.ask.box"), Vector2.LEFT, CampUi.SLIDE, true)
+		UiSlide.run(_box, UiLayout.at("camp.ask.box"), Vector2.LEFT, UiSlide.camp_offsets(), true)
 		if secs <= 0.0:
 			closed.emit.call_deferred()
 		else:

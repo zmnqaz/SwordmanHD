@@ -26,3 +26,15 @@ static func serial(get_var: Callable, params) -> Array:
 		total += s
 	sums.append(total ^ int(params.clear_rank_xor))
 	return sums
+
+
+## 过关回合记录之和 (= 序号 A+B+C+D, 已打完各关的回合数之和); -1 = 内容包不记录 (turn_record_base < 0)。
+## 只读原版变量: 旧存档 / 原版导入存档没有复刻的总回合字段 (GameState.turns) 时拿它补
+static func recorded_turns(get_var: Callable, params) -> int:
+	if int(params.turn_record_base) < 0:
+		return -1
+	var s: Array = serial(get_var, params)
+	var total := 0
+	for i in s.size() - 1:
+		total += int(s[i])
+	return total

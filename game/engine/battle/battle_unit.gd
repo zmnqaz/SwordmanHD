@@ -321,15 +321,8 @@ func has_status(bit: int) -> bool:
 
 
 func _tint() -> void:
-	var tints: Dictionary = UiLayout.val("map.unit.status_tint", "colors", {})  # 布局表 map.unit.status_tint (原版重绘色的实测均值)
-	var c := Color.WHITE
-	if has_status(UnitState.ST_FREEZE) and tints.has("freeze"):
-		c = UiLayout.color(tints["freeze"])
-	elif has_status(UnitState.ST_POISON) and tints.has("poison"):
-		c = UiLayout.color(tints["poison"])
-	if has_status(UnitState.ST_PHANTOM):
-		c.a = float(UiLayout.val("map.unit.status_tint", "phantom_alpha", 0.5))
-	anim.modulate = c
+	anim.modulate = Color.WHITE
+	anim.set_status_material(UnitStatusFx.status_material(st.status))   # 中毒 / 冰結 / 幻影着色 (参数在布局表 map.unit.status_tint)
 	if _fx == null:
 		_fx = UnitStatusFx.new()
 		add_child(_fx)
@@ -443,14 +436,23 @@ func _ensure_shadow(data: Dictionary) -> void:
 	_shadow = Sprite2D.new()
 	_shadow.texture = UnitShadow.texture()
 	_shadow.scale = Vector2.ONE / float(UnitShadow.SUPERSAMPLE)   # 贴图是放大倍数的高分辨率版, 缩回原版像素大小
-	_shadow.modulate = Color(1, 1, 1, UnitShadow.ALPHA)
-	_shadow.position = UnitShadow.CENTER   # 单位节点原点 = 格子左上
+	_shadow.modulate = Color(1, 1, 1, UnitShadow.alpha())
+	_shadow.position = UnitShadow.center()   # 单位节点原点 = 格子左上
 	add_child(_shadow)
 	move_child(_shadow, 0)
-	# 原版绘制单位: 当前显示帧没有部件时整个跳过, 影子也不画 (静态观察 S6)
-	anim.frame_shown.connect(func(f: int):
-		var fr: Array = anim.data.get("frames", [])
-		_shadow.visible = f >= fr.size() or not (fr[f]["parts"] as Array).is_empty())
+	anim.frame_shown.connect(func(f: int): update_shadow(f))
+
+
+## 影子显不显示 (原版绘制): 当前显示帧没有部件时整个跳过, 影子也不画 (静态观察 S6);
+## 有攻/防/技/速提升时脚下改画光环 (Man_eff 1~22), 不画影子 (Man_eff 第 0 帧), 见 UnitStatusFx.NO_SHADOW_MASK
+func update_shadow(f := -2) -> void:
+	if _shadow == null:
+		return
+	var fr: Array = anim.data.get("frames", [])
+	if f == -2:
+		f = anim.frame
+	var drawn := f < 0 or f >= fr.size() or not (fr[f]["parts"] as Array).is_empty()
+	_shadow.visible = drawn and (st.status & UnitStatusFx.NO_SHADOW_MASK) == 0
 
 
 func _step_dir(to: Vector2i) -> int:

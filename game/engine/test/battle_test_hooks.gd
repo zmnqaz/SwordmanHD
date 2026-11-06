@@ -141,6 +141,9 @@ static func inject(bs) -> bool:
 
 ## 测试开关: --cast=技能编号[@x;y[@sN]],... (第 1 回合我方第一个单位依次对第一个有效落点 / 指定格施放); --idle-player (我方全员原地待機, 对照 AI 走位);
 ## --warp=unit_id:x,y (第 1 回合把该主角放到格 (x,y), 截宝箱等画面用)
+const Brawl = preload("res://engine/test/brawl.gd")
+
+
 static func player_phase(flow, mine: Array) -> bool:
 	for arg in flow.gc.debug.probe_battle_save:  # --probe-battle-save=<回合>:save|check  存读档一致性探针: save 在该回合我方阶段开始时存战阵并记检查点, check (--load-battle 读入后) 记同样的检查点, 两份回归记录对比 (仓库外的开发脚本)
 		if flow.bs.turn == int(String(arg).get_slice(":", 0)):
@@ -189,6 +192,7 @@ static func player_phase(flow, mine: Array) -> bool:
 							u.st.set(k, d[k].map(func(x): return int(x) if (x is float or x is int) else x))
 						elif k != "_idx":
 							u.st.set(k, d[k])
+					u._tint()   # 改了状态位 (status / _sr) 要刷新外观 (着色、叠层、定格)
 	for arg in flow.gc.debug.cast:
 		if flow.bs.turn == flow.test_turn:
 			for xa in String(arg).split(","):
@@ -225,6 +229,7 @@ static func player_phase(flow, mine: Array) -> bool:
 				print("测试敌方施放 %s -> %s (%d,%d) 帧%d" % [sk["name"], t.name_text, t.cx, t.cy, RegressLog.log_frame])
 				await flow.actions.cast(u, sk, Vector2i(t.cx, t.cy))
 				break
+	await Brawl.run(flow, mine)   # --brawl: 全技能大乱斗 (engine/test/brawl.gd)
 	if flow.gc.debug.idle_player:
 		print("我方回合 第%d回合 帧%d 全员待機; 在场: %s" % [flow.bs.turn, RegressLog.log_frame, flow.rules.units_alive().map(func(u): return "%s(%d,%d)hp%d%s" % [u.name_text, u.cx, u.cy, u.hp, " 已行动" if u.st.acted else ""])])
 		for u in mine:

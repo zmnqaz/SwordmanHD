@@ -60,7 +60,7 @@ func test_spell_damage_resist():
 	eq(Damage.spell_damage(c, caster, t2, _spell(0, 99)), 100, "武器的抗性字段不参与")
 
 
-## 技能治疗: P × (100 + Vit/20 + S)/100 (对照原版); 中毒 ×0.8; 不超缺口
+## 技能治疗: P × (Vit/20 + max(0, 100 + S))/100 (对照原版 对照原版); 中毒 ×0.8; 不超缺口
 func test_heal_amount():
 	var c = ctx_scripted()
 	var caster = unit({"int": 0})
@@ -74,6 +74,12 @@ func test_heal_amount():
 	t.hp = 950
 	eq(Damage.heal_amount(c, caster, t, sk), 50, "不超过 HPmax")
 	t.hp = 1
+	# 只把 100+S 夹到 >= 0, Vit/20 在夹之后加。S = -150 时仍回 P × (Vit/20)/100
+	var sk2 := sk.duplicate(true)
+	sk2["spirit_addition"] = [{"type": 1, "request": 0, "plus": 0}]
+	t.spirit = [150, 0, 0, 0, 0]
+	eq(Damage.heal_amount(c, caster, t, sk2), 5, "S=-150: (100/20 + max(0, -50)) × 100 / 100 = 5, 不是 0")
+	t.spirit = [0, 0, 0, 0, 0]
 	eq(Damage.item_heal_hp(c, t, 100), 105, "物品回 HP ×(100+Vit/20)")
 	t.mp = 0
 	t.mp_max = 500
@@ -105,14 +111,15 @@ func test_self_destruct():
 
 ## 剧情扣血: 0x46 扣当前 HP 的 1/3 (最少剩 1, 不是 HPmax 33%); 0x4A HP、MP 各扣 1/3, MP<=0 置 1
 func test_script_damage():
+	var c = ctx_scripted()
 	var u = unit({"hp": 90, "hp_max": 500, "mp": 0})
-	Damage.script_damage_46(u)
+	Damage.script_damage_46(c, u)
 	eq(u.hp, 60)
 	u.hp = 1
-	Damage.script_damage_46(u)
+	Damage.script_damage_46(c, u)
 	eq(u.hp, 1)
 	var v = unit({"hp": 300, "mp": 0})
-	Damage.script_damage_4a(v)
+	Damage.script_damage_4a(c, v)
 	eq([v.hp, v.mp], [200, 1])
 
 
@@ -137,3 +144,16 @@ func test_spell_damage_int32_overflow():
 	var none := {"type": -1, "request": 0, "plus": 0}
 	var sk := _spell(1, 800, [none, none, none, none, {"type": 1, "request": 25, "plus": 85}])   # S = +24
 	eq(Damage.spell_damage(c, caster, t, sk), -1502, "回绕成负 = 回血")
+
+
+## 外置到 Params 的规则常数 (2026-11-06 参数外置): 默认 = 原版, 内容包 rules.json 改了要真生效
+func test_externalized_params_take_effect():
+	var c = ctx_scripted()
+	var d = unit({"vit": 40})
+	eq(Damage.strike_damage(c, 100, false, true, d), 46, "原版: 格挡 100/2 - 40/10")
+	var c4 = ctx_scripted([], {"guard_div": 4, "script_damage_div": 2, "def_vit_div": 4, "self_destruct_dmg_div": 1})
+	eq(Damage.strike_damage(c4, 100, false, true, d), 21, "guard_div=4: 100/4 - 40/10")
+	eq(Stats.def(c4, d), 10, "def_vit_div=4: Vit 40 -> 10")
+	var u = unit({"hp": 90})
+	Damage.script_damage_46(c4, u)
+	eq(u.hp, 45, "script_damage_div=2")

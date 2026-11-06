@@ -80,6 +80,10 @@ engine/rules/unit_state.gd|護禦提昇
 engine/rules/unit_state.gd|速敏提昇
 engine/rules/unit_state.gd|麻痺
 engine/script/script_vm.gd|事件
+engine/test/brawl.gd| 阵亡
+engine/test/brawl.gd|, 射程下限 = 上限, 原版射程格集合也为空, 原版从不施放 (09 §AI / H23)
+engine/test/brawl.gd|, 本关没有预置召唤物
+engine/test/brawl.gd|没有可用落点
 engine/ui/boot_error_screen.gd|无法启动
 engine/ui/boot_error_screen.gd|请放好资源包后重新打开本应用 (按返回键或划掉应用退出)。
 scripts/game.gd|内容包里没有任何关卡 (game/content/tdj 缺失? 见 docs/内容格式.md)。

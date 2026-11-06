@@ -8,7 +8,7 @@ extends Node2D
 ##   右块内容: 攻 %4d (28,6); 防 %4d (28,18); 位 (等级) %3d (71,6); 歷 (经验) %3d (71,18);
 ##       增益图标 第 2~5 帧 在 (94,8) (112,8) (130,8) (148,8)。
 ##   数字: Man_bri 第 6 帧字模, 步进 7 (UiLayout.number)。超过 9999 写 "????"。
-##   打开: 左块从左、右块从右滑入, 偏移 16→8→4→2→0 并淡入 (UiSlide.BRI_OFFSETS)。
+##   打开: 左块从左、右块从右滑入, 偏移 16→8→4→2→0 并淡入 (UiSlide.bri_offsets())。
 ##   以上坐标都在布局表 infobar.* (缺省为这些原版值), 换游戏改表即可。
 ##
 ## 单位数据 (Dictionary): name hp hp_max mp mp_max move move_max attack defence lv exp, buffs: [攻 防 智 速] 四个 bool
@@ -101,7 +101,7 @@ func _show_block(n: Node2D, base: Vector2, dir: Vector2, on: bool, animate: bool
 		n.visible = false
 		return
 	if animate:
-		UiSlide.run(n, base, dir, UiSlide.BRI_OFFSETS, true)
+		UiSlide.run(n, base, dir, UiSlide.bri_offsets(), true)
 	else:
 		n.position = base
 		n.modulate.a = 1.0
@@ -115,7 +115,7 @@ func hide_bar(animate := false) -> void:
 		if not n.visible:
 			continue
 		if animate:
-			UiSlide.run(n, pair[1], pair[2], UiSlide.BRI_OFFSETS, false)
+			UiSlide.run(n, pair[1], pair[2], UiSlide.bri_offsets(), false)
 		else:
 			UiSlide.cancel(n)  # 滑入进行中立刻隐藏 (选目标后马上确认攻击): 不取消会被旧 tween 拉回可见
 			n.visible = false

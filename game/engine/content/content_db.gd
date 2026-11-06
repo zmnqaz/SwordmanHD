@@ -28,7 +28,8 @@ var _sys_l := {}             # 语言叠加后的系统文本: "<包下标>:<表
 var lang := ""
 var _tables := {}            # 表名 -> {"key": 字段, "order": [键], "by_key": {键: 记录}}
 var _arrays := {}            # 表名 -> 下标 = 键 的数组 (整数键的表)
-var _scripts := {}           # 脚本引用 -> 编译结果
+var _scripts := {}           # 脚本引用 -> 编译结果 (已应用剧情脚本修正表; load_packs 时与 _fixes 一起重建)
+var _fixes: Array = []       # 各包 scripts/fixes.json 的修正条目, 按加载顺序 (见 _build_fixes)
 var _stages := {}            # 关卡号 -> BattleStage 用的结构缓存 (见 stage_raw)
 var _assets := {}            # 小写相对路径 -> 包内 assets/ 下的文件路径 (后加载的包覆盖)
 
@@ -88,6 +89,7 @@ func load_packs(ids: Array) -> bool:
 		_add_pack(String(id), [])
 	_build_manifest()
 	_build_tables()
+	_build_fixes()
 	_index_assets()
 	_refresh_live_groups()
 	reloaded.emit()
@@ -504,7 +506,7 @@ func events(info: Dictionary) -> Array:
 	var out: Array = []
 	var p := find(src) if src != "" else ""
 	if p != "":
-		var r := EvsCompiler.compile(FileAccess.get_file_as_string(p), src)
+		var r := EvsCompiler.compile(_apply_fixes(src, FileAccess.get_file_as_string(p)), src)
 		if r.has("error"):
 			errors.append(r["error"])
 			push_error("Content: 剧情脚本编译失败 " + String(r["error"]))
@@ -515,6 +517,120 @@ func events(info: Dictionary) -> Array:
 			out.append(cmds.map(func(c): return {"type": int(c["op"]), "data": String(c["data"]).hex_decode()}))
 	_scripts[key] = out
 	return out
+
+
+# ---------------------------------------------------------------- 剧情脚本修正表 (scripts/fixes.json)
+# 修原版剧情脚本的 bug 而不复制整个 .evs (原版 .evs 由玩家的原版生成, 不入库): 编译前对源文本删一行 / 换一行。
+# 格式 (docs/内容格式.md §7.1): {"format": "tdj-script-fixes/1", "fixes": [{"id", "script", "event", "remove": 行 | "replace": {"find": 行, "with": 行}, "note"}]}
+# 匹配: 在 event 块内按「去掉 # 注释、去首尾空白、连续空白当一个」整行相等, 必须恰好 1 处, 否则不应用并记错误 (原版数据不同或已被改过时不悄悄改错)。
+# 各包的修正按加载顺序依次应用; 脚本文件被更后加载的包整个替换时, 更早的包的修正不再作用于它 (整文件替换覆盖下层的一切)。
+
+const FIXES_FILE := "scripts/fixes.json"
+const FIXES_FORMAT := "tdj-script-fixes/1"
+
+
+func _build_fixes() -> void:
+	_fixes.clear()
+	for i in packs.size():
+		var p := String(packs[i]["dir"]).path_join(FIXES_FILE)
+		if not FileAccess.file_exists(p):
+			continue
+		var w := "%s/%s" % [packs[i]["id"], FIXES_FILE]
+		var d = _read_json_file(p)
+		if not d is Dictionary or String(d.get("format", "")) != FIXES_FORMAT or not d.get("fixes") is Array:
+			errors.append("%s: 不是 %s (要有 format 与 fixes 数组)" % [w, FIXES_FORMAT])
+			continue
+		for f in d["fixes"]:
+			var e := fix_error(f)
+			if e != "":
+				errors.append("%s: %s" % [w, e])
+				continue
+			var x: Dictionary = (f as Dictionary).duplicate()
+			x["_pack"] = i
+			x["_where"] = w
+			_fixes.append(x)
+
+
+## 一条修正的格式错误 ("" = 没问题)
+static func fix_error(f: Variant) -> String:
+	if not f is Dictionary:
+		return "修正条目应为对象"
+	var id := String(f.get("id", "")) if f.get("id") is String else ""
+	if id == "":
+		return "修正缺 id"
+	if not f.get("script") is String or String(f["script"]) == "":
+		return "%s: 缺 script (scripts/ 下的文件名)" % id
+	var ev = f.get("event")
+	if not (ev is int or ev is float) or float(ev) != floorf(float(ev)) or float(ev) < 0:
+		return "%s: event 应为非负整数" % id
+	var has_rm: bool = f.has("remove")
+	var has_rp: bool = f.has("replace")
+	if has_rm == has_rp:
+		return "%s: remove 与 replace 必须二选一" % id
+	if has_rm and (not f["remove"] is String or _fix_norm(f["remove"]) == ""):
+		return "%s: remove 应为非空的一行" % id
+	if has_rp:
+		var r = f["replace"]
+		if not r is Dictionary or not r.get("find") is String or not r.get("with") is String or _fix_norm(r["find"]) == "":
+			return "%s: replace 应为 {\"find\": 行, \"with\": 行}" % id
+		if String(r["with"]).contains("\n"):
+			return "%s: replace.with 只能是一行" % id
+	for k in f:
+		if not String(k).begins_with("_") and not String(k) in ["id", "script", "event", "remove", "replace", "note"]:
+			return "%s: 未知字段 %s" % [id, k]
+	return ""
+
+
+static func _fix_norm(line: String) -> String:
+	return " ".join(EvsCompiler._strip_comment(line).replace("\t", " ").split(" ", false))
+
+
+## 事件头 "event N" / "event N:" 的事件号, 不是事件头返回 -1
+static func _fix_event_id(norm: String) -> int:
+	if not norm.begins_with("event "):
+		return -1
+	var t := norm.substr(6).trim_suffix(":").strip_edges()
+	if t.to_lower().begins_with("0x") and t.substr(2).is_valid_hex_number():
+		return t.substr(2).hex_to_int()
+	return t.to_int() if t.is_valid_int() else -1
+
+
+## 对剧情脚本源文本 (src = stage.json/town.json 的 script.source) 依次应用修正, 返回修正后的文本。匹配不到 / 多处时不应用, 记 Content 错误
+func _apply_fixes(src: String, text: String) -> String:
+	if _fixes.is_empty():
+		return text
+	var provider := _find_index(src)
+	var lines := text.split("\n")
+	for f in _fixes:
+		var script := String(f["script"])
+		if src != script and src != "scripts/" + script:
+			continue
+		if int(f["_pack"]) < provider:
+			continue  # 脚本被更后加载的包整个替换了
+		var target := _fix_norm(String(f["remove"]) if f.has("remove") else String(f["replace"]["find"]))
+		var ev := int(f["event"])
+		var cur := -1
+		var hits: Array = []
+		for i in lines.size():
+			var n := _fix_norm(lines[i])
+			var eid := _fix_event_id(n)
+			if eid >= 0:
+				cur = eid
+			elif cur == ev and n == target:
+				hits.append(i)
+		if hits.size() != 1:
+			var msg := "%s: 剧情脚本修正 %s 没有应用: %s 事件 %d 里「%s」%s" % [f["_where"], f["id"], src, ev, target,
+				"找不到" if hits.is_empty() else "有 %d 处" % hits.size()]
+			errors.append(msg)
+			push_error("Content: " + msg)
+			continue
+		var at: int = hits[0]
+		if f.has("remove"):
+			lines.remove_at(at)
+		else:
+			var indent := lines[at].substr(0, lines[at].length() - lines[at].strip_edges(true, false).length())
+			lines[at] = indent + String(f["replace"]["with"]).strip_edges()
+	return "\n".join(lines)
 
 
 ## 对白表: text.json 的 groups。同一路径返回同一个数组, 切语言 / 重载内容包时原地换内容 (见 _refresh_live_groups),

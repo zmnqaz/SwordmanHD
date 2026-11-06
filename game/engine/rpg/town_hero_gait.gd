@@ -12,6 +12,7 @@ const TICK := 0.04
 const STEP_TICKS := 10          # 一格的 tick 数
 const SETTLE_TICKS := 3         # 停下后行走末帧多停几个 tick
 const STAND_TICKS := 2          # 站立每帧 tick 数
+const STAND_RESUME_FRAME := 4   # 走完停下后站立从段内第 4 帧接着播 (原版站立帧序走路时清零、停下后从 4 续 实测)
 const EPS := 1e-6               # 累加 0.04 的浮点误差
 ## 「点按只走一格」的真实时间门槛 (秒): 同一次按下, 走完第一格后要按满这么久才接着走下一格 (见 may_chain)。
 ##   原版 1 倍速一格 0.4 秒, 到格边界还按着才连走, 所以点按 < 0.4 秒只走一格; 游戏加速 N 倍后一格只要 0.4 / N 真实秒 (3 倍 0.133),

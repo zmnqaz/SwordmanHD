@@ -101,13 +101,13 @@ func _init(inventory: CampInventory) -> void:
 	_rebuild(1)
 	_update_desc()
 	_update_money()
-	UiSlide.run(mb, _money_pos, Vector2.LEFT, CampUi.SLIDE, true)
+	UiSlide.run(mb, _money_pos, Vector2.LEFT, UiSlide.camp_offsets(), true)
 
 
 func open() -> void:
 	desc.open()
 	for s in 2:
-		UiSlide.run(_panels[s], _panel_pos[s], Vector2.LEFT if s == 0 else Vector2.RIGHT, CampUi.SLIDE, true)
+		UiSlide.run(_panels[s], _panel_pos[s], Vector2.LEFT if s == 0 else Vector2.RIGHT, UiSlide.camp_offsets(), true)
 
 
 func _update_money() -> void:
@@ -353,7 +353,7 @@ func _cycle_column(d: int) -> void:
 	_rebuild(0)
 	_rebuild(1)
 	_update_desc()
-	UiSlide.run(_panels[focus], _panel_pos[focus], Vector2.LEFT if focus == 0 else Vector2.RIGHT, CampUi.SLIDE, true)
+	UiSlide.run(_panels[focus], _panel_pos[focus], Vector2.LEFT if focus == 0 else Vector2.RIGHT, UiSlide.camp_offsets(), true)
 
 
 ## 商店货品 (栏 c) 买得起且对面栏没满 (原版 0x41ee.. 货品行压暗 = 不能买)
@@ -401,7 +401,7 @@ func _open_menu() -> void:
 	_menu_arrow = UiLayout.panel("camp.item.menu.arrow")
 	_menu.add_child(_menu_arrow)
 	add_child(_menu)
-	UiSlide.run(_menu, base, Vector2.LEFT, CampUi.SLIDE, true)
+	UiSlide.run(_menu, base, Vector2.LEFT, UiSlide.camp_offsets(), true)
 
 
 func _close_menu() -> void:

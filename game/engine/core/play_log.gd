@@ -12,17 +12,16 @@ extends Node
 ##
 ## 用法:
 ##   录制: 设定「战场录像」开启时录 (缺省关, 2026-11-04; 有窗口时; --no-record-play 强制不录); --record-play=<路径> 指定文件, 缺省
-##         user://replays/play_<日期时间>.json (退出时、每 10 秒自动保存; 窗口大小/语言/手柄预设一并记下)。
+##         <回放目录>/play_<日期时间>.json (UserPaths.replay_dir(); 退出时、每 10 秒自动保存; 窗口大小/语言/手柄预设一并记下)。
 ##   回放: --replay-play=<文件> [--replay-speed=N]   (从标题画面开始, 用的是同一套内容, 不要同时手动操作)
 ##         菜单: 设定面板「录像回放」(engine/ui/replay_panel.gd) 选一份录像, 进程内切到回放 (Game.start_replay)。
-##   回放期间存档写 REPLAY_SAVE_DIR 沙盒 (回放里的存档操作不覆盖真存档), 放完 / 停止恢复; 模态浮层开着时回放时间冻结。
+##   回放期间存档写沙盒 UserPaths.replay_sandbox() (回放里的存档操作不覆盖真存档), 放完 / 停止恢复; 模态浮层开着时回放时间冻结。
 ## 限制: 依赖游戏逻辑只由输入和战斗随机数决定 (现状如此); 鼠标/触摸动作带视口坐标, 回放窗口大小应与录制时相同 (不同会警告)。
 
 const VERSION := 1
 const AUTOSAVE_SEC := 10.0
 const HISTORY_EXT := ".replay"   # 存档旁边的录像历史文件 (zstd 压缩的 JSON), 见 begin_save
 const SPEED_STEPS := [0.5, 1.0, 2.0, 4.0, 8.0, 16.0]   # 菜单里的倍速档位 (命令行 --replay-speed 不受限)
-const REPLAY_SAVE_DIR := "user://replay_saves"          # 回放期间的存档沙盒: 回放里的「存档」操作写这里, 不碰玩家真存档
 
 signal replay_finished
 signal start_replaced(kind: String)   # 录像被迫改成从某个没有录像历史的存档开始 (不再是整场): 界面弹提示
@@ -180,10 +179,11 @@ func _apply_time_scale() -> void:
 ## 回放期间存档改写到沙盒目录 (先清空, 免得上次回放的残留被读到)
 func _enter_save_sandbox() -> void:
 	_real_save_dir = GameSaves.base_dir
-	DirAccess.make_dir_recursive_absolute(REPLAY_SAVE_DIR)
-	for f in DirAccess.get_files_at(REPLAY_SAVE_DIR):
-		DirAccess.remove_absolute(REPLAY_SAVE_DIR.path_join(f))
-	GameSaves.base_dir = REPLAY_SAVE_DIR
+	var box := UserPaths.replay_sandbox()
+	DirAccess.make_dir_recursive_absolute(box)
+	for f in DirAccess.get_files_at(box):
+		DirAccess.remove_absolute(box.path_join(f))
+	GameSaves.base_dir = box
 
 
 func _lock_input(on: bool) -> void:
@@ -207,9 +207,9 @@ func _release() -> void:
 func _begin_record(p: String) -> void:
 	mode = "record"
 	if p == "":
-		DirAccess.make_dir_recursive_absolute("user://replays")
+		DirAccess.make_dir_recursive_absolute(UserPaths.replay_dir())
 		var d := Time.get_datetime_dict_from_system()
-		p = "user://replays/play_%04d%02d%02d_%02d%02d%02d.json" % [d["year"], d["month"], d["day"], d["hour"], d["minute"], d["second"]]
+		p = UserPaths.replay_dir().path_join("play_%04d%02d%02d_%02d%02d%02d.json" % [d["year"], d["month"], d["day"], d["hour"], d["minute"], d["second"]])
 	path = p
 	_meta = _snapshot_meta()
 	print("通关录像: 开始录制 -> ", path)
@@ -591,7 +591,7 @@ static func stage_end(stage: int, won: bool) -> void:
 		cps.append(c1)
 	var j := {"version": VERSION, "kind": "stage", "stage": stage, "meta": p._meta, "duration": snappedf(p._t - t0, 0.01),
 		"base": seg["base"], "base_kind": seg["base_kind"], "seeds": p._seeds.slice(int(seg["seeds0"])), "checkpoints": cps, "events": evs}
-	var dir := p.path.get_base_dir() if p.path != "" else "user://replays"
+	var dir := p.path.get_base_dir() if p.path != "" else UserPaths.replay_dir()
 	DirAccess.make_dir_recursive_absolute(dir)
 	var d := Time.get_datetime_dict_from_system()
 	var out := "%s/stage_%02d_%04d%02d%02d_%02d%02d%02d.json" % [dir, stage, d["year"], d["month"], d["day"], d["hour"], d["minute"], d["second"]]
