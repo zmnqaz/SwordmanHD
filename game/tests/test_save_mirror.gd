@@ -83,6 +83,16 @@ func test_new_slot_can_be_imported():
 	check(not FileAccess.file_exists(_local + "/save3.json" + SaveMirror.BEFORE_IMPORT), "原来没有存档就没有备份")
 
 
+## 0.9.9 手机: 存档目录换成 user://save 后, 新装 (或卸载重装) 时这个目录还没建, 往镜像目录放存档导入失败, 读档窗一片空白
+func test_import_into_missing_local_dir():
+	_reset()
+	_rm(_local)
+	_write(_mirror + "/save1.json", JSON.stringify(_game(66)))
+	var r := SaveMirror.sync(_local, _mirror)
+	eq(r.imported, ["save1.json"], "本地存档目录还没建也能导入")
+	eq(_gold(_local + "/save1.json"), 66)
+
+
 func test_bad_files_are_rejected_and_left_alone():
 	_reset()
 	_ours(100)

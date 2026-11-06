@@ -43,6 +43,7 @@ static func _copy(src: String, dst: String, keep_bak: bool) -> bool:
 	var data := FileAccess.get_file_as_bytes(src)
 	if data.is_empty():
 		return false
+	DirAccess.make_dir_recursive_absolute(dst.get_base_dir())   # 目标目录可能还没建 (手机新装时 user://save 要等第一次存档才建; 0.9.9 往镜像目录放存档导入失败)
 	var tmp := "%s.tmp%d" % [dst, OS.get_process_id()]
 	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
