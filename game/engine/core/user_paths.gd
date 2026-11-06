@@ -67,14 +67,15 @@ static func replay_sandbox() -> String:
 static func dirs_for(m: String, path := "") -> Dictionary:
 	if (m == "game" and exe_dir() == "") or (m == "custom" and path == ""):
 		m = "user"
+	var root := user_root if user_root != "" else "user://"   # 静态变量还没初始化时 (别的类静态初始化里调到这里) 是空串, 0.9.8 出过相对路径 "save"
 	match m:
 		"legacy":
-			return {"save": user_root, "replay": user_root.path_join(LEGACY_REPLAY_SUB)}
+			return {"save": root, "replay": root.path_join(LEGACY_REPLAY_SUB)}
 		"game":
 			return {"save": exe_dir().path_join(SAVE_SUB), "replay": exe_dir().path_join(REPLAY_SUB)}
 		"custom":
 			return {"save": path.path_join(SAVE_SUB), "replay": path.path_join(REPLAY_SUB)}
-	return {"save": user_root.path_join(SAVE_SUB), "replay": user_root.path_join(REPLAY_SUB)}
+	return {"save": root.path_join(SAVE_SUB), "replay": root.path_join(REPLAY_SUB)}
 
 
 static func settings_path() -> String:

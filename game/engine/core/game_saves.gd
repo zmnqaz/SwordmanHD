@@ -7,8 +7,17 @@ extends RefCounted
 ## 失败返回 error 文字 (空串 = 成功), 由调用方 (Game) 决定怎么提示。
 
 const SLOTS := 5
-## 存档目录 (测试改成临时目录, 免得碰玩家的真存档; 回放期间 PlayLog 换成沙盒)
-static var base_dir := UserPaths.save_dir()
+## 存档目录 (测试改成临时目录, 免得碰玩家的真存档; 回放期间 PlayLog 换成沙盒); 设空串 = 回到 UserPaths.save_dir()
+## 第一次用到时才问 UserPaths, 不在静态初始化里问: GameSaves 与 UserPaths 互相引用, 加载时 UserPaths 的静态变量可能还没初始化
+## (user_root 是空串), 0.9.8 因此得到相对路径 "save", 手机上写不进、也找不到旧档
+static var base_dir: String:
+	get:
+		if _base_dir == "":
+			_base_dir = UserPaths.save_dir()
+		return _base_dir
+	set(v):
+		_base_dir = v
+static var _base_dir := ""
 ## 存档镜像 (见 SaveMirror): 组装层在 Android 上调 enable_mirror 登记「本地存档目录 -> 镜像目录」;
 ## 只有 base_dir 正是登记的本地目录时才镜像 (回放沙盒、测试把 base_dir 换走后自动不镜像, 不会往真镜像目录写)
 static var _mirror_local := ""

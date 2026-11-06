@@ -221,3 +221,17 @@ func test_dirs_never_relative():
 	eq(UserPaths.dirs_for("game")["replay"], _user.path_join("replay"), "game 没有程序目录时按 user 算")
 	eq(UserPaths.dirs_for("custom", "")["save"], _user.path_join("save"), "custom 没给目录时按 user 算")
 	_done()
+
+
+## 0.9.8 手机存不了档也读不到旧档: GameSaves.base_dir 在静态初始化里取 UserPaths.save_dir(), 那时 UserPaths.user_root 还是空串, 得到相对路径 "save"
+func test_save_dir_absolute_even_before_user_paths_initialized():
+	UserPaths.reset()
+	check(GameSaves.base_dir.begins_with("user://") or GameSaves.base_dir.is_absolute_path(), "游戏里的存档目录不是相对路径: " + GameSaves.base_dir)
+	UserPaths.user_root = ""   # 模拟别的类静态初始化时 UserPaths 的静态变量还没初始化
+	eq(UserPaths.dirs_for("user")["save"], "user://save", "user_root 空时按 user:// 算")
+	eq(UserPaths.dirs_for("legacy")["save"], "user://", "旧位置同理")
+	UserPaths.reset()
+	var old := GameSaves.base_dir
+	GameSaves.base_dir = ""
+	eq(GameSaves.base_dir, UserPaths.save_dir(), "设空串回到 UserPaths.save_dir()")
+	GameSaves.base_dir = old
