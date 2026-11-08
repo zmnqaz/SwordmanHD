@@ -83,6 +83,20 @@ static func anim_exists(dir: String) -> bool:
 	return Assets.exists(dir + "/anim.json")
 
 
+## 物理绝技近景的攻击动画: 原版近景构造 两侧各判一次, 出手种类 6 载入 NNN[-n]SB, 其余 NNN[-n]S;
+## 绝技近景初始化 起种类默认 2, 结果码 0 (未命中 / 无效) 或 1 (被格挡) 改成 6 —— 没打中和被格挡都放 SB。
+## SB 里守方引用的是格挡姿势、音效也是格挡的; 复刻原先一律放 S, 没打中 / 被格挡也演成全吃 (炸飞落地, 2026-11-08 玩家反馈破魔杵与怪物绝技)。没有 SB 的单位照旧放 S
+static func skill_attack_dir(skill_anim: String, kind: String) -> String:
+	if kind in ["miss", "guard"] and anim_exists(skill_anim + "b"):
+		return skill_anim + "b"
+	return skill_anim
+
+
+## 物理绝技近景开场要预载的攻击动画: S 和 (有的话) SB, 结算前还不知道会不会被格挡
+static func skill_anims(skill_anim: String) -> Array:
+	return [skill_anim, skill_anim + "b"] if anim_exists(skill_anim + "b") else [skill_anim]
+
+
 static func misc_dir(u: BattleUnit) -> String:
 	var s := int(u.info["sprite"])
 	return ThemeAssets.f("unit_misc", [s, s])
@@ -314,7 +328,7 @@ func strike(a: BattleUnit, d: BattleUnit, results: Array, skill_anim := "", skil
 	var sp := int(a.info["sprite"])
 	var atk_dir := ThemeAssets.f("unit_attack", [sp, sp, "ab" if kind in ["miss", "guard"] else "a"])
 	if skill_anim != "" and anim_exists(skill_anim):
-		atk_dir = skill_anim
+		atk_dir = skill_attack_dir(skill_anim, kind)
 	asd["ranged"] = ranged
 	asd["misc"].visible = true   # 上一击是对方的远程攻击时本方被藏着 (见 _play_attack 末尾), 轮到本方出手 (如反击) 先现身
 	if ranged:

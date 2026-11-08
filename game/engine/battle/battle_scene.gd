@@ -701,7 +701,33 @@ var _cursor_shown_area := -1          # 光标动画当前播的那一组
 
 func show_cursor(x: int, y: int) -> void:
 	cursor.visible = true
+	if _slide_to == Vector2i(x, y):
+		return   # 正滑向这一格: 由 slide_cursor_to 逐格放
+	_slide_to = Vector2i(-1, -1)   # 别的移动打断滑动, 直接到位
 	place_cursor(x, y)
+
+
+## 玩家操作里程序自动挪光标 (撤销移动 、取消选中、选目标落点、切下一个单位等, 共十几处): 光标从当前格每 tick 横竖各走 1 格 (可斜走) 滑到目标,
+## 每步按边缘规则卷镜头 (/, 与键盘移光标同一套), 镜头一格一格跟, 没有平移缓动。
+## 复刻原先光标一步跳到、镜头每秒 300 像素平移重新居中 (复刻自定; 2026-11-08 玩家「走过去后悔返回有缓动」)。新的移动 (show_cursor 到别的格) 打断滑动
+var _slide_to := Vector2i(-1, -1)
+
+func slide_cursor_to(c: Vector2i) -> void:
+	_stop_cam()
+	var p := _cursor_cell if _cursor_cell.x >= 0 else c
+	_slide_to = c
+	while p != c and _slide_to == c:
+		if p.x != c.x:
+			p.x += signi(c.x - p.x)
+			_cursor_edge_scroll(0, p)
+		if p.y != c.y:
+			p.y += signi(c.y - p.y)
+			_cursor_edge_scroll(1, p)
+		place_cursor(p.x, p.y)
+		await SceneGuard.wait(self, 1 / 25.0)
+	if _slide_to == c:
+		_slide_to = Vector2i(-1, -1)
+		place_cursor(c.x, c.y)
 
 
 ## 光标移到格 (x, y), 不改显示与否 (剧情对白移光标: 只改光标格, 0x22 隐藏后对白不会让它出现)
@@ -802,6 +828,24 @@ func aim_cursor(target: Vector2i, area: int, actor: Vector2i) -> void:
 	set_cursor_area(0)
 	hide_cursor()
 	place_cursor(actor.x, actor.y)
+
+
+## 键盘 / 手柄一格一格移光标时的镜头 (左 / 右 / 上 / 下): 新格进可见区最边一列 / 行 (且不是地图边) 时
+## (±3) 把镜头当场卷 1 格, 不缓动, 只看移动的那一轴; 光标和镜头同一帧到位, 按住加速 (每秒约 25 格) 也锁在一起。
+## 复刻原先这里用缓动追赶 (2334373, 复刻自定, 约 0.17 秒追上 95%), 按住加速时镜头落后光标几格、松手再滑过去 (2026-11-08 玩家反馈「手感不如原版」)。
+## 鼠标 / 触屏仍走 follow_cell(minimal) 的缓动边缘滚动 (原版没有鼠标); 新格不在可见区 (镜头被拖走过) 时同样交给它
+func cursor_step_follow(prev: Vector2i, c: Vector2i) -> void:
+	var cell := Vector2(BattleStage.CELL_W, BattleStage.CELL_H)
+	var o := cam_offset()
+	for ax in 2:
+		var off := c[ax] - floori((cam[ax] + o[ax]) / cell[ax])
+		if off < 0 or off >= int(view()[ax] / cell[ax]):
+			follow_cell(c.x, c.y, true)
+			return
+	_stop_cam()
+	for ax in 2:
+		if c[ax] != prev[ax]:
+			cam[ax] += _edge_shift(ax, c, cam)
 
 
 ## 的边缘判定 (轴 ax: 0 横 1 竖): 光标格相对镜头格的偏移为 0 (左/上缘) 或 可见格数-1 (右/下缘), 且光标不在地图边, 镜头卷 1 格

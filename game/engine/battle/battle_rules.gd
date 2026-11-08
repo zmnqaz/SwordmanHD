@@ -195,6 +195,10 @@ func guard_flash(r: Dictionary) -> Dictionary:
 	return Attack.guard_flash(ctx, r)
 
 
+func skill_guard_flash(kind: String) -> Dictionary:
+	return Attack.skill_guard_flash(ctx, kind)
+
+
 ## 战斗中装备/丢弃之后: 原版不消耗行动 (返回 false); 魔改开关 equip_costs_action 为真时结束行动 (返回 true)
 func after_equip_or_discard(u: BattleUnit) -> bool:
 	return Items.after_equip_or_discard(ctx, u.st)

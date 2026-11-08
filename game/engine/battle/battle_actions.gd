@@ -216,12 +216,12 @@ func cast(u: BattleUnit, sk: Dictionary, c: Vector2i, item_id := -1) -> void:
 	if Skills.is_physical(sk) and int(sk["battle_type"]) == 0 and hit_units.size() == 1 and hit_units[0] != u:
 		var t: BattleUnit = hit_units[0]
 		var atk := ThemeAssets.f("unit_attack_alt", [spr, spr, ("-%d" % bspr) if bspr > 0 else ""])
-		await closeup.open(u, t, Vector2i(-1, -1), int(sk.get("battle_ranged", 0)) == 1, [atk])
+		await closeup.open(u, t, Vector2i(-1, -1), int(sk.get("battle_ranged", 0)) == 1, BattleCloseup.skill_anims(atk))
 		res = _resolve_cast(u, sk, c, item_id)
 		var r: Dictionary = res.targets[0] if not res.targets.is_empty() else {"hit": false, "invalid": true, "damage": 0, "guard": false}
 		var kind := "miss" if r.invalid or not r.hit else ("guard" if r.guard else "hit")
 		# 摄魂鬼触 (ot1 oe6): 攻方身上放吸取光环 + 蓝数字 (术力实涨量), 不动体力条 (Skills.closeup_drain)
-		await closeup.strike(u, t, [{"kind": kind, "damage": maxi(0, int(r.damage))}], atk, String(sk["name"]), Skills.closeup_drain(sk, r), Skills.closeup_digits(sk, r), int(sk.get("battle_ranged", 0)) == 1, false)
+		await closeup.strike(u, t, [{"kind": kind, "damage": maxi(0, int(r.damage)), "flash": rules.skill_guard_flash(kind)}], atk, String(sk["name"]), Skills.closeup_drain(sk, r), Skills.closeup_digits(sk, r), int(sk.get("battle_ranged", 0)) == 1, false)
 		if int(res.exp) > 0:
 			gain_exp(u, int(res.exp))
 			await _level_fx(u)

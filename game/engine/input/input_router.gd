@@ -94,6 +94,10 @@ var pad_capture := Callable()
 ## 设定面板「键盘按键设置」捕获新键时设置: 有效时键盘键 (除 Esc) 不当游戏动作, 只把可绑定键的键值交给它
 var key_capture := Callable()
 var _last_point := Vector2.INF
+## 鼠标不动、底下的内容自己动了 (战场边缘滚动 / 列表滚动) 时补一次悬停 (_rehover): 光标框落回鼠标所在格。
+## 只在最近一次操作是鼠标时做 (键盘 / 手柄 / 触摸操作后清掉, 不能把键盘光标拉回鼠标那里); 只对上次悬停的同一个组件 (新弹出的界面不自动悬停, 不破坏防误触)
+var _mouse_hover := false
+var _hover_key: Array = []   # [组件 instance id, 悬停命中的 index]
 ## 回放锁 (PlayLog 回放期间置位): 真实的键盘/鼠标/手柄/触摸不再进游戏, 免得混进回放的指令流打乱后面的操作;
 ## 只放行打开设定面板 (F10 / 手柄 Start / 触屏设置钮: 暂停、调速、结束回放)。设定面板开着时输入照常给面板 (回放此时冻结)
 var replay_lock := false:
@@ -204,6 +208,7 @@ func _prune() -> void:
 ## 手机上另一根手指点齿轮) 的话, 松开原先被浮层吞掉, 下层的装备属性预览就一直不关, 而预览期间别的键都不理 (玩家反馈 2026-11-02)
 func dispatch(a: UiAction) -> bool:
 	dispatched.emit(a)
+	_mouse_hover = a.source == "mouse"
 	_prune()
 	if _holders.has(a.kind):
 		var h: Object = _holders[a.kind]
@@ -244,6 +249,7 @@ func _pointer(r: Object, a: UiAction) -> bool:
 	if a.kind == UiAction.POINT:
 		if not h.is_empty():
 			_pt_hovered = true
+			_hover_key = [t.get_instance_id(), h["index"]]
 		return true
 	if a.kind == UiAction.INFO:
 		return false
@@ -285,6 +291,26 @@ func _poll_pointer_target() -> void:
 	var r: Object = _stack[-1]
 	if r.has_method("ui_pointer_target") or r.has_method("ui_hits"):
 		_track(UiHit.resolve(r))
+
+
+## 鼠标没动, 但它底下同一个组件的命中项变了 (地图边缘滚动后鼠标下换了一格、列表滚动): 按鼠标当前位置补一次悬停。
+## 以前光标框只在鼠标移动时才跟, 镜头缓动推完一格后停在上一格, 和鼠标差一格 (2026-11-08 用户「鼠标移动后没有完全停到鼠标位置」);
+## 鼠标停在边缘时每推一格鼠标下又是新的一格, 于是一格接一格滚到地图边 (BattleScene.minimal_follow_shift 设计的边缘滚动)
+func _rehover() -> void:
+	if not _mouse_hover or touch_mode or replay_lock or _last_point == Vector2.INF or _hover_key.is_empty():
+		return
+	if _stack.is_empty():
+		return
+	var r: Object = _stack[-1]
+	if not (r.has_method("ui_pointer_target") or r.has_method("ui_hits")):
+		return
+	var t := UiHit.resolve(r)
+	if t == null or t.get_instance_id() != _hover_key[0]:
+		return
+	var h := UiHit.find(t, _last_point)
+	if h.is_empty() or h["index"] == null or h["index"] == _hover_key[1]:
+		return
+	dispatch(UiAction.new(UiAction.POINT, "mouse", _last_point))
 
 
 ## 当前按住的方向 (城镇行走用电平; 原版 getKey, 1.2)
@@ -369,6 +395,7 @@ func _process(delta: float) -> void:
 	var real_dt := GameSpeed.real_delta(delta)
 	_time += real_dt
 	_poll_pointer_target()
+	_rehover()
 	for k in repeat.tick(real_dt, _repeat_interval()):
 		dispatch(UiAction.new(k, "key", Vector2.INF, true))
 	for k in page_repeat.tick(real_dt):

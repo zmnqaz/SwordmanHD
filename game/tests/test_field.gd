@@ -372,6 +372,15 @@ func test_t31_guard_screen_flash():
 	eq(Attack.guard_flash(ctx_scripted([], {"guard_flash_sec": 0}), {"result": Attack.Result.GUARD}), {}, "可关闭")
 
 
+## 物理绝技近景: 没打中 / 被格挡 (原版出手种类 6) 同样闪红, 命中不闪
+func test_skill_guard_flash():
+	var c = ctx_scripted()
+	eq(Attack.skill_guard_flash(c, "guard").get("color"), Color8(255, 0, 0), "被格挡闪红")
+	eq(Attack.skill_guard_flash(c, "miss").get("color"), Color8(255, 0, 0), "没打中也闪红")
+	eq(Attack.skill_guard_flash(c, "hit"), {}, "命中不闪")
+	eq(Attack.skill_guard_flash(ctx_scripted([], {"guard_flash_sec": 0}), "miss"), {}, "可关闭")
+
+
 ## 对照原版: type 4 且属性 −1 的未初始化倍率 = 光标目标格 x;
 ## 殷剑平(Str200,紫金劍) 打 夜魑 (Luk 0) 目标 x=21: 基础伤害 289~292 → 实际 60 (倍率 21)
 func test_t08_type4_mult_is_target_x():

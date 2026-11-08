@@ -879,3 +879,40 @@ func test_router_hold_page_key_repeats():
 	var e := UiAction.new(UiAction.PAGE_UP, "key", Vector2.INF, true)
 	check(e.is_repeatable(), "翻页 echo 列表要收")
 	check(not UiAction.new(UiAction.CONFIRM, "key", Vector2.INF, true).is_repeatable(), "确认不连发")
+
+
+# ---------------------------------------------------------------- 鼠标不动、内容滚动后补悬停
+## 战场边缘滚动后鼠标下换了一格, 光标框要落回鼠标所在格 (2026-11-08 用户「鼠标移动后没有完全停到鼠标位置」); 键盘操作后不再补 (不把键盘光标拉回鼠标)
+
+class ScrollGrid:
+	extends Node2D
+	var scroll := 0.0
+	var picked: Array = []
+	func ui_hits() -> Array:
+		return [UiHit.area(Rect2(Vector2(-scroll, 0), Vector2(300, 30)), Vector2i.ZERO, self, UiAction.CONFIRM, Vector2(30, 30))]
+	func ui_select(i) -> void:
+		picked.append(i)
+	func ui_action(_a: UiAction) -> bool:
+		return true
+
+
+func test_rehover_when_content_scrolls_under_still_mouse():
+	var r = _router()
+	var g := ScrollGrid.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(g)
+	r.push(g)
+	r._handle(_mouse_move(Vector2(95, 10)))
+	eq(g.picked, [Vector2i(3, 0)], "鼠标悬停第 3 格")
+	r._process(0.02)
+	eq(g.picked.size(), 1, "内容没动: 不重复悬停")
+	g.scroll = 30.0
+	r._process(0.02)
+	eq(g.picked.back(), Vector2i(4, 0), "内容左移一格, 鼠标没动: 补悬停到鼠标下的新格")
+	r._handle(_key(KEY_RIGHT))
+	r._handle(_key(KEY_RIGHT, false))
+	var n: int = g.picked.size()
+	g.scroll = 60.0
+	r._process(0.02)
+	eq(g.picked.size(), n, "改用键盘后内容再滚动: 不把光标拉回鼠标")
+	g.queue_free()
+	r.free()

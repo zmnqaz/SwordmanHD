@@ -3,6 +3,8 @@ extends "res://tests/test_base.gd"
 ## 近景攻击动画的 ref 部件 (画守方) 与大体型守方 (玩家反馈第 33 幕飞星神剑打心脏贴图乱飞):
 ## 守方 misc 头计数 [2] != 0 时不挂守方 (ref 部件不画、命中窗口不藏守方); 绘制 第一个 ref 部件画在最底下。
 
+const REQUIRES_TEST := {"test_skill_guard_uses_sb": ["original"]}
+
 
 func _fr(parts: Array) -> Dictionary:
 	return {"parts": parts}
@@ -47,3 +49,13 @@ func test_ranged_hides_defender_only_through_attacker_segment():
 		plain.append({"hit": 1 if i == 7 else 0})
 	eq(BattleCloseup.ranged_hide_until({"action_counts": [0, 0, 0], "frames": plain}), 7, "没有攻方一段: 退回第一个命中帧")
 	eq(BattleCloseup.ranged_hide_until({"action_counts": [0, 0, 0], "frames": [{"hit": 0}]}), -1, "没有命中帧: 不藏")
+
+
+## 绝技没打中 / 被格挡 (原版结果码 0 / 1 → 出手种类 6) 放 NNN[-n]SB: 破魔杵 006s → 006sb; 命中 / 没有 SB 的照旧 S
+func test_skill_guard_uses_sb() -> void:
+	eq(BattleCloseup.skill_attack_dir("Sprite/man006/006s", "guard"), "Sprite/man006/006sb", "破魔杵被格挡放 006sb")
+	eq(BattleCloseup.skill_attack_dir("Sprite/man006/006s", "miss"), "Sprite/man006/006sb", "破魔杵没打中也放 006sb")
+	eq(BattleCloseup.skill_attack_dir("Sprite/man006/006s", "hit"), "Sprite/man006/006s", "命中放 006s")
+	eq(BattleCloseup.skill_attack_dir("Sprite/man004/004-1S", "guard"), "Sprite/man004/004-1Sb", "变体 -n 也换 (大小写不敏感)")
+	eq(BattleCloseup.skill_attack_dir("Sprite/man006/006-2s", "miss"), "Sprite/man006/006-2s", "没有 006-2sb 照旧")
+	eq(BattleCloseup.skill_anims("Sprite/man006/006s"), ["Sprite/man006/006s", "Sprite/man006/006sb"], "开场预载 S 与 SB")

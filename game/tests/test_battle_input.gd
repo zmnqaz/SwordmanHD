@@ -39,6 +39,10 @@ class FakeScene:
 	var follows: Array = []
 	func follow_cell(x, y, minimal := false) -> void:
 		follows.append([x, y, minimal])
+	func cursor_step_follow(_prev: Vector2i, c: Vector2i) -> void:
+		follows.append([c.x, c.y, "step"])
+	func slide_cursor_to(c: Vector2i) -> void:
+		follows.append([c.x, c.y, "slide"])
 	func scroll_camera(d: Vector2) -> void:
 		cam += d
 	func show_cursor(x: int, y: int) -> void:
@@ -740,7 +744,8 @@ func test_icon_menu_wraps_and_stops_on_disabled():
 	none.free()
 
 
-## 回归 (2026-10-30): 鼠标悬停选格时镜头只推一小步 (minimal), 键盘移光标才重新居中。旧行为鼠标一碰边缘镜头就冲半个屏幕, 窗口越大越不流畅
+## 回归 (2026-10-30): 鼠标悬停选格时镜头只推一小步 (minimal), 跳得远才重新居中。旧行为鼠标一碰边缘镜头就冲半个屏幕, 窗口越大越不流畅
+## 2026-11-08: 键盘相邻一格改走原版的当场卷 1 格 (cursor_step_follow), 不再缓动
 func test_pointer_hover_and_adjacent_keys_follow_minimally_far_jump_recenters():
 	if not _assets_ready():
 		check(true)
@@ -749,9 +754,9 @@ func test_pointer_hover_and_adjacent_keys_follow_minimally_far_jump_recenters():
 	var fs: FakeScene = c.bs
 	fs.follows.clear()
 	_act(c, UiAction.RIGHT)
-	eq(fs.follows.back()[2], true, "键盘相邻一格: 也只推一小步 (minimal = true)")
+	eq(fs.follows.back()[2], "step", "键盘相邻一格: 原版边缘卷 1 格 (cursor_step_follow)")
 	c.set_cursor(Vector2i(c.cur.x + 6, c.cur.y + 5))
-	eq(fs.follows.back()[2], false, "光标跳得远 (切到下一个目标等): 重新居中 (minimal = false)")
+	eq(fs.follows.back()[2], "slide", "光标跳得远 (切到下一个目标等): 原版每 tick 1 格滑过去 (slide_cursor_to)")
 	c.ui_select(Vector2i(5, 2))
 	eq([fs.follows.back()[0], fs.follows.back()[1], fs.follows.back()[2]], [5, 2, true], "鼠标悬停选格: 只推一小步 (minimal = true)")
 	_cleanup()

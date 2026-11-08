@@ -155,6 +155,57 @@ func test_walk_step_into_edge_column_scrolls_one_cell() -> void:
 	bs.free()
 
 
+## 玩家操作里程序挪光标 (撤销移动等, +): 每 tick 横竖各 1 格滑过去 (可斜走), 镜头逐格边缘卷, 不平移;
+## 中途 show_cursor 到别的格打断滑动 (2026-11-08 玩家「走过去后悔返回有缓动」)
+func test_slide_cursor_steps_one_cell_per_tick_and_scrolls_by_cells() -> void:
+	var bs := _scene(Vector2(1200, 960))
+	_stub_cursor(bs)
+	var col0 := floori(BattleSceneScript.cam_offset().x / BattleStage.CELL_W)
+	var row0 := floori(BattleSceneScript.cam_offset().y / BattleStage.CELL_H)
+	bs.cam = Vector2.ZERO
+	bs.show_cursor(col0 + 2, row0 + 2)
+	var target := Vector2i(col0 + 14, row0 + 4)   # 横 12 格竖 2 格, 终点在可见区外
+	bs.slide_cursor_to(target)
+	bs.show_cursor(target.x, target.y)   # set_cursor 随后的 show_cursor 不能把它直接放到终点
+	check(bs._cursor_cell != target, "滑动开始后光标不会一步跳到终点")
+	await bs.get_tree().create_timer(0.05).timeout
+	var c1: Vector2i = bs._cursor_cell
+	check(c1.x - (col0 + 2) >= 1 and c1.x - (col0 + 2) <= 3 and c1.y - (row0 + 2) >= 1, "第一个 tick 左右横竖各走了 1 格 (斜走): %s" % c1)
+	await bs.get_tree().create_timer(0.7).timeout
+	eq(bs._cursor_cell, target, "滑到终点")
+	check(not bs._cam_moving, "镜头没有平移缓动")
+	eq(fmod(bs.cam.x, BattleStage.CELL_W), 0.0, "镜头按整格卷")
+	check(bs.cam.x > 0.0, "终点出了可见区: 镜头跟着卷过去")
+	bs.slide_cursor_to(Vector2i(col0 + 2, row0 + 2))
+	bs.show_cursor(col0 + 20, row0 + 3)   # 别的移动打断
+	await bs.get_tree().create_timer(0.1).timeout
+	eq(bs._cursor_cell, Vector2i(col0 + 20, row0 + 3), "被打断: 光标直接到新格, 不再滑")
+	bs.free()
+
+
+## 键盘 / 手柄一格一格移光标 (等, 2026-11-08 玩家反馈手感): 进可见区最右 / 最下一列当场卷 1 格 (不缓动), 中间不动, 只看移动的轴
+func test_cursor_step_into_edge_scrolls_one_cell_instantly() -> void:
+	var bs := _scene(Vector2(1200, 960))   # 40x40 格
+	var cw := float(BattleStage.CELL_W)
+	var ch := float(BattleStage.CELL_H)
+	var n := int(bs.view().x / cw)
+	var m := int(bs.view().y / ch)
+	var col0 := floori(BattleSceneScript.cam_offset().x / cw)
+	var row0 := floori(BattleSceneScript.cam_offset().y / ch)
+	bs.cam = Vector2.ZERO
+	bs.cursor_step_follow(Vector2i(col0 + 3, row0 + 3), Vector2i(col0 + 4, row0 + 3))
+	eq(bs.cam, Vector2.ZERO, "走到可见区中间: 镜头不动")
+	bs.cursor_step_follow(Vector2i(col0 + n - 2, row0 + 3), Vector2i(col0 + n - 1, row0 + 3))
+	eq(bs.cam, Vector2(cw, 0), "走进最右一列: 当场右卷 1 格")
+	check(not bs._cam_moving, "没有缓动 / 平移在跑")
+	var c := Vector2i(col0 + n, row0 + m - 2)   # 卷完后它在最右列 (n-1) 上
+	bs.cursor_step_follow(c, c + Vector2i(0, 1))
+	eq(bs.cam, Vector2(cw, ch), "沿最右列往下走进最下一行: 只卷竖轴 1 格")
+	bs.cursor_step_follow(Vector2i(col0 + 30, row0 + 30), Vector2i(col0 + 31, row0 + 30))
+	check(bs._cam_moving, "新格不在可见区 (镜头被拖走过): 交给缓动跟随")
+	bs.free()
+
+
 ## 地图 630 = 21 格, 可见区 320 = 10.7 格: 镜头贴右边 (310) 时可见区最右列 (19) 还不是地图最右列 (20), 卷 1 格会越界露黑 —— 卷动量限在地图内
 ## (2026-11-05 网友截图: 灵驹走到右边宝箱, 画面右侧黑一条)
 func test_edge_scroll_stays_inside_map() -> void:

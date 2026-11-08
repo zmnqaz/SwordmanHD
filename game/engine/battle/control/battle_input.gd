@@ -191,15 +191,21 @@ func in_map(c: Vector2i) -> bool:
 # ================= 光标 =================
 
 ## 光标移到格 c (夹在地图内), 镜头跟随, 信息条显示格上的单位
-## pointer: 指针悬停 / 点按选的格 (一定在屏幕上), 镜头只推一小步 (BattleScene.follow_cell minimal); 键盘 / 手柄相邻移光标同样只推一小步, 跳得远才重新居中
-## 键盘 / 手柄一格一格移 (离上一格 <= NEAR_STEP) 也只推一小步, 跳得远 (切到下一个单位 / 目标) 才重新居中
+## pointer: 指针悬停 / 点按选的格 (一定在屏幕上), 镜头缓动只推一小步 (BattleScene.follow_cell minimal)
+## 键盘 / 手柄一格一格移 (离上一格 <= NEAR_STEP): 照原版进最边一列 / 行当场卷 1 格 (BattleScene.cursor_step_follow);
+## 跳得远 (撤销移动、取消选中、切到下一个单位 / 目标): 照 每 tick 1 格滑过去, 镜头逐格跟 (BattleScene.slide_cursor_to)
 const NEAR_STEP := 2
 
 func set_cursor(c: Vector2i, pointer := false) -> void:
 	var prev := cur
 	cur = c.clamp(Vector2i.ZERO, Vector2i(bs.st.width - 1, bs.st.height - 1))
 	var near := absi(cur.x - prev.x) + absi(cur.y - prev.y) <= NEAR_STEP
-	bs.follow_cell(cur.x, cur.y, pointer or near)
+	if pointer:
+		bs.follow_cell(cur.x, cur.y, true)
+	elif near:
+		bs.cursor_step_follow(prev, cur)
+	else:
+		bs.slide_cursor_to(cur)
 	show_cursor()
 
 

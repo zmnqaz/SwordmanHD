@@ -157,6 +157,12 @@ static func guard_flash(ctx, res: Dictionary) -> Dictionary:
 	return {"color": Color8(int(c[0]), int(c[1]), int(c[2])), "sec": float(ctx.params.guard_flash_sec)}
 
 
+## 物理绝技近景的全屏闪色: 没打中 / 被格挡时出手种类是 6 (原版绝技近景初始化), 命中帧和普攻格挡一样闪红
+## (近景 左侧 / 右侧只看种类 6 / 8, 不分普攻绝技); 命中不闪。参数同普攻格挡 (guard_flash_sec / color)
+static func skill_guard_flash(ctx, kind: String) -> Dictionary:
+	return guard_flash(ctx, {"result": Result.GUARD}) if kind in ["miss", "guard"] else {}
+
+
 ## type 4 属性化普攻 : 替换本次伤害, 不附加状态
 ##   dmg × (100 - 守护具抗)(100 - 守饰物抗)/10000 × MAG_OPP[守][属性]/100; 属性 = 武器 attack_attribute (字段)
 ##   属性无效 (紫金劍 -1): 抗性按 0, 倍率取原版的未定义值 (约定见 type4_mult)
