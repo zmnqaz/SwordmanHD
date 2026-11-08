@@ -91,8 +91,8 @@ func show_unit(u: Dictionary, at_top: bool, show_detail := false, animate := tru
 	for i in _buffs.size():
 		_buffs[i].visible = i < buffs.size() and bool(buffs[i])
 	_place_anchors()
-	_show_block(_left, block_pos("left", top), Vector2.LEFT, true, animate and (moved or not _left.visible))
-	_show_block(_right, block_pos("right", top), Vector2.RIGHT, detail, animate and (moved or not _right.visible))
+	_show_block(_left, block_pos("left", top), Vector2.LEFT, true, animate and (moved or not _left.visible or UiSlide.is_closing(_left)))
+	_show_block(_right, block_pos("right", top), Vector2.RIGHT, detail, animate and (moved or not _right.visible or UiSlide.is_closing(_right)))
 
 
 func _show_block(n: Node2D, base: Vector2, dir: Vector2, on: bool, animate: bool) -> void:
@@ -103,6 +103,7 @@ func _show_block(n: Node2D, base: Vector2, dir: Vector2, on: bool, animate: bool
 	if animate:
 		UiSlide.run(n, base, dir, UiSlide.bri_offsets(), true)
 	else:
+		UiSlide.cancel(n)  # 滑出中直接刷新: 不取消的话旧 tween 走完会把块藏掉
 		n.position = base
 		n.modulate.a = 1.0
 		n.visible = true

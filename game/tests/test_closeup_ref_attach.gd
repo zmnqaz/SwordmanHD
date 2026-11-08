@@ -33,3 +33,17 @@ func test_original_heart_misc() -> void:
 		return
 	check(not BattleCloseup.defender_attaches(Assets.anim("Sprite/man171/171misc")), "心脏")
 	check(BattleCloseup.defender_attaches(Assets.anim("Sprite/man238/238misc")), "普通敌兵")
+
+
+## 远程出手藏守方到攻方一侧那段 (action_counts[0]) 结束, 不是到第一个命中帧: 破魔杵 006s [15, 45, 69] 第 44 帧才命中,
+## 原版第 15 帧切到守方一侧红幕就现身 (④); 玩家 2026-11-06 反馈复刻整段红幕看不到守方
+func test_ranged_hides_defender_only_through_attacker_segment():
+	var frames := []
+	for i in 69:
+		frames.append({"hit": 1 if i == 44 else 0})
+	eq(BattleCloseup.ranged_hide_until({"action_counts": [15, 45, 69], "frames": frames}), 15, "破魔杵: 藏到第 15 帧")
+	var plain := []
+	for i in 30:
+		plain.append({"hit": 1 if i == 7 else 0})
+	eq(BattleCloseup.ranged_hide_until({"action_counts": [0, 0, 0], "frames": plain}), 7, "没有攻方一段: 退回第一个命中帧")
+	eq(BattleCloseup.ranged_hide_until({"action_counts": [0, 0, 0], "frames": [{"hit": 0}]}), -1, "没有命中帧: 不藏")

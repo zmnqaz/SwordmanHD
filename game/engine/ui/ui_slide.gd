@@ -39,6 +39,7 @@ static func run(node: Node2D, base: Vector2, dir: Vector2, offsets: Array, openi
 	cancel(node)  # 同节点重入: 旧 tween 未走完会继续改位置/透明度并把 visible 拉回 (如选目标后立刻确认攻击, hide_info 被滑入覆盖, 死单位的信息条一直挂着)
 	var tw := node.create_tween()
 	node.set_meta(TWEEN_META, tw)
+	node.set_meta(OPENING_META, opening)
 	node.visible = true
 	_apply(node, base, dir, steps[0])
 	for k in range(1, steps.size()):
@@ -50,6 +51,7 @@ static func run(node: Node2D, base: Vector2, dir: Vector2, offsets: Array, openi
 
 
 const TWEEN_META := "ui_slide_tween"
+const OPENING_META := "ui_slide_opening"
 
 
 ## 取消该节点进行中的滑动。不直接 kill: 有的调用方 await 旧 tween 的 finished (list_menu.close),
@@ -65,6 +67,11 @@ static func cancel(node: Node2D) -> void:
 static func is_sliding(node: Node2D) -> bool:
 	return node.has_meta(TWEEN_META) and (node.get_meta(TWEEN_META) as Tween) != null \
 			and (node.get_meta(TWEEN_META) as Tween).is_valid()
+
+
+## 正在滑出 (还可见, 动画走完就隐藏)
+static func is_closing(node: Node2D) -> bool:
+	return is_sliding(node) and not bool(node.get_meta(OPENING_META, true))
 
 
 static func _finish(node: Node2D, base: Vector2, opening: bool) -> void:

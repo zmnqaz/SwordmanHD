@@ -173,6 +173,20 @@ func _build_left() -> void:
 			b.set_frame(b.anim_dir, b.frame + mini(9, (v - 1) / 10))
 			_left.add_child(b)
 		_num(_left, "camp.profile.spirit_value", v, k)
+	_status_icons(int(d.get("status", 0)))
+
+
+## 状态图标 (战场单位详情): 按表 {掩码, 页内坐标} 逐项, 有该状态位就画帧 14+i;
+## 左页底图自带一排淡色图标, 深色的盖在上面。营地没有状态 (unit_data 不给 status) 不画
+func _status_icons(status: int) -> void:
+	var sp := UiLayout.sprite("camp.profile.status")
+	var frames: Array = sp.get("frames", [])
+	var masks: Array = UiLayout.val("camp.profile.status", "masks", [])
+	for i in mini(frames.size(), masks.size()):
+		if status & int(masks[i]):
+			var b := UiPanel.new(String(sp["anim"]), int(frames[i]), UiLayout.at("camp.profile.status", i))
+			_left.add_child(b)
+			b.key_background()   # 图标自带的底和高清面板颜色不同, 会露出方框 (同信息条增益图标)
 
 
 func _build_right() -> void:

@@ -238,10 +238,10 @@ def main(argv):
     if not os.path.isdir(td):
         die("缺少 export templates: %s" % td)
 
-    # 图标: 用自制的桌面图标 game/assets/icon_pc.png (tools/platform/make_app_icon.py --plain 生成); icon.ico 不入库, 导出预设引用 res://assets/icon.ico,
-    # 缺了 Godot 导出直接报「图标路径无效」。
+    # 图标: 用桌面图标 game/assets/icon_pc.png (tools/platform/make_app_icon.py --pc 生成); icon.ico 不入库, 导出预设引用 res://assets/icon.ico,
+    # 缺了 Godot 导出直接报「图标路径无效」。icon_pc.png 比 icon.ico 新就重新生成。
     ico = os.path.join(REPO, "game", "assets", "icon.ico")
-    if not os.path.isfile(ico):
+    if not os.path.isfile(ico) or os.path.getmtime(ico) < os.path.getmtime(os.path.join(REPO, "game", "assets", "icon_pc.png")):
         subprocess.run([sys.executable, os.path.join(HERE, "platform", "make_ico.py"), os.path.join(REPO, "game", "assets", "icon_pc.png"), ico], check=True)
 
     shutil.rmtree(OUT, ignore_errors=True)

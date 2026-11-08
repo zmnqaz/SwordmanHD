@@ -3,6 +3,7 @@ class_name BattleUnitDetail
 extends UiProfile
 ## 战场单位详情 (原版 / 重制版 GameUnitUI, 2.10): 与营地「體態觀覽」同一界面 (Misc/Man_pro),
 ## 数据取战场单位当前状态 (体力/术力为当前值)。确认翻页 (属性 → 物品 → 法术, 循环), 取消关闭; 战场中方向键不换人。
+## 左页底部画单位当前的状态图标 (UiProfile._status_icons)。
 ## 人物图: 主角 (单位 0~9) 用 Camp_man 立绘; 其他单位 (怪物 / NPC) 没有立绘, 循环播放它自己的战场站立动画 (原版就是动图, 用户指出, 夜魑会吐舌头)。
 
 const UnitState = preload("res://engine/rules/unit_state.gd")
@@ -41,7 +42,7 @@ func unit_data(i: int) -> Dictionary:
 	return {"name": u.name_text, "lv": u.lv, "exp": u.exp, "move": u.move_now, "hp": u.hp, "hp_max": u.hp_max,
 		"mp": u.mp, "mp_max": u.mp_max, "stats": st.stats, "spirit": sp, "calc": calc, "items": items,
 		"gear": gear, "skills": st.skills, "man": uid if Content.is_hero(uid) and uid < man_frames().size() else -1,
-		"sprite_dir": u.sprite_dir()}
+		"sprite_dir": u.sprite_dir(), "status": int(st.status)}
 
 
 static func _item(id: int) -> Dictionary:

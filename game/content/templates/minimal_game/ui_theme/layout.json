@@ -99,6 +99,212 @@
    "cell_offset_y": 0.0
   }
  },
+ "pixel_fonts": {
+  "camp_save_label": {
+   "gap": 1,
+   "colors": {
+    "b": [
+     99,
+     24,
+     0
+    ],
+    "a": [
+     132,
+     49,
+     8
+    ],
+    "e": [
+     198,
+     123,
+     49
+    ],
+    "c": [
+     214,
+     148,
+     66
+    ],
+    "d": [
+     231,
+     173,
+     90
+    ]
+   },
+   "glyphs": {
+    "回": [
+     "abbbba",
+     "b....b",
+     "b.ae.b",
+     "b.ea.b",
+     "b....b",
+     "abbbba"
+    ],
+    "合": [
+     "...b...",
+     ".ea.ae.",
+     "e.aaa.e",
+     ".abbba.",
+     ".b...b.",
+     ".abbba."
+    ],
+    "时": [
+     ".....b.",
+     "aba..b.",
+     "b.b.bbb",
+     "bab.eb.",
+     "b.b..b.",
+     "aba.ab."
+    ],
+    "時": [
+     "...bbb.",
+     "aba..b.",
+     "b.b.bbb",
+     "bab.eb.",
+     "b.b..b.",
+     "aba.ab."
+    ],
+    "长": [
+     ".b..a..",
+     ".b.a...",
+     "bbbbbbb",
+     ".b.a...",
+     ".b..a..",
+     ".ba..ab"
+    ],
+    "長": [
+     ".bbbbb.",
+     ".b.....",
+     ".bbbb..",
+     "bbbbbbb",
+     ".b.a...",
+     ".ba..ab"
+    ],
+    "/": [
+     "....",
+     "....",
+     "..ea",
+     ".eae",
+     "eae.",
+     "ae.."
+    ]
+   },
+   "hd_like": {
+    "anim": "camp.save",
+    "frame": 2
+   },
+   "status": "unknown"
+  },
+  "camp_save_num": {
+   "gap": 1,
+   "colors": {
+    "a": [
+     132,
+     49,
+     8
+    ],
+    "e": [
+     198,
+     123,
+     49
+    ]
+   },
+   "outline": [
+    239,
+    222,
+    148
+   ],
+   "glyphs": {
+    "0": [
+     "eaae",
+     "a..a",
+     "a..a",
+     "a..a",
+     "eaae"
+    ],
+    "1": [
+     "..a.",
+     ".aa.",
+     "..a.",
+     "..a.",
+     ".aaa"
+    ],
+    "2": [
+     "eaae",
+     "...a",
+     "eaae",
+     "a...",
+     "aaaa"
+    ],
+    "3": [
+     "aaae",
+     "...a",
+     ".aaa",
+     "...a",
+     "aaae"
+    ],
+    "4": [
+     "a..a",
+     "a..a",
+     "aaaa",
+     "...a",
+     "...a"
+    ],
+    "5": [
+     "aaaa",
+     "a...",
+     "aaae",
+     "...a",
+     "aaae"
+    ],
+    "6": [
+     "eaae",
+     "a...",
+     "aaae",
+     "a..a",
+     "eaae"
+    ],
+    "7": [
+     "aaaa",
+     "...a",
+     "..a.",
+     ".a..",
+     ".a.."
+    ],
+    "8": [
+     "eaae",
+     "a..a",
+     "eaae",
+     "a..a",
+     "eaae"
+    ],
+    "9": [
+     "eaae",
+     "a..a",
+     "eaaa",
+     "...a",
+     "eaae"
+    ],
+    ":": [
+     ".",
+     "a",
+     ".",
+     "a",
+     "."
+    ],
+    "?": [
+     "eaae",
+     "...a",
+     ".ae.",
+     "....",
+     ".a.."
+    ]
+   },
+   "hd_like": {
+    "anim": "camp.save",
+    "frame": 4
+   },
+   "status": "unknown"
+  }
+ },
  "colors": {
   "text.main": {
    "rgb555": "0x59a5",
@@ -4207,10 +4413,10 @@
    "parent": "camp.save.slot",
    "pos": [
     152,
-    4
+    5
    ],
    "text": {
-    "font": "body",
+    "font": "small10",
     "flags": 5,
     "color": "text.main",
     "align": "left"
@@ -4256,37 +4462,60 @@
    "migrated": true
   },
   "camp.save.slot.turns": {
-   "type": "text",
+   "type": "pixel_text",
    "parent": "camp.save.slot",
    "pos": [
-    193,
-    16
+    196,
+    21
    ],
-   "text": {
-    "font": "small10",
-    "flags": 5,
-    "color": "text.main",
-    "align": "left"
+   "pixel_text": {
+    "font": "camp_save_label"
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.turns_value": {
+   "type": "pixel_text",
+   "parent": "camp.save.slot",
+   "pos": [
+    218,
+    22
+   ],
+   "pixel_text": {
+    "font": "camp_save_num",
+    "align": "right",
+    "box": 24
    },
    "status": "unknown",
    "code": "engine/ui/camp/camp_save_window.gd _init",
    "migrated": true
   },
   "camp.save.slot.play_time": {
-   "type": "text",
+   "type": "pixel_text",
    "parent": "camp.save.slot",
    "pos": [
-    193,
-    16
+    249,
+    21
    ],
-   "text": {
-    "font": "small10",
-    "flags": 5,
-    "color": "text.main",
+   "pixel_text": {
+    "font": "camp_save_label"
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.play_time_value": {
+   "type": "pixel_text",
+   "parent": "camp.save.slot",
+   "pos": [
+    272,
+    22
+   ],
+   "pixel_text": {
+    "font": "camp_save_num",
     "align": "right",
-    "box": [
-     110
-    ]
+    "box": 31
    },
    "status": "unknown",
    "code": "engine/ui/camp/camp_save_window.gd _init",

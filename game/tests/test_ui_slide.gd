@@ -5,7 +5,8 @@ extends "res://tests/test_base.gd"
 ## 用真实等帧断言行为, 不碰 UiSlide 内部; 修复前跑本文件应当失败 (复现)。
 const REQUIRES_TEST := {
 	"test_close_block_during_slide_stays_closed": ["original"],
-	"test_hide_during_slide_stays_hidden": ["original"]
+	"test_hide_during_slide_stays_hidden": ["original"],
+	"test_show_during_slide_out_stays_shown": ["original"]
 }  # 个别方法的依赖 (同上)
 
 const SLIDE_TIME := 0.5  # BRI_OFFSETS 5 档 x 0.04s = 0.2s; headless 帧率不定, 用真实时间等才与帧率解耦
@@ -48,6 +49,22 @@ func test_close_block_during_slide_stays_closed() -> void:
 	await _wait_slide()
 	check(not bar._right.visible, "右块动画走完后仍保持关闭")
 	check(bar._left.visible, "左块正常显示")
+	bar.queue_free()
+
+
+## 手机实测: 悬停的人名框正在淡出 (光标换到另一人) 时点选该人, 只出了右块、左块 (血 / 魔) 没了
+func test_show_during_slide_out_stays_shown() -> void:
+	var bar := _bar()
+	bar.show_unit(_info(), true, false, false)
+	bar.hide_bar(true)
+	bar.show_unit(_info(50), true, true, true)
+	await _wait_slide()
+	check(bar._left.visible, "滑出中再显示: 左块动画走完后仍可见")
+	check(bar._right.visible, "右块可见")
+	bar.hide_bar(true)
+	bar.show_unit(_info(50), true, true, false)
+	await _wait_slide()
+	check(bar._left.visible and bar._right.visible, "不带动画刷新也不被旧滑出藏掉")
 	bar.queue_free()
 
 

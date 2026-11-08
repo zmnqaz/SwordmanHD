@@ -3,8 +3,8 @@ extends Node
 ## 屏幕布局服务 (autoload "ScreenLayout"), 为第二版真宽屏「扩展视野」准备的锚点界面基础。见 docs/架构设计.md「锚点界面」。
 ##
 ## 概念:
-##   逻辑画面 size: 视口可见大小 / Assets.SCALE。第一版 stretch aspect=keep, 恒为 320x200;
-##     aspect=expand 时随窗口比例加宽/加高 (16:9 → 356x200, 4:3 → 320x240)。
+##   逻辑画面 size: 视口可见大小 / Assets.SCALE。16:10 与「原版 16:10」模式恒为 320x200;
+##     自适应时随窗口比例加宽/加高 (16:9 → 356x200, 4:3 → 320x240)。
 ##   安全区 safe_rect: 原版 320x200 画面, 在逻辑画面里居中。
 ##   锚点 Anchor: 原版坐标以安全区为基准, 按锚点贴到对应屏幕边。
 ##     例: 原版 (24,20) 的营地菜单用 TOP_LEFT → 仍在 (24,20); 对话框用 BOTTOM → 水平居中、贴底。
@@ -20,7 +20,7 @@ extends Node
 ##   cover(control)                   让 ColorRect 等铺满整个屏幕 (STRETCH)
 ##
 ## 画面比例 (设定「画面比例」, aspect_mode): "auto" 自适应 (缺省) = 窗口/全屏宽于 16:10 时逻辑画面横向加宽 (16:9 → 356x200, 21:9 → 约 467x200),
-##   窄于 16:10 (4:3 等) 退化为上下留黑边 (画面仍 320x200); "keep" 原版 16:10, 任何窗口比例都留黑边。靠切换根窗口 content_scale_aspect 实现 (EXPAND / KEEP)。
+##   窄于 16:10 时纵向加高 (4:3 → 320x240, 3:2 → 约 320x213); "keep" 原版 16:10, 任何窗口比例都留黑边。靠切换根窗口 content_scale_aspect 实现 (EXPAND / KEEP)。
 ## 调试: 启动参数 --aspect=16:9 | 4:3 | 21:9 (或任意 W:H) 按比例设窗口 (宽于 16:10 时高 800、加宽; 窄于 16:10 时宽 1280、加高),
 ##   用来预览; 画面是否加宽由 aspect_mode 决定。--aspect-mode=keep|auto 临时指定画面比例模式 (见 Game)。
 
@@ -48,8 +48,8 @@ var aspect_mode := "auto"
 const MIN_WINDOW := Vector2i(1280, 800)
 
 
-## 桌面 (Windows / Linux / macOS) 窗口与任务栏图标: 用自制的 icon_pc.png。project.godot 的 config/icon 是手游美术图标 (app_icon.png),
-## Godot 会拿它当窗口图标, 所以桌面启动时换回 icon_pc.png (2026-10-31 玩家: PC 版图标不该跟着手游图标变)
+## 桌面 (Windows / Linux / macOS) 窗口与任务栏图标: 用 icon_pc.png。project.godot 的 config/icon 是手游图标 (app_icon.png, 方图顶格),
+## Godot 会拿它当窗口图标, 所以桌面启动时换成 icon_pc.png (同一张美术图做成圆角留边的桌面样式; 2026-11-07 用户: PC 也换成新图标)
 const DESKTOP_ICON := "res://assets/icon_pc.png"
 
 
@@ -96,14 +96,14 @@ func set_aspect_mode(mode: String) -> void:
 	_refresh_content_aspect()
 
 
-## 逻辑画面是否随窗口加宽: 自适应且窗口比 16:10 宽 (窄的退化为留上下黑边, 不加高)
-static func widens(win: Vector2i, mode: String) -> bool:
-	return mode == "auto" and win.x * 10 > win.y * 16
+## 逻辑画面是否随窗口扩展: 自适应且窗口不是 16:10 (宽的加宽, 窄的如 4:3 加高)
+static func expands(win: Vector2i, mode: String) -> bool:
+	return mode == "auto" and win.x * 10 != win.y * 16
 
 
 func _refresh_content_aspect() -> void:
 	var win := get_window()
-	var want := Window.CONTENT_SCALE_ASPECT_EXPAND if widens(win.size, aspect_mode) else Window.CONTENT_SCALE_ASPECT_KEEP
+	var want := Window.CONTENT_SCALE_ASPECT_EXPAND if expands(win.size, aspect_mode) else Window.CONTENT_SCALE_ASPECT_KEEP
 	if win.content_scale_aspect != want:
 		win.content_scale_aspect = want
 	_update()
@@ -227,12 +227,25 @@ func to_original(p: Vector2, anchor: int = SAFE) -> Vector2:
 	return p - offset(anchor)
 
 
+## 原版镜头 (320x200 视口左上角 p, 地图坐标) 换到扩展后的视口 view: 原版想看的区域仍在画面中间, 但扩展出来的部分不越出地图 ——
+## 原版没越界的一边扩展后也不越界 (4:3 加高时剧情镜头停在地图底边, 原样居中会在下面露出 20 像素黑底); 原版自己越界画黑的照旧。
+## 地图连同原版画面都比视口小的轴不夹 (由调用方居中)
+static func extend_cam(p: Vector2, view: Vector2, map: Vector2) -> Vector2:
+	var out := p - (view - ORIGINAL) / 2.0
+	for ax in 2:
+		var lo := minf(0.0, p[ax])
+		var hi := maxf(map[ax], p[ax] + ORIGINAL[ax])
+		if hi - lo >= view[ax]:
+			out[ax] = clampf(out[ax], lo, hi - view[ax])
+	return out
+
+
 ## 全屏拉伸的缩放 (逻辑画面 / 320x200)
 func stretch_scale() -> Vector2:
 	return size / ORIGINAL
 
 
-## 宽屏两侧镜像铺满 (不留黑边): 在 parent (场景根或界面层) 末尾加一个边缘镜像层, 把安全区里画好的画面镜像到两侧。
+## 宽屏两侧镜像铺满 (不留黑边): 在 parent (场景根或界面层) 末尾加一个边缘镜像层, 把安全区里画好的画面镜像到两侧; 加高时上下铺黑。
 ## 只给「只画安全区」的场景 / 界面用 (标题、营地、店内); 自己铺满全屏的场景 (战场、城镇) 与视频不用
 ## z: 画在哪一层 (缺省很大 = 盖在整个场景之后画, 镜像全部内容; 传 0 则只镜像在它之前加入的兄弟节点, 如整页底图)
 func mirror_edges(parent: Node, z := 4000) -> void:

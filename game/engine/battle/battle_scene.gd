@@ -538,6 +538,11 @@ func _orig_to_view(p: Vector2) -> Vector2:
 	return p - (view() - SCREEN) / 2.0
 
 
+## 剧情 / 演出镜头 (不夹地图) 换到当前视口: 扩展出来的部分不越出地图 (见 ScreenLayout.extend_cam)
+func _extend_cam(p: Vector2) -> Vector2:
+	return ScreenLayout.extend_cam(p, view(), layer_size.get(_current_layer(), SCREEN))
+
+
 ## 当前视口里与原版 320x200 镜头对应的左上角 (剧情动画、物件按原版镜头摆放)
 func orig_cam() -> Vector2:
 	return cam + (view() - SCREEN) / 2.0
@@ -554,7 +559,7 @@ func _cell_px(x: int, y: int) -> Vector2:
 
 ## 0x07: 视口左上角移到格子 (x, y) (立即)
 func move_camera_to_cell(x: int, y: int) -> void:
-	cam = _script_cam(_orig_to_view(_cell_px(x, y) - cam_offset()))
+	cam = _script_cam(_extend_cam(_cell_px(x, y) - cam_offset()))
 	_stop_cam()
 
 
@@ -573,7 +578,7 @@ static func _valid_cam_speed(v: Vector2) -> Vector2:
 
 ## 0x08: 以 map.camera_offset.pan_speed (sx*5+20, sy*5+20) 像素/秒 平移到格子 (x, y)
 func pan_camera_to_cell(x: int, y: int, sx: int, sy: int) -> void:
-	_cam_target = _script_cam(_orig_to_view(_cell_px(x, y) - cam_offset()))
+	_cam_target = _script_cam(_extend_cam(_cell_px(x, y) - cam_offset()))
 	_cam_speed = _valid_cam_speed(UiLayout.vec_of("map.camera_offset", "pan_speed", {"sx": sx, "sy": sy}))
 	_cam_ease = false
 	if cam.is_equal_approx(_cam_target):
@@ -586,7 +591,7 @@ func pan_camera_to_cell(x: int, y: int, sx: int, sy: int) -> void:
 ## clamp = false: 不夹在地图内 (原版施法演出器 调镜头 不夹地图, 落点靠地图边时越界处画黑, 差异);
 ## true: 夹在地图内 (施法后回原镜头、地图升级光旋等)
 func pan_camera_to(p: Vector2, speed: Vector2, clamp := true) -> void:
-	_cam_target = _clamp_cam(_orig_to_view(p)) if clamp else _orig_to_view(p)
+	_cam_target = _clamp_cam(_orig_to_view(p)) if clamp else _extend_cam(p)
 	_cam_speed = _valid_cam_speed(speed)
 	_cam_ease = false
 	if cam.is_equal_approx(_cam_target):
@@ -913,15 +918,23 @@ func play_animation(id: int, frame: int, end_frame: int) -> void:
 	if frame < 0:
 		a.play(a.dir, 0, -1, false)
 		FullscreenCover.attach(a)   # 满屏的剧情动画: 宽屏/全屏下框外盖黑 (播放后才读得到帧数据)
-		await a.finished
+		await _play_cutscene(a)
 	elif frame == end_frame:
 		a.show_frame(a.dir, end_frame)
 		FullscreenCover.attach(a)
 	else:
 		a.play(a.dir, frame, end_frame + 1, false)
 		FullscreenCover.attach(a)
-		await a.finished
+		await _play_cutscene(a)
 		a.show_frame(a.dir, end_frame)
+
+
+## 等剧情动画播完; 满屏的 (过场动画, 如幕间标题卡) 播放期间不跟游戏速度, 按原速 (GameSpeed.hold_normal)
+func _play_cutscene(a: Node) -> void:
+	if FullscreenCover.is_fullscreen(a):
+		GameSpeed.hold_normal(a)
+	await a.finished
+	GameSpeed.release(a)
 
 
 ## 0x1A anim_start: 原版 (跳转 -> ->) 只把动画槽定格到第 frame 帧并发该帧的声音, 不开显示标志、不推进
@@ -951,12 +964,13 @@ func fade_black(to: float, t: int) -> void:
 	await tw.finished
 
 
-## 0x04: 关卡标题卡 Tanm_NN (淡入 0.5 秒, 停留, 淡出 0.3 秒)
+## 0x04: 关卡标题卡 Tanm_NN (淡入 0.5 秒, 停留, 淡出 0.3 秒; 按原速, 不跟游戏速度)
 func show_title_card() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 45
 	ScreenLayout.bind_layer(layer, ScreenLayout.SAFE)
 	add_child(layer)
+	GameSpeed.hold_normal(layer)   # 过场: 不跟游戏速度 (层释放时自动放开)
 	var back := ColorRect.new()   # 宽屏/全屏时标题卡 (320x200) 比窗口小: 先铺一整屏黑色再画卡, 随卡一起淡入淡出
 	back.color = Color.BLACK
 	back.mouse_filter = Control.MOUSE_FILTER_IGNORE

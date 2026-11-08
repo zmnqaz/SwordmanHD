@@ -436,13 +436,8 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 	for i in data["frames"].size():
 		if int(data["frames"][i]["hit"]) > 0:
 			hits += 1
-	# 远程技能 (技能表 battle_ranged = 1, 如无方飞剑): 剑气 / 弹丸飞行期间守方不在画面里, 到第一个命中帧才出现 (用户 2026-10-29 指出无方飞剑发剑气时画面里不该有怪)
-	var hide_until := -1
-	if ranged:
-		for i in data["frames"].size():
-			if int(data["frames"][i]["hit"]) > 0:
-				hide_until = i
-				break
+	# 远程 (技能表 battle_ranged = 1 如无方飞剑 / 破魔杵, 或远程单位的普攻): 出手一侧那段守方不在画面里 (用户 2026-10-29 指出无方飞剑发剑气时画面里不该有怪)
+	var hide_until := ranged_hide_until(data) if ranged else -1
 	var on_frame := func(f: int):
 		var hide_def := (attach and int(c[1]) > 0 and f >= int(c[1]) and f < int(c[2])) or f < hide_until
 		dmisc.visible = not hide_def
@@ -487,6 +482,21 @@ func _play_attack(a: BattleUnit, d: BattleUnit, asd: Dictionary, dsd: Dictionary
 		await _jump(dsd, digit_value, show_digits)
 		if drain >= 0:
 			await _vampire(asd, drain, vamp_hp)
+
+
+## 远程出手时守方藏到第几帧 (不含): 动画 action_counts[0] 是「攻方一侧」那段的帧数 (远程动画才有, 之后切到守方一侧), 有就藏到它;
+## 没有 (0) 才退回第一个命中帧。原版破魔杵 (真胤 006s, [15, 45, 69]) 第 15 帧切到守方一侧红幕时守方就现身 (实测 ④),
+## 第 44 帧才命中; 复刻原先一律藏到第一个命中帧, 整段红幕守方都不在 (玩家 2026-11-06 反馈「发破魔杵时对方人不见了」)。
+## 其它远程动画这段末尾与第一个命中帧只差 0~5 帧 (001s 38/39、230a 11/13、234a 25/26、242s 10/15)
+static func ranged_hide_until(data: Dictionary) -> int:
+	var c: Array = data.get("action_counts", [])
+	if not c.is_empty() and int(c[0]) > 0:
+		return int(c[0])
+	var frames: Array = data.get("frames", [])
+	for i in frames.size():
+		if int(frames[i]["hit"]) > 0:
+			return i
+	return -1
 
 
 ## 武器吸血的表现 (原版近景状态 8 / 9, 实测 2026-10-18, 差异): 命中且触发吸血就放, 吸到 0 (攻方满血) 一样放:

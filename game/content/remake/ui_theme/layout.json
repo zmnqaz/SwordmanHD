@@ -9,11 +9,11 @@
  ],
  "scale": 4,
  "stats": {
-  "elements": 267,
-  "verified": 207,
+  "elements": 270,
+  "verified": 208,
   "screenshot": 10,
-  "unknown": 50,
-  "migrated": 250
+  "unknown": 52,
+  "migrated": 252
  },
  "fonts": {
   "body": {
@@ -97,6 +97,212 @@
    ],
    "baseline_in_cell": 10.75,
    "cell_offset_y": 0.0
+  }
+ },
+ "pixel_fonts": {
+  "camp_save_label": {
+   "gap": 1,
+   "colors": {
+    "b": [
+     99,
+     24,
+     0
+    ],
+    "a": [
+     132,
+     49,
+     8
+    ],
+    "e": [
+     198,
+     123,
+     49
+    ],
+    "c": [
+     214,
+     148,
+     66
+    ],
+    "d": [
+     231,
+     173,
+     90
+    ]
+   },
+   "glyphs": {
+    "回": [
+     "abbbba",
+     "b....b",
+     "b.ae.b",
+     "b.ea.b",
+     "b....b",
+     "abbbba"
+    ],
+    "合": [
+     "...b...",
+     ".ea.ae.",
+     "e.aaa.e",
+     ".abbba.",
+     ".b...b.",
+     ".abbba."
+    ],
+    "时": [
+     ".....b.",
+     "aba..b.",
+     "b.b.bbb",
+     "bab.eb.",
+     "b.b..b.",
+     "aba.ab."
+    ],
+    "時": [
+     "...bbb.",
+     "aba..b.",
+     "b.b.bbb",
+     "bab.eb.",
+     "b.b..b.",
+     "aba.ab."
+    ],
+    "长": [
+     ".b..a..",
+     ".b.a...",
+     "bbbbbbb",
+     ".b.a...",
+     ".b..a..",
+     ".ba..ab"
+    ],
+    "長": [
+     ".bbbbb.",
+     ".b.....",
+     ".bbbb..",
+     "bbbbbbb",
+     ".b.a...",
+     ".ba..ab"
+    ],
+    "/": [
+     "....",
+     "....",
+     "..ea",
+     ".eae",
+     "eae.",
+     "ae.."
+    ]
+   },
+   "hd_like": {
+    "anim": "camp.save",
+    "frame": 2
+   },
+   "status": "unknown"
+  },
+  "camp_save_num": {
+   "gap": 1,
+   "colors": {
+    "a": [
+     132,
+     49,
+     8
+    ],
+    "e": [
+     198,
+     123,
+     49
+    ]
+   },
+   "outline": [
+    239,
+    222,
+    148
+   ],
+   "glyphs": {
+    "0": [
+     "eaae",
+     "a..a",
+     "a..a",
+     "a..a",
+     "eaae"
+    ],
+    "1": [
+     "..a.",
+     ".aa.",
+     "..a.",
+     "..a.",
+     ".aaa"
+    ],
+    "2": [
+     "eaae",
+     "...a",
+     "eaae",
+     "a...",
+     "aaaa"
+    ],
+    "3": [
+     "aaae",
+     "...a",
+     ".aaa",
+     "...a",
+     "aaae"
+    ],
+    "4": [
+     "a..a",
+     "a..a",
+     "aaaa",
+     "...a",
+     "...a"
+    ],
+    "5": [
+     "aaaa",
+     "a...",
+     "aaae",
+     "...a",
+     "aaae"
+    ],
+    "6": [
+     "eaae",
+     "a...",
+     "aaae",
+     "a..a",
+     "eaae"
+    ],
+    "7": [
+     "aaaa",
+     "...a",
+     "..a.",
+     ".a..",
+     ".a.."
+    ],
+    "8": [
+     "eaae",
+     "a..a",
+     "eaae",
+     "a..a",
+     "eaae"
+    ],
+    "9": [
+     "eaae",
+     "a..a",
+     "eaaa",
+     "...a",
+     "eaae"
+    ],
+    ":": [
+     ".",
+     "a",
+     ".",
+     "a",
+     "."
+    ],
+    "?": [
+     "eaae",
+     "...a",
+     ".ae.",
+     "....",
+     ".a.."
+    ]
+   },
+   "hd_like": {
+    "anim": "camp.save",
+    "frame": 4
+   },
+   "status": "unknown"
   }
  },
  "colors": {
@@ -3925,6 +4131,106 @@
    "code": "engine/ui/profile.gd _build_left",
    "migrated": true
   },
+  "camp.profile.status": {
+   "type": "icon",
+   "parent": "camp.profile.left",
+   "pos": [
+    [
+     5,
+     127
+    ],
+    [
+     25,
+     127
+    ],
+    [
+     45,
+     127
+    ],
+    [
+     65,
+     127
+    ],
+    [
+     85,
+     127
+    ],
+    [
+     105,
+     127
+    ],
+    [
+     125,
+     127
+    ],
+    [
+     15,
+     144
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     35,
+     144
+    ],
+    [
+     55,
+     144
+    ],
+    [
+     75,
+     144
+    ],
+    [
+     95,
+     144
+    ],
+    [
+     115,
+     144
+    ]
+   ],
+   "sprite": {
+    "anim": "camp.profile",
+    "frame": 14,
+    "frames": [
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27
+    ]
+   },
+   "masks": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    64,
+    128,
+    256,
+    512,
+    1024,
+    2048,
+    4096,
+    8192
+   ],
+   "status": "verified",
+   "code": "engine/ui/profile.gd _status_icons"
+  },
   "camp.profile.portrait": {
    "type": "anim",
    "parent": "camp.profile.left",
@@ -4468,10 +4774,10 @@
    "parent": "camp.save.slot",
    "pos": [
     152,
-    4
+    5
    ],
    "text": {
-    "font": "body",
+    "font": "small10",
     "flags": 5,
     "color": "text.main",
     "align": "left"
@@ -4517,37 +4823,60 @@
    "migrated": true
   },
   "camp.save.slot.turns": {
-   "type": "text",
+   "type": "pixel_text",
    "parent": "camp.save.slot",
    "pos": [
-    193,
-    16
+    196,
+    21
    ],
-   "text": {
-    "font": "small10",
-    "flags": 5,
-    "color": "text.main",
-    "align": "left"
+   "pixel_text": {
+    "font": "camp_save_label"
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.turns_value": {
+   "type": "pixel_text",
+   "parent": "camp.save.slot",
+   "pos": [
+    218,
+    22
+   ],
+   "pixel_text": {
+    "font": "camp_save_num",
+    "align": "right",
+    "box": 24
    },
    "status": "unknown",
    "code": "engine/ui/camp/camp_save_window.gd _init",
    "migrated": true
   },
   "camp.save.slot.play_time": {
-   "type": "text",
+   "type": "pixel_text",
    "parent": "camp.save.slot",
    "pos": [
-    193,
-    16
+    249,
+    21
    ],
-   "text": {
-    "font": "small10",
-    "flags": 5,
-    "color": "text.main",
+   "pixel_text": {
+    "font": "camp_save_label"
+   },
+   "status": "unknown",
+   "code": "engine/ui/camp/camp_save_window.gd _init",
+   "migrated": true
+  },
+  "camp.save.slot.play_time_value": {
+   "type": "pixel_text",
+   "parent": "camp.save.slot",
+   "pos": [
+    272,
+    22
+   ],
+   "pixel_text": {
+    "font": "camp_save_num",
     "align": "right",
-    "box": [
-     110
-    ]
+    "box": 31
    },
    "status": "unknown",
    "code": "engine/ui/camp/camp_save_window.gd _init",

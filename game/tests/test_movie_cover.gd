@@ -28,3 +28,10 @@ func test_video_sits_on_a_top_layer_over_a_full_screen_black_backdrop():
 	check(has_player, "视频播放器在同一层里 (黑底之后)")
 	eq(m.mouse_filter, Control.MOUSE_FILTER_IGNORE, "播放队列的壳不挡鼠标")
 	m.queue_free()
+
+
+## 游戏速度 (Engine.time_scale) 不加速视频: 播放速度按倍数反向补偿 (实测 16 秒的 Logo 视频 3 倍速时 5.3 秒播完, 补偿后 15.9 秒)
+func test_video_ignores_game_speed():
+	eq(MovieScene.video_speed(1.0), 1.0, "原速")
+	check(is_equal_approx(MovieScene.video_speed(3.0), 1.0 / 3.0), "3 倍速时视频按 1/3 补偿")
+	eq(MovieScene.video_speed(0.0), 1.0, "回放暂停 (time_scale 0) 不除零")

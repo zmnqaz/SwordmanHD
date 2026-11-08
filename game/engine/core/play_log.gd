@@ -195,7 +195,7 @@ func _lock_input(on: bool) -> void:
 func _release() -> void:
 	if mode == "replay":
 		_lock_input(false)
-		Engine.time_scale = GameSpeed.factor   # 回到设定里的游戏速度 (缺省 1.0)
+		Engine.time_scale = GameSpeed.target()   # 回到设定里的游戏速度 (缺省 1.0; 有过场动画在播则 1 倍)
 		if _real_save_dir != "":
 			GameSaves.base_dir = _real_save_dir
 			_real_save_dir = ""

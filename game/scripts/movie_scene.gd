@@ -82,6 +82,16 @@ func _next() -> void:
 		_next.call_deferred()
 
 
+## 视频不跟游戏速度 (GameSpeed 用 Engine.time_scale 加速, 视频播放器的 delta 也被放大): 按倍数反向补偿, 视频与它的声音始终原速。
+## 每帧跟着改, 播放中调游戏速度也对; time_scale = 0 (回放暂停) 时 delta 为 0, 视频本来就停着
+func _process(_delta: float) -> void:
+	_player.speed_scale = video_speed(Engine.time_scale)
+
+
+static func video_speed(time_scale: float) -> float:
+	return 1.0 / time_scale if time_scale > 0.001 else 1.0
+
+
 func _exit_tree() -> void:
 	InputRouter.pop(self)  # 中途被释放 (换场景/退出) 也要出栈, 不等 _prune 兜底
 	_resume_scene_music()

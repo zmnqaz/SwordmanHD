@@ -157,6 +157,12 @@ def env_for_godot():
     return env
 
 
+def save_dir(data_home):
+    """XDG_DATA_HOME 设成 data_home 时, 编辑器 / 无头运行的游戏存档目录 (save1~5.json、战阵存录 battle.json)。
+    同 game/engine/core/user_paths.gd: 非导出版 = user:// 下的 save/ 子目录 (0.9.8 起, 以前直接放 user://)。"""
+    return os.path.join(data_home, "SwordmanHD", "save")
+
+
 # 原图仓库里的原版资源目录 (仓库里还有 tools/、Swordman/ 等, 遍历时只看这些)
 TOPS = ["Camp", "Face", "Magic", "Misc", "Movie", "Music", "Rpg", "Shop", "Sprite", "Stage"]
 

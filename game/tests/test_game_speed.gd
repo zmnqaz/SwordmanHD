@@ -54,3 +54,44 @@ func test_real_delta_undoes_time_scale():
 	Engine.time_scale = 0.0
 	eq(GameSpeed.real_delta(0.0), 0.0, "暂停: 0, 不除零")
 	Engine.time_scale = 1.0   # 跑测试的循环不调 after_each: 自己还原, 否则后面靠 SceneTreeTimer 的测试永远等不到
+
+
+## 整屏过场动画播放期间按原速, 播完 / 节点离开场景树后回到设定倍速; 期间改设定也不加速
+func test_cutscene_hold_plays_at_normal_speed():
+	var root := (Engine.get_main_loop() as SceneTree).root
+	GameSpeed.set_tenths(30)
+	eq(Engine.time_scale, 3.0, "设定 3 倍")
+	var a := Node.new()
+	root.add_child(a)
+	GameSpeed.hold_normal(a)
+	eq(Engine.time_scale, 1.0, "过场动画期间原速")
+	GameSpeed.set_tenths(20)
+	eq(Engine.time_scale, 1.0, "期间改设定仍原速")
+	GameSpeed.release(a)
+	eq(Engine.time_scale, 2.0, "播完回到设定倍速")
+	GameSpeed.hold_normal(a)
+	root.remove_child(a)   # 中途离开场景树 (换场景 / 跳过) 也放开
+	eq(Engine.time_scale, 2.0, "节点离开场景树自动放开")
+	a.free()
+
+
+
+## 过场动画被隐藏 (剧情清掉 / 跳过, 没发 finished) 也放开, 速度不卡在 1 倍
+func test_cutscene_hidden_releases_hold():
+	var root := (Engine.get_main_loop() as SceneTree).root
+	GameSpeed.set_tenths(30)
+	var a := Node2D.new()
+	root.add_child(a)
+	GameSpeed.hold_normal(a)
+	eq(Engine.time_scale, 1.0, "过场动画期间原速")
+	a.visible = false
+	eq(Engine.time_scale, 3.0, "隐藏后回到设定倍速")
+	a.visible = true
+	eq(Engine.time_scale, 3.0, "再显示不会自己重新按住")
+	GameSpeed.release(a)   # 播完照常调用, 已放开时什么都不做
+	eq(Engine.time_scale, 3.0)
+	GameSpeed.hold_normal(a)   # 同一个动画节点再播一次 (剧情里事件动画会重复播)
+	eq(Engine.time_scale, 1.0, "再次按住")
+	GameSpeed.release(a)
+	eq(Engine.time_scale, 3.0, "再次放开")
+	a.free()

@@ -196,7 +196,7 @@ def main():
         adb(home, "install", "-r", apk_out)
         if not a.no_packs and not a.bundle:   # 整包里已经带了资源包, 不用再推
             push_packs(home)
-        print("完成: 手机上打开「天地劫 復刻」")
+        print("完成: 手机上打开「天地劫·揽月」")
     else:
         print("下一步: 手机开 USB 调试连上后 python3 tools/platform/build_android.py --install; 或自己传: APK 装好后把 %s 里的 resource、mod 两个文件夹放进手机 %s" %
               (os.path.relpath(PACKS, REPO), DEVICE_DIR))

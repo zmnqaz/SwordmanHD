@@ -44,7 +44,7 @@ func test_walk_finishes_at_any_frame_rate():
 			u.walk(path, speed)
 			var frames := 0
 			while not done[0] and frames < 100000:
-				u._process(dt)
+				_tick(u, dt)   # 动画也要推进: 起步 / 收步播完才走 / 才算走完
 				frames += 1
 			check(done[0], "帧长 %.6f 速度 %d 走完" % [dt, speed])
 			eq(Vector2i(u.cx, u.cy), Vector2i(9, 9), "帧长 %.6f 速度 %d 终点格" % [dt, speed])

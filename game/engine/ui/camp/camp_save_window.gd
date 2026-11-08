@@ -4,8 +4,10 @@ extends Node2D
 ## 今況記入 / 前歷再續 存读档窗 (素材 Misc/Sfman), 坐标与原版截图核对:
 ##   背景 第 0 帧在 (0,0); 标题框 第 1 帧在 (3,5), 标题文字在 (20,10) flags=5。
 ##   5 个档位条: x=3, y=30+33i; 有记录用第 2 帧 (头像画在帧里), 空档位第 3 帧。
-##   条内: 关名 (152,4) flags=5; 等级 %3d 用第 4 帧字模在 (125,14); 「MM/DD HH:MM」在 (112,21), 空格只占位不画。
-##   复刻新增: 条内第二行右侧「总回合」(靠左) 与「时长」(游戏总时间, 靠右) (camp.save.slot.turns / play_time); 旧存档没记的显示「--」。
+##   条内: 关名 (152,4) flags=5 (复刻缩为 10 号字, 见布局表 note); 等级 %3d 用第 4 帧字模在 (125,14); 「MM/DD HH:MM」在 (112,21), 空格只占位不画。
+##   复刻新增: 条内与存档日期同一行的右侧「回合/」(总回合)「时长/」(游戏总时间) 两列, 都是手绘点阵字 (UiPixelText): 标签照「位/」的大小与画法,
+##   数值是阿拉伯数字 (原版字模只有汉字数字, 步进 7 放不下), 在最大值 (99999 / 9999:59) 宽的框里靠右按位对齐; 各档位列位置固定
+##   (camp.save.slot.turns / turns_value / play_time / play_time_value); 旧存档没记的画「?」。
 ##   选中条: 叠加蓝色 (0x001F) 并按 2,4,…,16,…,4 每 2 tick 一档呼吸; 读档时空档位泛白。
 ##   打开时全屏由黑渐亮, 档位条单数行从左、双数行从右滑入 16,8,4,2,0。
 ## 按键: ↑/← 减 1、↓/→ 加 1, 5 个档位循环; 取消返回 −1;
@@ -52,13 +54,20 @@ func _init(is_save: bool) -> void:
 			bar.add_child(UiLayout.number("camp.save.slot.lv", int(info["lv"])))
 			bar.add_child(UiLayout.number("camp.save.slot.time", String(info["time"])))
 			if String(info.get("turns", "")) != "":
-				bar.add_child(UiText.make("camp.save.slot.turns", UiStrings.t("camp.save.turns", [info["turns"]])))
-				bar.add_child(UiText.make("camp.save.slot.play_time", UiStrings.t("camp.save.play_time", [info["play_time"]])))
+				bar.add_child(UiLayout.pixel_text("camp.save.slot.turns", UiStrings.t("camp.save.turns")))
+				bar.add_child(UiLayout.pixel_text("camp.save.slot.turns_value", _num_or_q(String(info["turns"]))))
+				bar.add_child(UiLayout.pixel_text("camp.save.slot.play_time", UiStrings.t("camp.save.play_time")))
+				bar.add_child(UiLayout.pixel_text("camp.save.slot.play_time_value", _num_or_q(String(info["play_time"]))))
 		elif not saving:
 			CampUi.set_material_deep(p, _wash_material())
 		add_child(bar)
 		_bars.append(bar)
 	_select(0)
+
+
+## 点阵数值只有 0~9、「:」「?」: 不是数字的 (未知「--」) 画「?」
+static func _num_or_q(s: String) -> String:
+	return s if s.replace(":", "").is_valid_int() else "?"
 
 
 func open() -> void:
@@ -102,14 +111,14 @@ static func slot_info(i: int) -> Dictionary:
 	return {"title": title, "lv": lv, "time": time, "turns": turns_text(d), "play_time": play_time_text(float(d.get("play_time", -1.0)))}
 
 
-## 总回合文字: 存档的 turns; 旧存档 / 原版导入存档没有时用原版的过关回合记录 (var 30+next) 补出已打完各关之和, 也补不出显示「--」
+## 总回合文字 (封顶 99999, 档位条放 5 位): 存档的 turns; 旧存档 / 原版导入存档没有时用原版的过关回合记录 (var 30+next) 补出已打完各关之和, 也补不出显示「--」
 static func turns_text(d: Dictionary) -> String:
 	var n := int(d.get("turns", -1))
 	var params = GameContext.current().content.params() if n < 0 else null
 	if params != null and d.get("game_data") is Dictionary:
 		var gd: Dictionary = d["game_data"]
 		n = ClearRank.recorded_turns(func(v): return int(gd.get(str(v), gd.get(v, 0))), params)
-	return str(n) if n >= 0 else UiStrings.t("camp.save.unknown")
+	return str(mini(n, 99999)) if n >= 0 else UiStrings.t("camp.save.unknown")
 
 
 ## 游戏时间文字「时:分」(小时不限位数, 封顶 9999:59); 未知 (< 0, 旧存档) 显示「--」

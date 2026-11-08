@@ -577,11 +577,6 @@ func _clamp(p: Vector2) -> Vector2:
 	return out
 
 
-## 原版镜头位置 (按 320x200 求) 换到当前视口: 让原版想看的区域仍在画面中间
-func _orig_to_view(p: Vector2) -> Vector2:
-	return p - (view() - SCREEN) / 2.0
-
-
 ## 当前视口里与原版 320x200 镜头对应的左上角 (全屏事件动画按原版镜头摆放)
 func orig_cam() -> Vector2:
 	return cam + (view() - SCREEN) / 2.0
@@ -615,7 +610,7 @@ func _follow(instant: bool) -> void:
 ## 0x04 (-> Camera, 2026-10-05 实测): 图层 1 左上角平移到 (x*30-10, y*24-4) 像素 (布局表 map.camera_offset),
 ## 每帧走 (sx, sy) 像素, 不夹在地图内 (越界处原版画黑); 到位同帧完成。已在目标处也占 1 帧。
 func pan_camera(x: int, y: int, sx: int, sy: int) -> void:
-	_cam_target = _orig_to_view(Vector2(x, y) * FxPlace.CELL - UiLayout.at("map.camera_offset"))
+	_cam_target = ScreenLayout.extend_cam(Vector2(x, y) * FxPlace.CELL - UiLayout.at("map.camera_offset"), view(), map_size)
 	_cam_speed = UiLayout.vec_of("map.camera_offset", "pan_speed", {"sx": sx, "sy": sy})
 	if cam.is_equal_approx(_cam_target):
 		await get_tree().create_timer(1 / 25.0).timeout
@@ -665,14 +660,22 @@ func play_animation(id: int, id2: int, frame: int, end_frame: int) -> void:
 	if frame < 0:
 		a.play(a.dir, 0, -1, false)
 		_refresh_screen_mask()   # 动画数据载入之后才知道是不是整屏图
-		await a.finished
+		await _play_cutscene(a)
 	elif frame == end_frame:
 		a.show_frame(a.dir, end_frame)
 		_refresh_screen_mask()
 	else:
 		a.play(a.dir, frame, end_frame + 1, false)
 		_refresh_screen_mask()
-		await a.finished
+		await _play_cutscene(a)
+
+
+## 等事件动画播完; 整屏的 (过场动画, 如客栈休息) 播放期间不跟游戏速度, 按原速 (GameSpeed.hold_normal)
+func _play_cutscene(a: Node) -> void:
+	if a.covers_window(SCREEN):
+		GameSpeed.hold_normal(a)
+	await a.finished
+	GameSpeed.release(a)
 
 
 func clear_animation(id: int, id2: int) -> void:

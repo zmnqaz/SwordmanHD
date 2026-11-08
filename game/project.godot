@@ -1,12 +1,18 @@
-; 天地劫：神魔至尊傳 复刻 (Godot 4)
+; 天地劫：神魔至尊传·揽月 (Godot 4; 工程名 / 用户目录仍是 SwordmanHD)
 ; 逻辑坐标为原版 320x200, 渲染 1280x800 (x4)。游戏内容从内容包 content/ 读取 (autoload Content), 贴图音频从 ../original 与 ../hd4x 读取。
 config_version=5
 
 [application]
 config/name="SwordmanHD"
-config/version="0.9.9"
+config/name_localized={
+"zh": "天地劫·揽月",
+"zh_CN": "天地劫·揽月",
+"zh_HK": "天地劫·攬月",
+"zh_TW": "天地劫·攬月"
+}
+config/version="1.0.0"
 config/homepage="https://github.com/zmnqaz/SwordmanHD"
-config/description="天地劫：神魔至尊傳 復刻"
+config/description="天地劫：神魔至尊传·揽月"
 config/icon="res://assets/app_icon.png"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="SwordmanHD"

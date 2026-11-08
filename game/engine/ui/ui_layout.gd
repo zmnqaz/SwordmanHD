@@ -396,6 +396,26 @@ static func number(id: String, v: Variant = "", i := 0, vars := {}) -> UiNumber:
 	return n
 
 
+## 建点阵字 (UiPixelText): 元素 pixel_text.font 指布局表 pixel_fonts 里的字表; 画质跟字表 hd_like 那张素材同档
+## pixel_text.align = "right" 时在 pixel_text.box 宽内靠右 (数值按位对齐)
+static func pixel_text(id: String, t := "", i := 0, vars := {}) -> UiPixelText:
+	var spec = el(id).get("pixel_text")
+	var fname := String(spec.get("font", "")) if spec is Dictionary else ""
+	var f = data().get("pixel_fonts", {}).get(fname)
+	if not (f is Dictionary):
+		push_warning("UiLayout: %s 的点阵字表 %s 不存在" % [id, fname])
+		f = {}
+	var hd := false
+	var like = f.get("hd_like")
+	if like is Dictionary and like.has("anim"):
+		hd = bool(UiPanel.frame_texture(String(asset(like["anim"])), int(like.get("frame", 0))).get("hd", false))
+	var n := UiPixelText.new(f, t, at(id, i, vars), hd)
+	if spec is Dictionary and String(spec.get("align", "left")) == "right":
+		n.position.x += float(spec.get("box", 0)) - n.size().x
+	tag(n, id, Rect2(Vector2.ZERO, n.size()))
+	return n
+
+
 static var _exprs := {}
 
 
@@ -552,6 +572,9 @@ static func validate(d: Dictionary = {}) -> Array:
 				errs.append("%s: 颜色 %s 不存在" % [id, cn])
 			if t.has("flags") and not styles.has(style_key(t["flags"])):
 				errs.append("%s: 文字样式 %s 不存在" % [id, style_key(t["flags"])])
+		var pt = e.get("pixel_text")
+		if pt is Dictionary and not d.get("pixel_fonts", {}).has(str(pt.get("font", ""))):
+			errs.append("%s: 点阵字表 %s 不存在" % [id, pt.get("font", "")])
 		for f in ["sprite", "digits"]:  # 素材逻辑名 (a.b 形式) 必须在资源清单里
 			var an = e.get(f).get("anim") if e.get(f) is Dictionary else null
 			if an is String and _LOGICAL.search(an) != null and not ThemeAssets.has(an):

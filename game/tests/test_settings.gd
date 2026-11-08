@@ -182,13 +182,24 @@ func test_key_edit_row_listed_on_every_platform():
 	check(SettingsSchema.shown_rows("controls").any(func(r): return r["key"] == "key_edit"), "控制器设置里有键盘按键设置")
 
 
-func test_aspect_mode_widens_only_wide_windows():
+func test_aspect_mode_expands_non_16_10_windows():
 	var sl = ScreenLayout
-	check(sl.widens(Vector2i(1600, 900), "auto"), "16:9 自适应加宽")
-	check(sl.widens(Vector2i(2560, 1080), "auto"), "21:9 自适应加宽")
-	check(not sl.widens(Vector2i(1920, 1200), "auto"), "16:10 不加宽")
-	check(not sl.widens(Vector2i(1280, 960), "auto"), "4:3 退化为留上下黑边")
-	check(not sl.widens(Vector2i(1600, 900), "keep"), "原版 16:10 模式不加宽")
+	check(sl.expands(Vector2i(1600, 900), "auto"), "16:9 自适应加宽")
+	check(sl.expands(Vector2i(2560, 1080), "auto"), "21:9 自适应加宽")
+	check(not sl.expands(Vector2i(1920, 1200), "auto"), "16:10 不扩展")
+	check(sl.expands(Vector2i(1280, 960), "auto"), "4:3 自适应加高")
+	check(not sl.expands(Vector2i(1600, 900), "keep"), "原版 16:10 模式不扩展")
+
+
+## 剧情镜头换到加高 / 加宽的视口: 扩展部分不越出地图, 原版自己越界的照旧
+func test_extend_cam_stays_in_map():
+	var sl = ScreenLayout
+	var map := Vector2(640, 480)
+	check(sl.extend_cam(Vector2(100, 100), Vector2(320, 240), map) == Vector2(100, 80), "地图中间: 居中扩展")
+	check(sl.extend_cam(Vector2(100, 280), Vector2(320, 240), map) == Vector2(100, 240), "停在地图底边: 扩展部分不越过底边")
+	check(sl.extend_cam(Vector2(100, 0), Vector2(320, 240), map) == Vector2(100, 0), "停在地图顶边: 不越过顶边")
+	check(sl.extend_cam(Vector2(100, 290), Vector2(320, 240), map) == Vector2(100, 250), "原版越界 10 像素: 照旧越界, 不再多")
+	check(sl.extend_cam(Vector2(0, 0), Vector2(356, 200), Vector2(320, 200)) == Vector2(-18, 0), "地图比视口小: 不夹 (调用方居中)")
 
 
 func test_min_window_clamps_old_small_sizes():

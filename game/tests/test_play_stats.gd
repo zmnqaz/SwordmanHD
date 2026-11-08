@@ -80,6 +80,7 @@ func test_slot_text_formats():
 	eq(CampSaveWindow.play_time_text(3600.0 * 123456), "9999:59", "封顶")
 	eq(CampSaveWindow.play_time_text(-1.0), UiStrings.t("camp.save.unknown"), "未知显示 --")
 	eq(CampSaveWindow.turns_text({"turns": 321.0, "game_data": {"31": 5}}), "321", "有字段用字段")
+	eq(CampSaveWindow.turns_text({"turns": 123456}), "99999", "封顶 99999 (档位条放 5 位)")
 	eq(CampSaveWindow.turns_text({"game_data": {"31": 18.0, "32": 9.0}}), "27", "旧存档用过关回合记录补")
 	eq(CampSaveWindow.turns_text({"game_data": {}}), "0", "没有记录 = 0 回合")
 	eq(CampSaveWindow.turns_text({}), UiStrings.t("camp.save.unknown"), "连剧情变量都没有显示 --")
