@@ -22,7 +22,7 @@ var _closing := false
 ## 正文各行 (简体 / 繁体跟文案表): 名称、版本、主页地址、许可
 static func lines() -> Array:
 	return [UiStrings.t("about.name"),
-		UiStrings.t("about.version") % GameVersion.label(),
+		UiStrings.t("about.version") % GameVersion.display_label(),
 		UiStrings.t("about.home"),
 		GameVersion.homepage(),
 		UiStrings.t("about.license")]

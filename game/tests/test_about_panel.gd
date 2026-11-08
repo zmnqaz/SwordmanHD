@@ -26,6 +26,13 @@ func test_version_and_homepage_come_from_project_settings():
 	check(GameVersion.homepage().begins_with("https://github.com/"), "主页是 GitHub 地址: %s" % GameVersion.homepage())
 
 
+## 标题右下角与关于页: 版本名 + 版本号「揽月 v1.0.0」(版本名在文案表 app.edition); 日志 / 诊断页仍是纯 "v1.0.0"
+func test_display_label_has_edition_name():
+	eq(GameVersion.display_label(), UiStrings.t("app.edition") + " " + GameVersion.label())
+	check(GameVersion.display_label().begins_with("揽月 v") or GameVersion.display_label().begins_with("攬月 v"), "带版本名: %s" % GameVersion.display_label())
+	check(" ".join(AboutPanel.lines()).contains(GameVersion.display_label()), "关于页的版本行带版本名")
+
+
 func test_lines_show_version_and_link():
 	var t := "\n".join(AboutPanel.lines())
 	check(t.contains(GameVersion.label()) and t.contains(GameVersion.homepage()), "正文里有版本号和主页地址")

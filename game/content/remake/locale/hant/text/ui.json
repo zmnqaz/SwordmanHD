@@ -90,6 +90,7 @@
  "settings.diag.desc": "屏幕、貼圖倍數、顯存、幀率和最近按的鍵 (先按幾下再打開)。畫面糊或按鍵不對時截圖給開發者。",
  "settings.about.label": "關於",
  "settings.about.desc": "版本號和項目主頁 (GitHub)。報告問題時請寫上版本號。",
+ "app.edition": "攬月",
  "about.title": "關於",
  "settings.save_loc.label": "存檔位置",
  "settings.save_loc.value": "進入",

@@ -7,7 +7,7 @@
   --art <图片>   用一张美术图做图标 (2026-11-07 起: 寒月结局过场 Movie_15 开头剑平与寒月 (带灵兽) 的正脸 (取字幕切换空档的一帧, 左侧白雾最淡), 原画两人离得远,
                  用 rembg isnet-anime 抠出两人后拉近重拼 (源图不入库); 之前是《天地劫》封面图): 方图直接缩, 不是方的取中间最大方块, 带透明的铺在深色底上
   --pc           用现成的 app_icon.png 生成桌面图标 icon_pc.png (圆角方, 留边, 淡阴影)
-  --plain        不用任何原版素材的自制图标: 深红渐变底 + 金色圆环 + 米色「劫」字 (项目自带的开源文楷子集字体 game/assets/font/WuxiaKai-Subset.ttf, OFL)
+  --plain        不用任何原版素材的自制图标: 深红渐变底 + 金色圆环 + 米色「劫」字 (项目自带的开源文楷字体 game/assets/font/LXGWWenKai-Medium.ttf, OFL)
   --adaptive     用现成的 app_icon.png 生成 Android 自适应图标两层 (game/assets/android/adaptive_fg.png / adaptive_bg.png, 432x432):
                  系统会把前景层裁成圆 / 圆角方 (只留中间约 2/3), 整张图铺满会被切掉边缘 (2026-10-31 网友: 「天地劫」三个字被裁), 所以前景把图缩到约 66% 放中间,
                  背景层用同一张图放大模糊铺满, 被裁出来的外圈颜色连得上
@@ -26,7 +26,7 @@ from paths import REPO  # noqa: E402
 SIZE = 1024
 OUT_ART = os.path.join(REPO, "game", "assets", "app_icon.png")
 OUT_PLAIN = os.path.join(REPO, "game", "assets", "icon_pc.png")
-FONT = os.path.join(REPO, "game", "assets", "font", "WuxiaKai-Subset.ttf")
+FONT = os.path.join(REPO, "game", "assets", "font", "LXGWWenKai-Medium.ttf")
 GLYPH = "劫"
 
 

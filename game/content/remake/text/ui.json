@@ -137,6 +137,7 @@
 	"settings.about.label": "关于",
 	"settings.about.value": "查看",
 	"settings.about.desc": "版本号和项目主页 (GitHub)。报告问题时请写上版本号。",
+	"app.edition": "揽月",
 	"about.title": "关于",
 	"settings.save_loc.label": "存档位置",
 	"settings.save_loc.value": "进入",

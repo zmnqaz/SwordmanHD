@@ -62,7 +62,7 @@ func _add_version_label() -> void:
 	layer.layer = 50
 	add_child(layer)
 	var l := Label.new()
-	l.text = GameVersion.label()
+	l.text = GameVersion.display_label()
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.add_theme_font_override("font", UiText.game_font(false))
 	l.add_theme_font_size_override("font_size", maxi(12, int(0.025 * get_viewport().get_visible_rect().size.y)))
